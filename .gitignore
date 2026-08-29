@@ -1,0 +1,17 @@
+# Environment files
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Node modules
+node_modules/
+
+# Next.js build output
+.next/
+
+# TypeScript build output
+dist/
+
+# Log files
+*.log
