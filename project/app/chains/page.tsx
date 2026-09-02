@@ -1,0 +1,1 @@
+import { CollectionPage } from '@/components/CollectionPage';export default function Page(){return <CollectionPage title="Chains" description="Clean lines, worn every day." filter={p=>p.category==='Chains'} image="https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=1800"/>}
