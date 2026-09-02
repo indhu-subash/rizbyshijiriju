@@ -1,0 +1,1 @@
+import { CollectionPage } from '@/components/CollectionPage';export default function Page(){return <CollectionPage title="Necklaces" description="Layers for the life you're living." filter={p=>p.category==='Necklaces'} image="https://images.pexels.com/photos/29502932/pexels-photo-29502932.jpeg?auto=compress&cs=tinysrgb&w=1800"/>}
