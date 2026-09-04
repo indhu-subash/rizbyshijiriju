@@ -2,10 +2,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 async function request(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}${endpoint}`;
-  
+
   // Ensure cookies are sent and received
   options.credentials = 'include';
-  
+
   if (options.body && !(options.body instanceof FormData)) {
     options.headers = {
       'Content-Type': 'application/json',
@@ -16,13 +16,19 @@ async function request(endpoint: string, options: RequestInit = {}) {
   try {
     const res = await fetch(url, options);
     const data = await res.json();
-    
+
     if (!res.ok) {
       throw new Error(data.error || 'An error occurred during the request.');
     }
-    
+
     return data;
   } catch (error: any) {
+    // A 401 from /auth/me simply means the visitor is not logged in.
+    // This is normal and should not be treated as a frontend error.
+    if (endpoint === '/auth/me' && error?.message === 'Authentication required. No token provided.') {
+      throw error;
+    }
+
     console.error(`API Request Error [${endpoint}]:`, error);
     throw error;
   }
@@ -39,7 +45,7 @@ export const api = {
     addAddress: (body: any) => request('/auth/addresses', { method: 'POST', body: JSON.stringify(body) }),
     deleteAddress: (id: string) => request(`/auth/addresses/${id}`, { method: 'DELETE' }),
   },
-  
+
   // Products
   products: {
     list: (params: { category?: string; collection?: string; query?: string; priceRange?: string; sort?: string } = {}) => {
@@ -49,14 +55,14 @@ export const api = {
       if (params.query) queryParams.append('query', params.query);
       if (params.priceRange) queryParams.append('priceRange', params.priceRange);
       if (params.sort) queryParams.append('sort', params.sort);
-      
+
       const queryString = queryParams.toString();
       return request(`/products${queryString ? `?${queryString}` : ''}`);
     },
     getBySlug: (slug: string) => request(`/products/slug/${slug}`),
     getById: (id: string) => request(`/products/${id}`),
   },
-  
+
   // Orders & Shipping
   orders: {
     my: () => request('/orders/my'),
@@ -67,9 +73,9 @@ export const api = {
 
   // Checkout & Payments
   payments: {
-    checkout: (body: { items: { productId: string; quantity: number }[]; shippingAddress: any; couponCode?: string; paymentMethod: string }) => 
+    checkout: (body: { items: { productId: string; quantity: number }[]; shippingAddress: any; couponCode?: string; paymentMethod: string }) =>
       request('/payments/checkout', { method: 'POST', body: JSON.stringify(body) }),
-    verify: (body: { orderId: string; razorpayPaymentId?: string; razorpayOrderId?: string; razorpaySignature?: string }) => 
+    verify: (body: { orderId: string; razorpayPaymentId?: string; razorpayOrderId?: string; razorpaySignature?: string }) =>
       request('/payments/verify', { method: 'POST', body: JSON.stringify(body) }),
   },
 
@@ -83,7 +89,7 @@ export const api = {
       const str = q.toString();
       return request(`/admin/orders${str ? `?${str}` : ''}`);
     },
-    updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) => 
+    updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) =>
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
