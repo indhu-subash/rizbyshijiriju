@@ -10,12 +10,14 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URLS = [
+  'https://rizbyshijiriju.vercel.app',
+  'http://localhost:3000',
+];
 
-// CORS configuration supporting cookies
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: FRONTEND_URLS,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -50,5 +52,5 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  console.log(`CORS allowed origin: ${FRONTEND_URL}`);
+ console.log(`CORS allowed origins: ${FRONTEND_URLS.join(', ')}`);
 });
