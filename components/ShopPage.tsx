@@ -37,16 +37,15 @@ const collections = [
   'RIZ House of Fashion',
 ];
 
-const colorSwatches = [
-  { name: 'Gold', hex: '#d4af37', border: '#b59325' },
-  { name: 'Silver', hex: '#d0d5dd', border: '#98a2b3' },
-  { name: 'Rose Gold', hex: '#e8b4b8', border: '#c48b91' },
-  { name: 'Ruby Red', hex: '#9b111e', border: '#700b14' },
-  { name: 'Emerald Green', hex: '#2e7d32', border: '#1b5e20' },
-  { name: 'Sapphire Blue', hex: '#1565c0', border: '#0d47a1' },
-  { name: 'Pearl White', hex: '#fdfbf7', border: '#d0c8b8' },
-  { name: 'Black', hex: '#212529', border: '#000000' },
-  { name: 'Multi-color', hex: 'linear-gradient(135deg, #d4af37, #e8b4b8, #2e7d32, #1565c0)', border: '#aa9050' },
+const colorOptions = [
+  'Gold',
+  'Silver',
+  'Rose Gold',
+  'Ruby Red',
+  'Emerald Green',
+  'Sapphire Blue',
+  'Pearl White',
+  'Black',
 ];
 
 const priceOptions = ['Under ₹500', '₹500–₹999', '₹1,000–₹1,999', '₹2,000+'];
@@ -64,7 +63,7 @@ export function ShopPage({
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery || '');
   const [category, setCategory] = useState(initialCategory || '');
   const [collection, setCollection] = useState(initialCollection || '');
-  const [color, setColor] = useState('');
+  const [colors, setColors] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState('');
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sort, setSort] = useState('Featured');
@@ -81,6 +80,12 @@ export function ShopPage({
     return () => clearTimeout(handler);
   }, [query]);
 
+  const toggleColor = (c: string) => {
+    setColors((prev) =>
+      prev.includes(c) ? prev.filter((item) => item !== c) : [...prev, c]
+    );
+  };
+
   // Load products from Backend API
   useEffect(() => {
     let isMounted = true;
@@ -90,7 +95,7 @@ export function ShopPage({
       .list({
         category: category || undefined,
         collection: collection || undefined,
-        color: color || undefined,
+        color: colors.length > 0 ? colors.join(',') : undefined,
         query: debouncedQuery || undefined,
         priceRange: priceRange || undefined,
         sort: sort || undefined,
@@ -117,7 +122,7 @@ export function ShopPage({
     return () => {
       isMounted = false;
     };
-  }, [category, collection, color, debouncedQuery, priceRange, sort]);
+  }, [category, collection, colors, debouncedQuery, priceRange, sort]);
 
   // Client-side availability filter
   const displayedItems = useMemo(() => {
@@ -128,7 +133,7 @@ export function ShopPage({
   function clear() {
     setCategory('');
     setCollection('');
-    setColor('');
+    setColors([]);
     setPriceRange('');
     setQuery('');
     setInStockOnly(false);
@@ -137,7 +142,7 @@ export function ShopPage({
   const activeFilterCount =
     (category ? 1 : 0) +
     (collection ? 1 : 0) +
-    (color ? 1 : 0) +
+    colors.length +
     (priceRange ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
     (query ? 1 : 0);
@@ -170,38 +175,39 @@ export function ShopPage({
             </button>
           </div>
 
-          {/* Color Filter Swatches */}
+          {/* Color / Tone Filter */}
           <div className="filter-group">
-            <h4>Color / Tone</h4>
-            <div className="color-swatch-grid">
-              {colorSwatches.map((swatch) => {
-                const isSelected = color === swatch.name;
-                return (
-                  <button
-                    key={swatch.name}
-                    title={swatch.name}
-                    className={`color-swatch-btn ${isSelected ? 'active' : ''}`}
-                    onClick={() => setColor(isSelected ? '' : swatch.name)}
-                    style={{
-                      background: swatch.hex,
-                      borderColor: isSelected ? 'var(--brown)' : swatch.border,
-                    }}
-                  >
-                    {isSelected && (
-                      <Check
-                        size={12}
-                        color={swatch.name === 'Pearl White' || swatch.name === 'Silver' ? '#333' : '#fff'}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {color && (
-              <div className="active-color-name">
-                Selected: <strong>{color}</strong>
-              </div>
-            )}
+            <h4>COLOR / TONE</h4>
+            {colorOptions.map((c) => {
+              const isChecked = colors.includes(c);
+              return (
+                <label
+                  key={c}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    padding: '5px 0',
+                    color: isChecked ? 'var(--brown)' : 'var(--muted)',
+                    fontWeight: isChecked ? 600 : 400,
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleColor(c);
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => {}}
+                    style={{ accentColor: 'var(--sage)', cursor: 'pointer' }}
+                  />
+                  <span>{c}</span>
+                </label>
+              );
+            })}
           </div>
 
           <FilterGroup title="Category" options={categories} value={category} setValue={setCategory} />
@@ -265,11 +271,11 @@ export function ShopPage({
                   Collection: {collection} <X size={12} onClick={() => setCollection('')} style={{ cursor: 'pointer' }} />
                 </span>
               )}
-              {color && (
-                <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--ivory)' }}>
-                  Color: {color} <X size={12} onClick={() => setColor('')} style={{ cursor: 'pointer' }} />
+              {colors.map((c) => (
+                <span key={c} className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--ivory)' }}>
+                  Color: {c} <X size={12} onClick={() => toggleColor(c)} style={{ cursor: 'pointer' }} />
                 </span>
-              )}
+              ))}
               {priceRange && (
                 <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--ivory)' }}>
                   Price: {priceRange} <X size={12} onClick={() => setPriceRange('')} style={{ cursor: 'pointer' }} />
