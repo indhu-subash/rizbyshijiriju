@@ -160,6 +160,7 @@ export function CheckoutPage() {
     const cartItems = cart.map((item) => ({
       productId: item.product.id,
       quantity: item.quantity,
+      color: item.color || null,
     }));
 
     try {
@@ -506,10 +507,16 @@ export function CheckoutPage() {
 
         <aside className="summary checkout-summary">
           <h2 className="serif">Your order</h2>
-          {cart.map(({ product, quantity }) => (
-            <div className="mini-item" key={product.id}>
+          {cart.map(({ product, quantity, color }) => (
+            <div className="mini-item" key={`${product.id}-${color || 'default'}`}>
               <span>
-                {product.name} <small>× {quantity}</small>
+                {product.name}
+                {color && (
+                  <small style={{ display: 'block', color: '#666', fontSize: '0.8rem' }}>
+                    Colour: {color}
+                  </small>
+                )}
+                <small>× {quantity}</small>
               </span>
               <b>₹{(product.price * quantity).toLocaleString('en-IN')}</b>
             </div>

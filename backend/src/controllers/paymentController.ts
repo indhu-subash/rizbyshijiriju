@@ -57,12 +57,23 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         return;
       }
 
+      // Validate colour selection against product.colors array
+      if (Array.isArray(product.colors) && product.colors.length > 0) {
+        if (!item.color || !product.colors.includes(item.color)) {
+          res.status(400).json({
+            error: `Please select a valid colour for ${product.name}. Available colours: ${product.colors.join(', ')}`,
+          });
+          return;
+        }
+      }
+
       subtotal += product.price * item.quantity;
       checkoutItems.push({
         productId: product.id,
         name: product.name,
         price: product.price,
         quantity: item.quantity,
+        color: item.color || null,
         image: product.images[0] || '',
       });
 
@@ -182,6 +193,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
               name: item.name,
               price: item.price,
               quantity: item.quantity,
+              color: item.color,
               image: item.image,
             })),
           },

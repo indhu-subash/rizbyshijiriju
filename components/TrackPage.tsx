@@ -22,7 +22,7 @@ function TrackFormContent() {
     paymentStatus: string;
     shippingName: string;
     createdAt: string;
-    items: { name: string; quantity: number }[];
+    items: { name: string; quantity: number; color?: string | null }[];
   } | null>(null);
 
   useEffect(() => {
@@ -103,6 +103,28 @@ function TrackFormContent() {
               {orderData.orderStatus === 'Cancelled' ? 'Cancelled' : orderData.orderStatus === 'Delivered' ? 'Delivered' : 'In transit'}
             </span>
           </div>
+
+          {orderData.items && orderData.items.length > 0 && (
+            <div className="tracked-items-list my-4 p-3 bg-stone-50 rounded" style={{ margin: '12px 0', padding: '12px', background: '#faf9f6', borderRadius: '4px' }}>
+              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#666', fontWeight: 600 }}>
+                Items in this order:
+              </span>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0 0' }}>
+                {orderData.items.map((it, idx) => (
+                  <li key={idx} style={{ fontSize: '0.875rem', padding: '4px 0', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>
+                      <b>{it.name}</b> <small>× {it.quantity}</small>
+                      {it.color && (
+                        <span style={{ display: 'block', fontSize: '0.8rem', color: '#666' }}>
+                          Colour: <b>{it.color}</b>
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {orderData.orderStatus === 'Cancelled' ? (
             <div className="error-banner my-6 text-center">

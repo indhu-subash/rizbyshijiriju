@@ -21,6 +21,13 @@ export function ProductDetail({ product }: { product: Product }) {
   const [open, setOpen] = useState('DETAILS');
   const { addToCart, toggleWishlist, wishlist } = useStore();
 
+  const productColors = Array.isArray(product.colors) ? product.colors : [];
+  const hasColors = productColors.length > 0;
+  const [selectedColor, setSelectedColor] = useState<string>(() => {
+    return productColors.length === 1 ? productColors[0] : '';
+  });
+  const [colorError, setColorError] = useState('');
+
   // Save to Recently Viewed
   useEffect(() => {
     try {
@@ -34,17 +41,23 @@ export function ProductDetail({ product }: { product: Product }) {
     }
   }, [product.id]);
 
-  function add() {
-    if (product.stock <= 0) return;
-    for (let i = 0; i < qty; i++) {
-      addToCart(product);
+  function add(): boolean {
+    if (product.stock <= 0) return false;
+    if (hasColors && !selectedColor) {
+      setColorError('Please select an available colour before adding to cart.');
+      return false;
     }
+    setColorError('');
+    addToCart(product, qty, selectedColor || undefined);
+    return true;
   }
 
   function handleBuyNow() {
     if (product.stock <= 0) return;
-    add();
-    router.push('/checkout');
+    const added = add();
+    if (added) {
+      router.push('/checkout');
+    }
   }
 
   const handleCheckPincode = async (e: React.FormEvent) => {
@@ -168,6 +181,67 @@ export function ProductDetail({ product }: { product: Product }) {
               {stockBadge}
             </span>
           </div>
+
+          {/* Available Colours Selector */}
+          {hasColors && product.colors && product.colors.length > 0 && (
+            <div className="product-color-selector" style={{ margin: '18px 0' }}>
+              <span
+                style={{
+                  display: 'block',
+                  marginBottom: '10px',
+                  fontSize: '0.75rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                  color: '#334c3d',
+                }}
+              >
+                AVAILABLE COLOURS
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {product.colors.map((c) => {
+                  const isSelected = selectedColor === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        setSelectedColor(c);
+                        setColorError('');
+                      }}
+                      style={{
+                        padding: '8px 18px',
+                        fontSize: '0.85rem',
+                        fontWeight: isSelected ? 600 : 400,
+                        color: isSelected ? '#334c3d' : '#4a4a4a',
+                        backgroundColor: isSelected ? '#ede5db' : '#fcfbfa',
+                        border: isSelected ? '1.5px solid #334c3d' : '1px solid #dcd4c9',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedColor ? (
+                <small style={{ display: 'block', marginTop: '8px', fontSize: '0.825rem', color: '#666' }}>
+                  Selected: <b style={{ color: '#334c3d' }}>{selectedColor}</b>
+                </small>
+              ) : (
+                <small style={{ display: 'block', marginTop: '8px', fontSize: '0.825rem', color: '#888' }}>
+                  Please select a colour
+                </small>
+              )}
+              {colorError && (
+                <p style={{ color: '#d32f2f', fontSize: '0.825rem', marginTop: '6px', fontWeight: 500 }}>
+                  {colorError}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Quantity & Wishlist */}
           <div className="quantity-row">

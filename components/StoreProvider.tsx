@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 export type CartItem = {
   product: Product;
   quantity: number;
+  color?: string;
 };
 
 export type User = {
@@ -20,9 +21,9 @@ export type User = {
 export type Store = {
   cart: CartItem[];
   wishlist: string[];
-  addToCart: (p: Product) => void;
-  removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, n: number) => void;
+  addToCart: (p: Product, quantity?: number, color?: string) => void;
+  removeFromCart: (id: string, color?: string) => void;
+  updateQuantity: (id: string, color: string | undefined, n: number) => void;
   toggleWishlist: (id: string) => void;
   clearCart: () => void;
   cartCount: number;
@@ -49,9 +50,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Load cart, wishlist, and session on mount
   useEffect(() => {
-    // 1. Load Local Storage
+    // 1. Load Local Storage safely with backward compatibility for legacy items
     try {
-      setCart(JSON.parse(localStorage.getItem('riz-cart') || '[]'));
+      const rawCart = JSON.parse(localStorage.getItem('riz-cart') || '[]');
+      const parsedCart: CartItem[] = Array.isArray(rawCart)
+        ? rawCart.map((item: any) => ({
+            product: item.product,
+            quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+            color: item.color || undefined,
+          }))
+        : [];
+      setCart(parsedCart);
       setWishlist(JSON.parse(localStorage.getItem('riz-wishlist') || '[]'));
     } catch (e) {
       console.error('Failed to load local storage:', e);
@@ -91,22 +100,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return {
       cart,
       wishlist,
-      addToCart: (product: Product) =>
+      addToCart: (product: Product, quantity: number = 1, color?: string) =>
+        setCart((items) => {
+          const targetColor = color || undefined;
+          const index = items.findIndex(
+            (item) => item.product.id === product.id && (item.color || undefined) === targetColor
+          );
+          if (index !== -1) {
+            return items.map((item, i) =>
+              i === index ? { ...item, quantity: item.quantity + quantity } : item
+            );
+          }
+          return [...items, { product, quantity, color: targetColor }];
+        }),
+      removeFromCart: (id: string, color?: string) =>
         setCart((items) =>
-          items.some((item) => item.product.id === product.id)
-            ? items.map((item) =>
-                item.product.id === product.id
-                  ? { ...item, quantity: item.quantity + 1 }
-                  : item
-              )
-            : [...items, { product, quantity: 1 }]
+          items.filter(
+            (item) => !(item.product.id === id && (item.color || undefined) === (color || undefined))
+          )
         ),
-      removeFromCart: (id: string) =>
-        setCart((items) => items.filter((item) => item.product.id !== id)),
-      updateQuantity: (id: string, n: number) =>
+      updateQuantity: (id: string, color: string | undefined, n: number) =>
         setCart((items) =>
           items.map((item) =>
-            item.product.id === id ? { ...item, quantity: Math.max(1, n) } : item
+            item.product.id === id && (item.color || undefined) === (color || undefined)
+              ? { ...item, quantity: Math.max(1, n) }
+              : item
           )
         ),
       toggleWishlist: (id: string) =>

@@ -138,6 +138,7 @@ model OrderItem {
   price     Float
   quantity  Int
   image     String
+  color     String?
 }
 
 model WishlistItem {
@@ -157,10 +158,11 @@ model CartItem {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  color     String?
   quantity  Int      @default(1)
   createdAt DateTime @default(now())
 
-  @@unique([userId, productId])
+  @@unique([userId, productId, color])
 }
 
 model ShippingRule {
