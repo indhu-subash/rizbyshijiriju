@@ -4,7 +4,18 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { ArrowLeft, Upload, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Plus, X } from 'lucide-react';
+
+const presetColors = [
+  { name: 'Gold', hex: '#d4af37' },
+  { name: 'Silver', hex: '#d0d5dd' },
+  { name: 'Rose Gold', hex: '#e8b4b8' },
+  { name: 'Ruby Red', hex: '#9b111e' },
+  { name: 'Emerald Green', hex: '#2e7d32' },
+  { name: 'Sapphire Blue', hex: '#1565c0' },
+  { name: 'Pearl White', hex: '#fdfbf7' },
+  { name: 'Black', hex: '#212529' },
+];
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -17,12 +28,18 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [description, setDescription] = useState('');
   const [stock, setStock] = useState('');
   const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [collection, setCollection] = useState('');
+  const [colors, setColors] = useState<string[]>([]);
+  const [customColorInput, setCustomColorInput] = useState('');
   const [gender, setGender] = useState('');
   const [ageGroup, setAgeGroup] = useState('');
   const [metal, setMetal] = useState('');
   const [finish, setFinish] = useState('');
   const [careInstructions, setCareInstructions] = useState('');
+
+  // Categories list from API
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
 
   // Image Upload State
   const [images, setImages] = useState<string[]>([]);
@@ -33,6 +50,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
+    api.categories.list()
+      .then((res) => {
+        if (res && res.categories) {
+          setDbCategories(res.categories);
+        }
+      })
+      .catch(() => {});
+
     const fetchProduct = async () => {
       try {
         const res = await api.products.getById(id);
@@ -42,14 +67,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         setPrice(String(p.price));
         setDescription(p.description);
         setStock(String(p.stock));
-        setCategory(p.category);
-        setCollection(p.collection);
+        setCategory(p.category || 'Earrings');
+        setCategoryId(p.categoryId || '');
+        setCollection(p.collection || 'Anti-Tarnish');
+        setColors(Array.isArray(p.colors) ? p.colors : ['Gold']);
         setGender(p.gender || 'Women');
         setAgeGroup(p.ageGroup || 'Adults');
         setMetal(p.metal || 'Brass');
         setFinish(p.finish || 'Gold Plated');
         setCareInstructions(p.careInstructions || '');
-        setImages(p.images);
+        setImages(p.images || []);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch product details.');
       } finally {
@@ -69,6 +96,22 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '');
     setSlug(generatedSlug);
+  };
+
+  const toggleColor = (colorName: string) => {
+    if (colors.includes(colorName)) {
+      setColors(colors.filter((c) => c !== colorName));
+    } else {
+      setColors([...colors, colorName]);
+    }
+  };
+
+  const addCustomColor = () => {
+    const trimmed = customColorInput.trim();
+    if (trimmed && !colors.includes(trimmed)) {
+      setColors([...colors, trimmed]);
+      setCustomColorInput('');
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,7 +150,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       description,
       stock: Number(stock),
       category,
+      categoryId: categoryId || undefined,
       collection,
+      colors,
       gender,
       ageGroup,
       metal,
@@ -201,6 +246,90 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 onChange={(e) => setDescription(e.target.value)}
               />
             </label>
+
+            {/* Colors Selection Chip Component */}
+            <div className="color-selection-section" style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+              <label style={{ fontWeight: '500', fontSize: '14px' }}>Product Colors / Finish Tones</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {presetColors.map((c) => {
+                  const isSelected = colors.includes(c.name);
+                  return (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => toggleColor(c.name)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        border: isSelected ? '2px solid var(--brown)' : '1px solid #ccc',
+                        background: isSelected ? '#f7f5ed' : '#fff',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        fontWeight: isSelected ? '600' : '400',
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          background: c.hex,
+                          border: '1px solid #aaa',
+                        }}
+                      />
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Color Adder */}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                <input
+                  type="text"
+                  placeholder="Add custom color (e.g. Champagne Gold)"
+                  value={customColorInput}
+                  onChange={(e) => setCustomColorInput(e.target.value)}
+                  style={{ fontSize: '13px', padding: '6px 10px', flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={addCustomColor}
+                  className="button secondary"
+                  style={{ padding: '6px 12px', fontSize: '12px' }}
+                >
+                  <Plus size={14} /> Add
+                </button>
+              </div>
+
+              {/* Selected Colors Badges */}
+              {colors.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '12px', color: '#666' }}>Active colors:</span>
+                  {colors.map((c) => (
+                    <span
+                      key={c}
+                      style={{
+                        background: 'var(--ivory)',
+                        border: '1px solid #ddd',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '11px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      {c}
+                      <X size={10} style={{ cursor: 'pointer' }} onClick={() => toggleColor(c)} />
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Categorization & Attributes */}
@@ -209,12 +338,21 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
             <div style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
               <label>
-                Category
-                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                Category Name
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    const matched = dbCategories.find((c) => c.name === e.target.value);
+                    if (matched) setCategoryId(matched.id);
+                  }}
+                >
                   <option value="Earrings">Earrings</option>
                   <option value="Rings">Rings</option>
                   <option value="Necklaces">Necklaces</option>
+                  <option value="Bangles">Bangles</option>
                   <option value="Bracelets">Bracelets</option>
+                  <option value="Pendants">Pendants</option>
                   <option value="Chains">Chains</option>
                   <option value="Nose Pins">Nose Pins</option>
                   <option value="Second Studs">Second Studs</option>
@@ -222,6 +360,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                   <option value="Jewellery Sets">Jewellery Sets</option>
                   <option value="Kids Jewellery">Kids Jewellery</option>
                   <option value="Hair Accessories">Hair Accessories</option>
+                  {dbCategories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name} ({c.group})
+                    </option>
+                  ))}
                 </select>
               </label>
 

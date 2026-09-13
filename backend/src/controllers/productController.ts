@@ -3,7 +3,7 @@ import prisma from '../config/db';
 
 export async function getProducts(req: Request, res: Response): Promise<void> {
   try {
-    const { category, collection, query, priceRange, sort } = req.query;
+    const { category, collection, query, priceRange, sort, color, colors } = req.query;
 
     const whereClause: any = { isActive: true };
 
@@ -15,14 +15,51 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       whereClause.collection = String(collection);
     }
 
+    // Color filter parameter support (single 'color' or 'colors' array / comma-separated)
+    const rawColorParam = color || colors;
+    if (rawColorParam) {
+      const colorList = (Array.isArray(rawColorParam) ? rawColorParam.map(String) : String(rawColorParam).split(','))
+        .map((c) => c.trim())
+        .filter(Boolean);
+
+      if (colorList.length > 0) {
+        // Expand variants (e.g. "Blue", "blue", "BLUE") for maximum match flexibility
+        const colorVariants = Array.from(
+          new Set(
+            colorList.flatMap((c) => [
+              c,
+              c.toLowerCase(),
+              c.toUpperCase(),
+              c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(),
+            ])
+          )
+        );
+        whereClause.colors = { hasSome: colorVariants };
+      }
+    }
+
+    // Smart multi-field, multi-token case-insensitive search
     if (query) {
-      whereClause.OR = [
-        { name: { contains: String(query), mode: 'insensitive' } },
-        { description: { contains: String(query), mode: 'insensitive' } },
-        { category: { contains: String(query), mode: 'insensitive' } },
-        { collection: { contains: String(query), mode: 'insensitive' } },
-        { tags: { has: String(query).toLowerCase() } },
-      ];
+      const rawQuery = String(query).trim();
+      const tokens = rawQuery.split(/\s+/).filter(Boolean);
+
+      if (tokens.length > 0) {
+        const tokenConditions = tokens.map((token) => {
+          const capitalized = token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+          return {
+            OR: [
+              { name: { contains: token, mode: 'insensitive' } },
+              { description: { contains: token, mode: 'insensitive' } },
+              { category: { contains: token, mode: 'insensitive' } },
+              { collection: { contains: token, mode: 'insensitive' } },
+              { tags: { has: token.toLowerCase() } },
+              { colors: { hasSome: [token, token.toLowerCase(), token.toUpperCase(), capitalized] } },
+            ],
+          };
+        });
+
+        whereClause.AND = tokenConditions;
+      }
     }
 
     if (priceRange) {
@@ -59,6 +96,9 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     const products = await prisma.product.findMany({
       where: whereClause,
       orderBy,
+      include: {
+        categoryRel: true,
+      },
     });
 
     res.status(200).json({ products });

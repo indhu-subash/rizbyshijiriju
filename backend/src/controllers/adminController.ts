@@ -127,6 +127,8 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       originalPrice,
       category,
       collection,
+      categoryId,
+      colors,
       gender,
       ageGroup,
       material,
@@ -152,6 +154,7 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
     }
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : [];
+    const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : [];
     const imagesArr = images ? (Array.isArray(images) ? images : [images]) : [];
 
     const product = await prisma.product.create({
@@ -163,6 +166,8 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
         originalPrice: originalPrice ? parseFloat(originalPrice) : null,
         category,
         collection,
+        categoryId: categoryId || null,
+        colors: colorsArr,
         gender: gender || 'Women',
         ageGroup: ageGroup || 'Adult',
         images: imagesArr,
@@ -193,6 +198,8 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       originalPrice,
       category,
       collection,
+      categoryId,
+      colors,
       gender,
       ageGroup,
       material,
@@ -213,6 +220,7 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     }
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : product.tags;
+    const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : product.colors;
     const imagesArr = images ? (Array.isArray(images) ? images : [images]) : product.images;
 
     let slug = product.slug;
@@ -235,6 +243,8 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
         originalPrice: originalPrice !== undefined ? (originalPrice ? parseFloat(originalPrice) : null) : product.originalPrice,
         category: category || product.category,
         collection: collection || product.collection,
+        categoryId: categoryId !== undefined ? categoryId : product.categoryId,
+        colors: colorsArr,
         gender: gender || product.gender,
         ageGroup: ageGroup || product.ageGroup,
         images: imagesArr,

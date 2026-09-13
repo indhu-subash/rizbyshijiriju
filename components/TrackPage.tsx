@@ -1,23 +1,21 @@
 'use client';
 
-import { FormEvent, useState, useEffect } from 'react';
+import { FormEvent, useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Check, Package, Truck, AlertCircle } from 'lucide-react';
+import { Check, Package, Truck, AlertCircle, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
 const stages = ['Confirmed', 'Processing', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered'];
 
-const statusOrder = ['Pending', 'Confirmed', 'Processing', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered'];
-
-export function TrackPage() {
+function TrackFormContent() {
   const searchParams = useSearchParams();
-  const orderParam = searchParams.get('order') || '';
+  const orderParam = searchParams ? searchParams.get('order') || '' : '';
 
   const [id, setId] = useState('');
   const [tracked, setTracked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [orderData, setOrderData] = useState<{
     orderId: string;
     orderStatus: string;
@@ -58,15 +56,13 @@ export function TrackPage() {
     }
   };
 
-  // Determine which step is currently active
   const getCurrentStageIndex = () => {
     if (!orderData) return -1;
     const status = orderData.orderStatus;
-    
+
     if (status === 'Cancelled') return -1;
-    if (status === 'Pending') return 0; // Confirming payment
-    
-    // Find index of current status in stages
+    if (status === 'Pending') return 0;
+
     const idx = stages.indexOf(status);
     return idx !== -1 ? idx : 0;
   };
@@ -74,25 +70,19 @@ export function TrackPage() {
   const activeStageIndex = getCurrentStageIndex();
 
   return (
-    <main>
-      <div className="content-hero container">
-        <span className="eyebrow">A little reassurance</span>
-        <h1 className="serif">Track your order.</h1>
-        <p>Enter your order ID to see where your Riz is on its way to you.</p>
-        
-        <form className="track-form" onSubmit={onSubmit}>
-          <input
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            placeholder="e.g. RIZ-2026-00124"
-            disabled={loading}
-            required
-          />
-          <button className="button" disabled={loading}>
-            {loading ? 'Searching...' : 'Track order'}
-          </button>
-        </form>
-      </div>
+    <>
+      <form className="track-form" onSubmit={onSubmit}>
+        <input
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          placeholder="e.g. RIZ-2026-00124"
+          disabled={loading}
+          required
+        />
+        <button className="button" disabled={loading}>
+          {loading ? 'Searching...' : 'Track order'}
+        </button>
+      </form>
 
       {error && (
         <section className="container text-center py-6" style={{ maxWidth: '400px', margin: '0 auto' }}>
@@ -158,6 +148,22 @@ export function TrackPage() {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+export function TrackPage() {
+  return (
+    <main>
+      <div className="content-hero container">
+        <span className="eyebrow">A little reassurance</span>
+        <h1 className="serif">Track your order.</h1>
+        <p>Enter your order ID to see where your Riz is on its way to you.</p>
+
+        <Suspense fallback={<div className="py-8 text-center muted"><Loader2 className="animate-spin inline" /> Loading tracker...</div>}>
+          <TrackFormContent />
+        </Suspense>
+      </div>
     </main>
   );
 }

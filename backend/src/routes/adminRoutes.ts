@@ -14,6 +14,13 @@ import {
   getAdminCustomers,
   adminUploadProductImage,
 } from '../controllers/adminController';
+import {
+  getCategories,
+  createCategory,
+  editCategory,
+  deleteCategory,
+  seedCategories,
+} from '../controllers/categoryController';
 import { authenticateUser, requireAdmin } from '../middleware/auth';
 
 const router = Router();
@@ -24,6 +31,13 @@ router.use(authenticateUser as any);
 router.use(requireAdmin as any);
 
 router.get('/stats', getDashboardStats as any);
+
+// Categories Admin CRUD
+router.get('/categories', getCategories as any);
+router.post('/categories', createCategory as any);
+router.put('/categories/:id', editCategory as any);
+router.delete('/categories/:id', deleteCategory as any);
+router.post('/categories/seed', seedCategories as any);
 
 // Orders
 router.get('/orders', getAdminOrders as any);

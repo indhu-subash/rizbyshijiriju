@@ -46,12 +46,19 @@ export const api = {
     deleteAddress: (id: string) => request(`/auth/addresses/${id}`, { method: 'DELETE' }),
   },
 
+  // Categories
+  categories: {
+    list: () => request('/categories'),
+    active: () => request('/categories/active'),
+  },
+
   // Products
   products: {
-    list: (params: { category?: string; collection?: string; query?: string; priceRange?: string; sort?: string } = {}) => {
+    list: (params: { category?: string; collection?: string; color?: string; query?: string; priceRange?: string; sort?: string } = {}) => {
       const queryParams = new URLSearchParams();
       if (params.category) queryParams.append('category', params.category);
       if (params.collection) queryParams.append('collection', params.collection);
+      if (params.color) queryParams.append('color', params.color);
       if (params.query) queryParams.append('query', params.query);
       if (params.priceRange) queryParams.append('priceRange', params.priceRange);
       if (params.sort) queryParams.append('sort', params.sort);
@@ -102,6 +109,11 @@ export const api = {
         body: formData,
       });
     },
+    getCategories: () => request('/admin/categories'),
+    createCategory: (body: any) => request('/admin/categories', { method: 'POST', body: JSON.stringify(body) }),
+    editCategory: (id: string, body: any) => request(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteCategory: (id: string) => request(`/admin/categories/${id}`, { method: 'DELETE' }),
+    seedCategories: () => request('/admin/categories/seed', { method: 'POST' }),
     getCoupons: () => request('/admin/coupons'),
     createCoupon: (body: any) => request('/admin/coupons', { method: 'POST', body: JSON.stringify(body) }),
     editCoupon: (id: string, body: any) => request(`/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
