@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Ticket,
   Users,
+  Truck,
   ArrowLeft,
   Loader2,
   Lock,
@@ -52,6 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Products', href: '/admin/products', icon: Gem },
     { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
     { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
+    { label: 'Shipping Rates', href: '/admin/shipping', icon: Truck },
     { label: 'Customers', href: '/admin/customers', icon: Users },
   ];
 

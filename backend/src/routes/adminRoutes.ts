@@ -13,6 +13,10 @@ import {
   deleteCoupon,
   getAdminCustomers,
   adminUploadProductImage,
+  getAdminShippingRules,
+  createShippingRule,
+  editShippingRule,
+  deleteShippingRule,
 } from '../controllers/adminController';
 import {
   getCategories,
@@ -59,5 +63,11 @@ router.delete('/coupons/:id', deleteCoupon as any);
 
 // Customers
 router.get('/customers', getAdminCustomers as any);
+
+// Shipping Rules CRUD
+router.get('/shipping-rules', getAdminShippingRules as any);
+router.post('/shipping-rules', createShippingRule as any);
+router.put('/shipping-rules/:id', editShippingRule as any);
+router.delete('/shipping-rules/:id', deleteShippingRule as any);
 
 export default router;

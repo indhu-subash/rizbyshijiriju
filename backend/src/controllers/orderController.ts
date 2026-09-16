@@ -83,16 +83,20 @@ export async function checkPincodeShipping(req: Request, res: Response): Promise
       where: { pincode },
     });
 
-    // Default rate if pincode is served but has no specific rule
-    const available = true;
-    const rate = rule ? rule.shippingCharge : 79.0;
-    const estimateDays = '3–5 working days';
+    if (!rule) {
+      res.status(200).json({
+        available: false,
+        pincode,
+        error: 'Delivery unavailable for this pincode.',
+      });
+      return;
+    }
 
     res.status(200).json({
-      available,
+      available: true,
       pincode,
-      shippingCharge: rate,
-      estimate: estimateDays,
+      shippingCharge: rule.shippingCharge,
+      estimate: '3–5 working days',
     });
   } catch (error) {
     console.error('Check pincode error:', error);

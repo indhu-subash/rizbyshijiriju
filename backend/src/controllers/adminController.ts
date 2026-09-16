@@ -413,3 +413,123 @@ export async function adminUploadProductImage(req: AuthenticatedRequest, res: Re
     res.status(500).json({ error: error.message || 'Failed to upload image.' });
   }
 }
+
+// 7. Shipping Rules Management
+export async function getAdminShippingRules(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const rules = await prisma.shippingRule.findMany({
+      orderBy: { pincode: 'asc' },
+    });
+    res.status(200).json({ rules });
+  } catch (error) {
+    console.error('Fetch shipping rules error:', error);
+    res.status(500).json({ error: 'Failed to fetch shipping rules.' });
+  }
+}
+
+export async function createShippingRule(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { pincode, shippingCharge } = req.body;
+
+    const trimmedPincode = String(pincode || '').trim();
+    if (!trimmedPincode || !/^\d{6}$/.test(trimmedPincode)) {
+      res.status(400).json({ error: 'Pincode must be exactly 6 digits.' });
+      return;
+    }
+
+    const chargeNum = parseFloat(shippingCharge);
+    if (isNaN(chargeNum) || chargeNum < 0) {
+      res.status(400).json({ error: 'Shipping charge must be a valid number greater than or equal to 0.' });
+      return;
+    }
+
+    const existing = await prisma.shippingRule.findUnique({
+      where: { pincode: trimmedPincode },
+    });
+
+    if (existing) {
+      res.status(400).json({ error: `Shipping rule for pincode ${trimmedPincode} already exists.` });
+      return;
+    }
+
+    const rule = await prisma.shippingRule.create({
+      data: {
+        pincode: trimmedPincode,
+        shippingCharge: chargeNum,
+      },
+    });
+
+    res.status(201).json({ message: 'Shipping rule created successfully.', rule });
+  } catch (error) {
+    console.error('Create shipping rule error:', error);
+    res.status(500).json({ error: 'Failed to create shipping rule.' });
+  }
+}
+
+export async function editShippingRule(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { pincode, shippingCharge } = req.body;
+
+    const rule = await prisma.shippingRule.findUnique({ where: { id } });
+    if (!rule) {
+      res.status(404).json({ error: 'Shipping rule not found.' });
+      return;
+    }
+
+    const trimmedPincode = pincode !== undefined ? String(pincode).trim() : rule.pincode;
+    if (!trimmedPincode || !/^\d{6}$/.test(trimmedPincode)) {
+      res.status(400).json({ error: 'Pincode must be exactly 6 digits.' });
+      return;
+    }
+
+    if (trimmedPincode !== rule.pincode) {
+      const existing = await prisma.shippingRule.findFirst({
+        where: { pincode: trimmedPincode, id: { not: id } },
+      });
+      if (existing) {
+        res.status(400).json({ error: `Shipping rule for pincode ${trimmedPincode} already exists.` });
+        return;
+      }
+    }
+
+    const chargeNum = shippingCharge !== undefined ? parseFloat(shippingCharge) : rule.shippingCharge;
+    if (isNaN(chargeNum) || chargeNum < 0) {
+      res.status(400).json({ error: 'Shipping charge must be a valid number greater than or equal to 0.' });
+      return;
+    }
+
+    const updated = await prisma.shippingRule.update({
+      where: { id },
+      data: {
+        pincode: trimmedPincode,
+        shippingCharge: chargeNum,
+      },
+    });
+
+    res.status(200).json({ message: 'Shipping rule updated successfully.', rule: updated });
+  } catch (error) {
+    console.error('Edit shipping rule error:', error);
+    res.status(500).json({ error: 'Failed to update shipping rule.' });
+  }
+}
+
+export async function deleteShippingRule(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    const rule = await prisma.shippingRule.findUnique({ where: { id } });
+    if (!rule) {
+      res.status(404).json({ error: 'Shipping rule not found.' });
+      return;
+    }
+
+    await prisma.shippingRule.delete({ where: { id } });
+
+    res.status(200).json({ message: 'Shipping rule deleted successfully.' });
+  } catch (error) {
+    console.error('Delete shipping rule error:', error);
+    res.status(500).json({ error: 'Failed to delete shipping rule.' });
+  }
+}
+

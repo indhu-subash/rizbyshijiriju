@@ -12,8 +12,8 @@ export function CartPage() {
   const [discount, setDiscount] = useState(0);
   const [message, setMessage] = useState('');
 
-  const shipping = subtotal >= 999 || subtotal === 0 ? 0 : 79;
-  const total = subtotal - discount + shipping;
+  const isFreeShipping = subtotal >= 2000 || subtotal === 0;
+  const total = Math.max(0, subtotal - discount);
 
   function apply() {
     if (['WELCOME10', 'RIZ10'].includes(coupon.toUpperCase())) {
@@ -75,7 +75,7 @@ export function CartPage() {
               </div>
               <div className="summary-line">
                 <span>Shipping</span>
-                <b>{shipping ? '₹79' : 'Free'}</b>
+                <b>{isFreeShipping ? 'Free' : 'Calculated at checkout'}</b>
               </div>
               {discount > 0 && (
                 <div className="summary-line discount">
@@ -95,7 +95,7 @@ export function CartPage() {
               <Link href="/checkout" className="button add-button">
                 Proceed to checkout <ArrowRight size={15} />
               </Link>
-              <p className="summary-note">Taxes included · Secure checkout</p>
+              <p className="summary-note">Free shipping on orders over ₹2,000 · Secure checkout</p>
             </aside>
           </>
         ) : (

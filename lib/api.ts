@@ -119,5 +119,9 @@ export const api = {
     editCoupon: (id: string, body: any) => request(`/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteCoupon: (id: string) => request(`/admin/coupons/${id}`, { method: 'DELETE' }),
     getCustomers: () => request('/admin/customers'),
+    getShippingRules: () => request('/admin/shipping-rules'),
+    createShippingRule: (body: any) => request('/admin/shipping-rules', { method: 'POST', body: JSON.stringify(body) }),
+    editShippingRule: (id: string, body: any) => request(`/admin/shipping-rules/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteShippingRule: (id: string) => request(`/admin/shipping-rules/${id}`, { method: 'DELETE' }),
   }
 };

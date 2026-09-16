@@ -30,7 +30,9 @@ export function CheckoutPage() {
   const [couponSuccess, setCouponSuccess] = useState('');
 
   // Shipping & Totals
-  const [shippingCharge, setShippingCharge] = useState(79);
+  const [shippingCharge, setShippingCharge] = useState(0);
+  const [isPincodeAvailable, setIsPincodeAvailable] = useState<boolean | null>(null);
+  const [shippingError, setShippingError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'card' | 'cod'>('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
@@ -64,26 +66,54 @@ export function CheckoutPage() {
     }
   }, [isAuthenticated, user]);
 
+  // Calculate discount client-side for summary preview
+  const discountAmount = useMemo(() => {
+    if (!appliedCoupon) return 0;
+    if (appliedCoupon.type === 'percentage') {
+      const amt = (subtotal * appliedCoupon.value) / 100;
+      return Math.round(amt * 100) / 100;
+    }
+    return appliedCoupon.value;
+  }, [appliedCoupon, subtotal]);
+
+  const discountedSubtotal = useMemo(() => {
+    return Math.max(0, subtotal - discountAmount);
+  }, [subtotal, discountAmount]);
+
   // Query shipping rate when pincode changes
   useEffect(() => {
-    if (pincode.length === 6 && !isNaN(Number(pincode))) {
+    const cleanPincode = pincode.trim();
+    if (cleanPincode.length === 6 && !isNaN(Number(cleanPincode))) {
       const getShipping = async () => {
         try {
-          const res = await api.orders.checkShipping(pincode);
-          // Free shipping above 999
-          if (subtotal >= 999) {
+          const res = await api.orders.checkShipping(cleanPincode);
+          if (res.available === false || res.error) {
+            setIsPincodeAvailable(false);
+            setShippingError(res.error || 'Delivery unavailable for this pincode.');
             setShippingCharge(0);
           } else {
-            setShippingCharge(res.shippingCharge);
+            setIsPincodeAvailable(true);
+            setShippingError('');
+            if (discountedSubtotal >= 2000) {
+              setShippingCharge(0);
+            } else {
+              setShippingCharge(res.shippingCharge);
+            }
           }
-        } catch (err) {
-          console.warn('Failed to fetch shipping rate, using default:', err);
-          setShippingCharge(subtotal >= 999 ? 0 : 79);
+        } catch (err: any) {
+          console.warn('Failed to fetch shipping rate:', err);
+          setIsPincodeAvailable(false);
+          setShippingError('Failed to check shipping rate for this pincode.');
+          setShippingCharge(0);
         }
       };
       getShipping();
+    } else {
+      setIsPincodeAvailable(null);
+      setShippingError('');
+      setShippingCharge(0);
     }
-  }, [pincode, subtotal]);
+  }, [pincode, discountedSubtotal]);
 
   // Load Razorpay Script helper
   const loadRazorpayScript = () => {
@@ -96,17 +126,7 @@ export function CheckoutPage() {
     });
   };
 
-  // Calculate discount client-side for summary preview
-  const discountAmount = useMemo(() => {
-    if (!appliedCoupon) return 0;
-    if (appliedCoupon.type === 'percentage') {
-      const amt = (subtotal * appliedCoupon.value) / 100;
-      return Math.round(amt * 100) / 100;
-    }
-    return appliedCoupon.value;
-  }, [appliedCoupon, subtotal]);
-
-  const totalAmount = Math.max(0, subtotal - discountAmount + shippingCharge);
+  const totalAmount = Math.max(0, discountedSubtotal + shippingCharge);
 
   const applyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,10 +161,41 @@ export function CheckoutPage() {
     }
   };
 
+  const validateStep1 = () => {
+    if (!name.trim() || !phone.trim() || !email.trim() || !addressLine.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
+      setCheckoutError('Please fill in all required shipping address fields.');
+      return false;
+    }
+
+    if (pincode.trim().length !== 6 || isNaN(Number(pincode.trim()))) {
+      setCheckoutError('Please enter a valid 6-digit pincode.');
+      return false;
+    }
+
+    if (isPincodeAvailable === false) {
+      setCheckoutError(shippingError || `Delivery is unavailable for pincode ${pincode.trim()}.`);
+      return false;
+    }
+
+    setCheckoutError('');
+    return true;
+  };
+
+  const handleStepClick = (targetStep: number) => {
+    if (targetStep > step) {
+      if (!validateStep1()) return;
+    }
+    setCheckoutError('');
+    setStep(targetStep);
+  };
+
   const handlePlaceOrder = async (e: FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setCheckoutError('');
+
+    if (!validateStep1()) return;
+
+    setIsSubmitting(true);
 
     const shippingAddress = {
       name,
@@ -153,7 +204,7 @@ export function CheckoutPage() {
       addressLine,
       city,
       state,
-      pincode,
+      pincode: pincode.trim(),
       country: 'India',
     };
 
@@ -314,7 +365,7 @@ export function CheckoutPage() {
               <button
                 key={label}
                 className={step === i + 1 ? 'active' : ''}
-                onClick={() => setStep(i + 1)}
+                onClick={() => handleStepClick(i + 1)}
                 type="button"
               >
                 <b>{i + 1}</b>
@@ -405,20 +456,31 @@ export function CheckoutPage() {
                       value={pincode}
                       onChange={(e) => setPincode(e.target.value)}
                     />
+                    {shippingError && (
+                      <span className="text-xs text-red-500 mt-1 block" style={{ color: '#d32f2f', fontSize: '0.8rem', marginTop: '4px' }}>
+                        {shippingError}
+                      </span>
+                    )}
                   </label>
                 </div>
               )}
 
               {step === 2 && (
                 <div className="choice-list">
-                  <label>
-                    <input type="radio" name="delivery" defaultChecked />
-                    <span>
-                      <b>Standard delivery</b>
-                      <small>3–5 working days · Free above ₹999</small>
-                    </span>
-                    <strong>{shippingCharge === 0 ? 'Free' : `₹${shippingCharge}`}</strong>
-                  </label>
+                  {isPincodeAvailable === false ? (
+                    <div className="error-banner">
+                      {shippingError || `Delivery is unavailable for pincode ${pincode}.`}
+                    </div>
+                  ) : (
+                    <label>
+                      <input type="radio" name="delivery" defaultChecked />
+                      <span>
+                        <b>Standard delivery</b>
+                        <small>3–5 working days · Free above ₹2,000</small>
+                      </span>
+                      <strong>{shippingCharge === 0 ? 'Free' : `₹${shippingCharge}`}</strong>
+                    </label>
+                  )}
                 </div>
               )}
 
@@ -487,16 +549,16 @@ export function CheckoutPage() {
 
               <div className="checkout-actions">
                 {step > 1 && (
-                  <button type="button" className="button secondary" onClick={() => setStep(step - 1)}>
+                  <button type="button" className="button secondary" onClick={() => handleStepClick(step - 1)}>
                     Back
                   </button>
                 )}
                 {step < 4 ? (
-                  <button type="button" className="button" onClick={() => setStep(step + 1)}>
+                  <button type="button" className="button" onClick={() => handleStepClick(step + 1)}>
                     Continue
                   </button>
                 ) : (
-                  <button className="button" type="submit" disabled={isSubmitting}>
+                  <button className="button" type="submit" disabled={isSubmitting || isPincodeAvailable === false}>
                     {isSubmitting ? 'Processing...' : 'Place Order'}
                   </button>
                 )}
@@ -554,7 +616,15 @@ export function CheckoutPage() {
             )}
             <div className="flex justify-between text-sm">
               <span>Shipping Fee</span>
-              <span>{shippingCharge === 0 ? 'Free' : `₹${shippingCharge}`}</span>
+              <span>
+                {isPincodeAvailable === false ? (
+                  <span style={{ color: '#d32f2f' }}>Unavailable</span>
+                ) : shippingCharge === 0 ? (
+                  'Free'
+                ) : (
+                  `₹${shippingCharge}`
+                )}
+              </span>
             </div>
           </div>
 

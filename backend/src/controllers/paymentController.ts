@@ -126,19 +126,27 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     }
 
     // 3. Shipping Charge
-    let shippingCharge = 79.0;
-    if (subtotal - discount >= 999) {
+    const discountedSubtotal = subtotal - discount;
+    let shippingCharge = 0;
+
+    if (discountedSubtotal >= 2000) {
       shippingCharge = 0;
     } else {
       const rule = await prisma.shippingRule.findUnique({
-        where: { pincode: shippingAddress.pincode },
+        where: { pincode: String(shippingAddress.pincode).trim() },
       });
+
       if (rule) {
         shippingCharge = rule.shippingCharge;
+      } else {
+        res.status(400).json({
+          error: `Delivery is unavailable for pincode ${shippingAddress.pincode}.`,
+        });
+        return;
       }
     }
 
-    const total = Math.max(0, subtotal - discount + shippingCharge);
+    const total = Math.max(0, discountedSubtotal + shippingCharge);
     const orderId = `RIZ-2026-${Math.floor(10000 + Math.random() * 89999)}`;
 
     // 4. Database Transaction: Decrement stock, create order, and increment coupon usage
