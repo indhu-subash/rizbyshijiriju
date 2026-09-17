@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import { createCheckoutOrder, verifyPayment } from '../controllers/paymentController';
-import { authenticateUser } from '../middleware/auth';
+import { createCheckoutOrder, verifyPayment, handleRazorpayWebhook } from '../controllers/paymentController';
+import { optionalAuthenticateUser } from '../middleware/auth';
 
 const router = Router();
 
-// Require login for checking out/payment verification (or make authenticateUser check if logged in)
-router.post('/checkout', authenticateUser as any, createCheckoutOrder as any);
-router.post('/verify', authenticateUser as any, verifyPayment as any);
+// Allow optional user auth for guest/authenticated checkout
+router.post('/checkout', optionalAuthenticateUser as any, createCheckoutOrder as any);
+router.post('/verify', optionalAuthenticateUser as any, verifyPayment as any);
+router.post('/webhook', handleRazorpayWebhook as any);
 
 export default router;
+

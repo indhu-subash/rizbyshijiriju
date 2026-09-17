@@ -3,3 +3,4 @@
 .env
 .env.local
 *.tsbuildinfo
+backend/dist/

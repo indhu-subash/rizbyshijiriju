@@ -44,6 +44,32 @@ export async function authenticateUser(
   }
 }
 
+export async function optionalAuthenticateUser(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const token = req.cookies?.token;
+    if (token) {
+      const jwtSecret = process.env.JWT_SECRET || 'fallback_secret';
+      const decoded = jwt.verify(token, jwtSecret) as { id: string; email: string; role: string; name: string };
+
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, email: true, role: true, name: true },
+      });
+
+      if (user) {
+        req.user = user;
+      }
+    }
+  } catch (error) {
+    // Ignore invalid token for optional auth (allow guest flow)
+  }
+  next();
+}
+
 export function requireAdmin(
   req: AuthenticatedRequest,
   res: Response,
