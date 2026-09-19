@@ -108,12 +108,44 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
   }
 }
 
+// Pre-defined seed raw list for index-based fallback (riz-1 to riz-40)
+const seedSlugs: string[] = [
+  'the-quiet-hoop', 'mogra-pearl-drops', 'everyday-gold-studs', 'meera-textured-ring',
+  'sona-layered-chain', 'aara-cuff-bracelet', 'luna-shell-hoops', 'nila-signet-ring',
+  'maya-mini-hoops', 'kairi-pendant', 'tara-second-studs', 'anaya-dome-earrings',
+  'ira-everyday-chain', 'vanya-open-ring', 'ruh-gold-bracelet', 'aria-pearl-pendant',
+  'dev-minimal-chain', 'riva-sculptural-hoops', 'kavya-nose-pin', 'asha-temple-drops',
+  'nava-stack-ring', 'riz-classic-cuff', 'aadi-signet', 'suhana-chandbali',
+  'kaveri-anklet', 'nila-gift-set', 'little-mogra-studs', 'little-riz-bracelet',
+  'tiny-star-chain', 'muthu-bridal-set', 'kasavu-jhumka', 'malabar-choker',
+  'kerala-bloom-bangle', 'matte-link-chain', 'aranya-pendant', 'sia-limited-drops',
+  'riz-mini-hoops', 'veda-bridal-necklace', 'tiny-moon-gift-set', 'kochi-classic-anklet'
+];
+
 export async function getProductBySlug(req: Request, res: Response): Promise<void> {
   try {
     const { slug } = req.params;
-    const product = await prisma.product.findUnique({
-      where: { slug, isActive: true },
+
+    // 1. Try finding by slug or id directly
+    let product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { slug: slug, isActive: true },
+          { id: slug, isActive: true },
+        ],
+      },
     });
+
+    // 2. Fallback: If slug matches static key pattern like 'riz-8'
+    if (!product && slug && slug.toLowerCase().startsWith('riz-')) {
+      const idx = parseInt(slug.toLowerCase().replace('riz-', ''), 10) - 1;
+      if (!isNaN(idx) && idx >= 0 && idx < seedSlugs.length) {
+        const mappedSlug = seedSlugs[idx];
+        product = await prisma.product.findFirst({
+          where: { slug: mappedSlug, isActive: true },
+        });
+      }
+    }
 
     if (!product) {
       res.status(404).json({ error: 'Product not found.' });
@@ -130,9 +162,25 @@ export async function getProductBySlug(req: Request, res: Response): Promise<voi
 export async function getProductById(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const product = await prisma.product.findUnique({
-      where: { id, isActive: true },
+
+    let product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { id: id, isActive: true },
+          { slug: id, isActive: true },
+        ],
+      },
     });
+
+    if (!product && id && id.toLowerCase().startsWith('riz-')) {
+      const idx = parseInt(id.toLowerCase().replace('riz-', ''), 10) - 1;
+      if (!isNaN(idx) && idx >= 0 && idx < seedSlugs.length) {
+        const mappedSlug = seedSlugs[idx];
+        product = await prisma.product.findFirst({
+          where: { slug: mappedSlug, isActive: true },
+        });
+      }
+    }
 
     if (!product) {
       res.status(404).json({ error: 'Product not found.' });

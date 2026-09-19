@@ -18,6 +18,11 @@ export default function AdminShipping() {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Live Pincode Tester State
+  const [testPin, setTestPin] = useState('');
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+
   // Create Form State
   const [pincode, setPincode] = useState('');
   const [shippingCharge, setShippingCharge] = useState('');
@@ -37,13 +42,35 @@ export default function AdminShipping() {
 
   const loadRules = async () => {
     setLoading(true);
+    setError('');
     try {
       const res = await api.admin.getShippingRules();
       setRules(res.rules || []);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch shipping rules.');
+      // If table is empty or server returned standard response
+      setRules([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestPincode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPin = testPin.trim();
+    if (cleanPin.length !== 6 || isNaN(Number(cleanPin))) {
+      setTestResult({ error: 'Enter a valid 6-digit pincode.' });
+      return;
+    }
+    setTestLoading(true);
+    setTestResult(null);
+
+    try {
+      const res = await api.orders.checkShipping(cleanPin);
+      setTestResult(res);
+    } catch (err: any) {
+      setTestResult({ error: err.message || 'Failed to check pincode.' });
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -146,63 +173,135 @@ export default function AdminShipping() {
         <h1 className="serif text-3xl font-semibold">Shipping Rates</h1>
       </div>
 
+      {/* Automated Shipping System Banner */}
+      <div style={{ background: '#f7f6f2', border: '1px solid #e2ded4', borderRadius: '8px', padding: '18px 24px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+          <MapPin size={22} style={{ color: 'var(--accent)', marginTop: '2px', flexShrink: 0 }} />
+          <div>
+            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#2a3a2e' }}>
+              Origin 695308 Automated Shipping System Active
+            </h4>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#555', lineHeight: 1.4 }}>
+              Shipping rates are <b>automatically fetched and calculated from origin pincode 695308</b> (Thiruvananthapuram, Kerala):
+              <span style={{ display: 'block', marginTop: '4px' }}>
+                • <b>Local (695xxx)</b>: ₹49 · <b>Kerala</b>: ₹79 · <b>South Zone</b>: ₹89 · <b>Rest of India</b>: ₹99 (Free over ₹2,000)
+              </span>
+              Customers and admins can also choose to <b>manually enter custom shipping rates</b> during checkout, or set custom pincode overrides below.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {error && <div className="error-banner mb-6">{error}</div>}
 
       <div style={{ display: 'grid', gap: '30px', gridTemplateColumns: '1fr 2fr' }}>
-        {/* Create Rule Card */}
-        <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #eee', height: 'fit-content' }}>
-          <h3 className="serif text-lg font-semibold mb-4 flex items-center gap-2">
-            <Plus size={18} style={{ color: 'var(--accent)' }} /> Add Pincode Rate
-          </h3>
-
-          {formError && <div className="error-banner mb-4 text-xs">{formError}</div>}
-          {formSuccess && <div className="success-banner mb-4 text-xs">{formSuccess}</div>}
-
-          <form onSubmit={handleCreateRule} style={{ display: 'grid', gap: '15px' }}>
-            <label>
-              Pincode (6 digits) *
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Live Pincode Price Lookup & Tester */}
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #eee' }}>
+            <h3 className="serif text-lg font-semibold mb-2 flex items-center gap-2">
+              <Search size={18} style={{ color: 'var(--accent)' }} /> Test Pincode Lookup (Origin: 695308)
+            </h3>
+            <p className="muted text-xs mb-4">
+              Check the auto-fetched location and shipping rate relative to origin 695308:
+            </p>
+            <form onSubmit={handleTestPincode} style={{ display: 'flex', gap: '8px' }}>
               <input
-                required
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="e.g. 600001"
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
-                disabled={submitting}
+                placeholder="Enter 6-digit pincode"
+                value={testPin}
+                onChange={(e) => setTestPin(e.target.value)}
+                style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem' }}
               />
-            </label>
+              <button className="button secondary" type="submit" disabled={testLoading} style={{ padding: '0 16px', fontSize: '0.85rem' }}>
+                {testLoading ? 'Checking...' : 'Lookup'}
+              </button>
+            </form>
 
-            <label>
-              Shipping Charge (INR) *
-              <input
-                required
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="e.g. 79 or 0 for free"
-                value={shippingCharge}
-                onChange={(e) => setShippingCharge(e.target.value)}
-                disabled={submitting}
-              />
-            </label>
+            {testResult && (
+              <div style={{ marginTop: '14px', padding: '12px', background: '#faf9f6', borderRadius: '6px', fontSize: '0.85rem', border: '1px solid #ede8de' }}>
+                {testResult.error ? (
+                  <p style={{ color: '#d32f2f', margin: 0 }}>{testResult.error}</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '4px' }}>
+                    <div style={{ fontWeight: 600, color: '#334c3d' }}>
+                      Pincode {testResult.pincode}: {testResult.location || 'Valid Indian Pincode'}
+                    </div>
+                    <div>Shipping Charge: <b>{testResult.shippingCharge === 0 ? 'Free (₹0)' : `₹${testResult.shippingCharge}`}</b></div>
+                    <div style={{ fontSize: '0.78rem', color: '#555' }}>
+                      Tier: <b>{testResult.regionTier || 'Standard'}</b> · Origin: {testResult.originPincode || '695308'}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#666' }}>
+                      Estimate: {testResult.estimate} · {testResult.isCustomRule ? 'Custom Override' : 'Auto-Fetched Rate'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-            <button className="button" type="submit" disabled={submitting}>
-              {submitting ? 'Adding...' : 'Add Shipping Rule'}
-            </button>
-          </form>
+          {/* Create Custom Override Rule Card */}
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #eee', height: 'fit-content' }}>
+            <h3 className="serif text-lg font-semibold mb-2 flex items-center gap-2">
+              <Plus size={18} style={{ color: 'var(--accent)' }} /> Add Custom Rate Override
+            </h3>
+            <p className="muted text-xs mb-4">
+              Set a specific shipping price override for a specific pincode:
+            </p>
+
+            {formError && <div className="error-banner mb-4 text-xs">{formError}</div>}
+            {formSuccess && <div className="success-banner mb-4 text-xs">{formSuccess}</div>}
+
+            <form onSubmit={handleCreateRule} style={{ display: 'grid', gap: '15px' }}>
+              <label>
+                Pincode (6 digits) *
+                <input
+                  required
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="e.g. 686652"
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value)}
+                  disabled={submitting}
+                />
+              </label>
+
+              <label>
+                Shipping Charge (INR) *
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 79 or 0 for free"
+                  value={shippingCharge}
+                  onChange={(e) => setShippingCharge(e.target.value)}
+                  disabled={submitting}
+                />
+              </label>
+
+              <button className="button" type="submit" disabled={submitting}>
+                {submitting ? 'Adding...' : 'Add Custom Rule'}
+              </button>
+            </form>
+          </div>
         </div>
 
         {/* Shipping Rules Table */}
         <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #eee' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 className="serif text-lg font-semibold">Configured Pincodes ({filteredRules.length})</h3>
+            <div>
+              <h3 className="serif text-lg font-semibold">Custom Pincode Overrides ({filteredRules.length})</h3>
+              <p className="muted text-xs">Pincodes without custom overrides automatically use auto-calculated rates.</p>
+            </div>
             
-            <div style={{ position: 'relative', width: '220px' }}>
+            <div style={{ position: 'relative', width: '200px' }}>
               <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
               <input
                 type="text"
-                placeholder="Search pincode..."
+                placeholder="Filter pincodes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ paddingLeft: '32px', fontSize: '0.85rem', height: '36px' }}

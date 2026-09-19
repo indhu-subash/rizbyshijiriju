@@ -274,7 +274,9 @@ export default function AdminOrders() {
             <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between' }}>
               <div>
                 <span className="eyebrow">Payment Method</span>
-                <p className="text-sm font-medium">{selectedOrder.paymentMethod.toUpperCase()}</p>
+                <p className="text-sm font-medium">
+                  {selectedOrder.paymentMethod ? selectedOrder.paymentMethod.toUpperCase() : 'ONLINE'}
+                </p>
               </div>
               <div className="text-right">
                 <span className="muted">Total Order Value</span>

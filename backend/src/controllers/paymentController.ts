@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import Razorpay from 'razorpay';
 import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { calculateShipping, isIndiaCountry } from '../services/shippingService';
 
 const PAYMENT_MODE = process.env.PAYMENT_MODE || 'mock';
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
@@ -25,14 +26,36 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
       return;
     }
 
-    if (!shippingAddress || !shippingAddress.name || !shippingAddress.addressLine || !shippingAddress.city || !shippingAddress.state || !shippingAddress.pincode || !shippingAddress.phone || !shippingAddress.email) {
+    if (
+      !shippingAddress ||
+      !shippingAddress.name ||
+      !shippingAddress.addressLine ||
+      !shippingAddress.city ||
+      !shippingAddress.state ||
+      !shippingAddress.phone ||
+      !shippingAddress.email
+    ) {
       res.status(400).json({ error: 'Complete shipping address is required.' });
       return;
     }
 
-    const validPaymentMethods = ['UPI', 'card', 'cod'];
+    const country = shippingAddress.country || 'India';
+    const isIndia = isIndiaCountry(country);
+    const postalOrPincode = String(shippingAddress.pincode || shippingAddress.postalCode || '').trim();
+
+    if (isIndia && (!postalOrPincode || postalOrPincode.length !== 6 || isNaN(Number(postalOrPincode)))) {
+      res.status(400).json({ error: 'Valid 6-digit Indian pincode is required.' });
+      return;
+    }
+
+    if (!isIndia && !postalOrPincode) {
+      res.status(400).json({ error: 'Postal / ZIP code is required for international shipping.' });
+      return;
+    }
+
+    const validPaymentMethods = ['UPI', 'card'];
     if (!validPaymentMethods.includes(paymentMethod)) {
-      res.status(400).json({ error: 'Invalid payment method.' });
+      res.status(400).json({ error: 'Invalid payment method. Cash on delivery is not accepted.' });
       return;
     }
 
@@ -41,11 +64,39 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     const checkoutItems: any[] = [];
     const productUpdates: { id: string; newStock: number }[] = [];
 
+    const seedSlugs: string[] = [
+      'the-quiet-hoop', 'mogra-pearl-drops', 'everyday-gold-studs', 'meera-textured-ring',
+      'sona-layered-chain', 'aara-cuff-bracelet', 'luna-shell-hoops', 'nila-signet-ring',
+      'maya-mini-hoops', 'kairi-pendant', 'tara-second-studs', 'anaya-dome-earrings',
+      'ira-everyday-chain', 'vanya-open-ring', 'ruh-gold-bracelet', 'aria-pearl-pendant',
+      'dev-minimal-chain', 'riva-sculptural-hoops', 'kavya-nose-pin', 'asha-temple-drops',
+      'nava-stack-ring', 'riz-classic-cuff', 'aadi-signet', 'suhana-chandbali',
+      'kaveri-anklet', 'nila-gift-set', 'little-mogra-studs', 'little-riz-bracelet',
+      'tiny-star-chain', 'muthu-bridal-set', 'kasavu-jhumka', 'malabar-choker',
+      'kerala-bloom-bangle', 'matte-link-chain', 'aranya-pendant', 'sia-limited-drops',
+      'riz-mini-hoops', 'veda-bridal-necklace', 'tiny-moon-gift-set', 'kochi-classic-anklet'
+    ];
+
     // Load products from DB and verify stock in a single flow
     for (const item of items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId, isActive: true },
+      const searchTerms = [item.productId, item.slug].filter(Boolean);
+      let product = await prisma.product.findFirst({
+        where: {
+          OR: searchTerms.flatMap((term) => [{ id: term }, { slug: term }]),
+          isActive: true,
+        },
       });
+
+      // Fallback: If productId is static format like 'riz-8'
+      if (!product && item.productId && item.productId.toLowerCase().startsWith('riz-')) {
+        const idx = parseInt(item.productId.toLowerCase().replace('riz-', ''), 10) - 1;
+        if (!isNaN(idx) && idx >= 0 && idx < seedSlugs.length) {
+          const mappedSlug = seedSlugs[idx];
+          product = await prisma.product.findFirst({
+            where: { slug: mappedSlug, isActive: true },
+          });
+        }
+      }
 
       if (!product) {
         res.status(404).json({ error: `Product ${item.name || item.productId} is no longer available.` });
@@ -125,25 +176,46 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
       }
     }
 
-    // 3. Shipping Charge
+    // 3. Authoritative Server-Side Shipping Calculation
     const discountedSubtotal = subtotal - discount;
     let shippingCharge = 0;
 
-    if (discountedSubtotal >= 2000) {
-      shippingCharge = 0;
+    if (isIndia) {
+      // India orders: qualify for free shipping if discounted subtotal >= ₹2000
+      if (discountedSubtotal >= 2000) {
+        shippingCharge = 0;
+      } else {
+        const shippingRes = await calculateShipping({
+          country: 'IN',
+          pincode: postalOrPincode,
+        });
+
+        if (!shippingRes.available) {
+          res.status(400).json({
+            error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
+          });
+          return;
+        }
+
+        shippingCharge = shippingRes.shippingCharge;
+      }
     } else {
-      const rule = await prisma.shippingRule.findUnique({
-        where: { pincode: String(shippingAddress.pincode).trim() },
+      // International orders: DO NOT automatically apply India's ₹2000 free-shipping rule
+      const shippingRes = await calculateShipping({
+        country,
+        postalCode: postalOrPincode,
+        city: shippingAddress.city,
+        state: shippingAddress.state,
       });
 
-      if (rule) {
-        shippingCharge = rule.shippingCharge;
-      } else {
+      if (!shippingRes.available) {
         res.status(400).json({
-          error: `Delivery is unavailable for pincode ${shippingAddress.pincode}.`,
+          error: shippingRes.error || `International delivery is currently unavailable to ${country}.`,
         });
         return;
       }
+
+      shippingCharge = shippingRes.shippingCharge;
     }
 
     const total = Math.max(0, discountedSubtotal + shippingCharge);
@@ -177,7 +249,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
       // Create Order
       const newOrder = await tx.order.create({
         data: {
-          userId: req.user?.id || null, // Allow checkout even if guest checkout was enabled, but authenticated works
+          userId: req.user?.id || null,
           orderId,
           subtotal,
           discount,
@@ -193,8 +265,8 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
           shippingAddressLine: shippingAddress.addressLine,
           shippingCity: shippingAddress.city,
           shippingState: shippingAddress.state,
-          shippingPincode: shippingAddress.pincode,
-          shippingCountry: shippingAddress.country || 'India',
+          shippingPincode: postalOrPincode,
+          shippingCountry: country,
           items: {
             create: checkoutItems.map((item) => ({
               productId: item.productId,
@@ -235,9 +307,6 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         return;
       } catch (err) {
         console.error('Razorpay order creation error:', err);
-        // Rollback stock and fail checkout order if Razorpay fails
-        // Wait, if it fails here we can't easily undo the transaction unless we throw an error.
-        // Let's throw an error to trigger catch block, but to be clean, we can just throw.
         throw new Error('Razorpay integration error. Order could not be initialized.');
       }
     }
@@ -369,9 +438,9 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
           where: {
             OR: [
               { razorpayOrderId: razorpayOrderId },
-              { orderId: paymentEntity?.notes?.orderId || orderEntity?.receipt || '' }
-            ]
-          }
+              { orderId: paymentEntity?.notes?.orderId || orderEntity?.receipt || '' },
+            ],
+          },
         });
 
         if (order && order.paymentStatus !== 'paid') {
@@ -394,4 +463,3 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
     res.status(500).json({ error: 'Webhook processing failed.' });
   }
 }
-

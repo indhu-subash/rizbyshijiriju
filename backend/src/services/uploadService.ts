@@ -2,48 +2,50 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 import * as fs from 'fs';
 import * as path from 'path';
 
-const isProd = process.env.NODE_ENV === 'production';
-
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
 const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
 const bucketName = process.env.R2_BUCKET_NAME;
 const publicUrl = process.env.R2_PUBLIC_URL;
 
-const isR2Configured = accountId && accessKeyId && secretAccessKey && bucketName && publicUrl;
-
-// Check production safety
-if (isProd && !isR2Configured) {
-  throw new Error('Production Configuration Error: Cloudflare R2 credentials are not configured.');
-}
+const isR2Configured = Boolean(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl);
 
 let s3Client: S3Client | null = null;
 if (isR2Configured) {
-  s3Client = new S3Client({
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: accessKeyId!,
-      secretAccessKey: secretAccessKey!,
-    },
-    region: 'auto',
-  });
+  try {
+    s3Client = new S3Client({
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: accessKeyId!,
+        secretAccessKey: secretAccessKey!,
+      },
+      region: 'auto',
+    });
+  } catch (err) {
+    console.warn('Failed to initialize S3Client for Cloudflare R2:', err);
+  }
 }
 
-// Ensure local uploads directory exists for development fallback
+// Ensure local uploads directory exists
 const localUploadsDir = path.join(__dirname, '../../public/uploads');
-if (!fs.existsSync(localUploadsDir)) {
-  fs.mkdirSync(localUploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(localUploadsDir)) {
+    fs.mkdirSync(localUploadsDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Could not create local uploads directory:', err);
 }
 
 export async function uploadImage(
   fileBuffer: Buffer,
   originalName: string,
-  mimeType: string
+  mimeType: string,
+  baseUrl?: string
 ): Promise<string> {
   const fileExt = path.extname(originalName) || '.jpg';
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${fileExt}`;
 
-  // 1. Upload to Cloudflare R2 if configured
+  // 1. Try Cloudflare R2 if configured
   if (s3Client && bucketName && publicUrl) {
     try {
       const uploadParams = {
@@ -54,25 +56,38 @@ export async function uploadImage(
       };
 
       await s3Client.send(new PutObjectCommand(uploadParams));
-      return `${publicUrl.replace(/\/$/, '')}/${fileName}`;
+      const r2Domain = publicUrl.replace(/\/$/, '');
+      return `${r2Domain}/${fileName}`;
     } catch (error) {
-      console.error('R2 upload failed, checking fallback options:', error);
-      if (isProd) {
-        throw new Error('Image upload failed under production environment.');
-      }
+      console.error('Cloudflare R2 upload failed, using fallback:', error);
     }
   }
 
-  // 2. Development local upload fallback
-  if (isProd) {
-    throw new Error('R2 configuration missing or unavailable in production.');
+  // 2. Try Local static file storage
+  try {
+    const filePath = path.join(localUploadsDir, fileName);
+    await fs.promises.writeFile(filePath, fileBuffer);
+
+    // Determine host prefix for served static image
+    const backendDomain =
+      process.env.RAILWAY_PUBLIC_DOMAIN ||
+      process.env.BACKEND_URL ||
+      process.env.PUBLIC_URL ||
+      baseUrl ||
+      'https://rizbyshijiriju-production-2116.up.railway.app';
+
+    const normalizedDomain = backendDomain.startsWith('http')
+      ? backendDomain
+      : `https://${backendDomain}`;
+
+    return `${normalizedDomain.replace(/\/$/, '')}/uploads/${fileName}`;
+  } catch (diskErr) {
+    console.error('Disk upload fallback failed, using Base64 Data URL fallback:', diskErr);
   }
 
-  const filePath = path.join(localUploadsDir, fileName);
-  await fs.promises.writeFile(filePath, fileBuffer);
-  
-  const port = process.env.PORT || 5000;
-  return `http://localhost:${port}/uploads/${fileName}`;
+  // 3. Fallback: Base64 Data URL (guaranteed to succeed anywhere)
+  const base64Str = fileBuffer.toString('base64');
+  return `data:${mimeType || 'image/jpeg'};base64,${base64Str}`;
 }
 
 export async function deleteImage(imageUrl: string): Promise<void> {
@@ -88,23 +103,21 @@ export async function deleteImage(imageUrl: string): Promise<void> {
       return;
     } catch (error) {
       console.error('R2 delete failed:', error);
-      if (isProd) {
-        throw error;
-      }
     }
   }
 
   // Dev local delete fallback
-  const port = process.env.PORT || 5000;
-  const localUrlPrefix = `http://localhost:${port}/uploads/`;
-  if (imageUrl.startsWith(localUrlPrefix)) {
-    const fileName = imageUrl.replace(localUrlPrefix, '');
-    const filePath = path.join(localUploadsDir, fileName);
-    if (fs.existsSync(filePath)) {
-      try {
-        await fs.promises.unlink(filePath);
-      } catch (error) {
-        console.error('Local delete failed:', error);
+  if (imageUrl.includes('/uploads/')) {
+    const parts = imageUrl.split('/uploads/');
+    if (parts.length > 1) {
+      const fileName = parts[1];
+      const filePath = path.join(localUploadsDir, fileName);
+      if (fs.existsSync(filePath)) {
+        try {
+          await fs.promises.unlink(filePath);
+        } catch (error) {
+          console.error('Local delete failed:', error);
+        }
       }
     }
   }

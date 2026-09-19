@@ -54,11 +54,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     try {
       const rawCart = JSON.parse(localStorage.getItem('riz-cart') || '[]');
       const parsedCart: CartItem[] = Array.isArray(rawCart)
-        ? rawCart.map((item: any) => ({
-            product: item.product,
-            quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-            color: item.color || undefined,
-          }))
+        ? rawCart
+            .filter((item: any) => item && item.product && typeof item.product === 'object')
+            .map((item: any) => ({
+              product: item.product,
+              quantity: typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1,
+              color: item.color || undefined,
+            }))
         : [];
       setCart(parsedCart);
       setWishlist(JSON.parse(localStorage.getItem('riz-wishlist') || '[]'));

@@ -28,20 +28,28 @@ export default function AdminCustomers() {
     setLoading(true);
     try {
       const res = await api.admin.getCustomers();
-      setCustomers(res.customers);
+      if (res && Array.isArray(res.customers)) {
+        setCustomers(res.customers);
+      } else {
+        setCustomers([]);
+        if (res?.error) {
+          setError(res.error);
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load customers.');
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredCustomers = customers.filter((c) => {
+  const filteredCustomers = (customers || []).filter((c) => {
+    if (!c) return false;
     const q = searchQuery.toLowerCase();
-    return (
-      c.name.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q)
-    );
+    const nameStr = (c.name || '').toLowerCase();
+    const emailStr = (c.email || '').toLowerCase();
+    return nameStr.includes(q) || emailStr.includes(q);
   });
 
   return (
@@ -85,30 +93,30 @@ export default function AdminCustomers() {
           <p className="muted">No customers found.</p>
         </div>
       ) : (
-        <div className="table-responsive border rounded bg-white">
+        <div className="table-responsive border rounded bg-white" style={{ overflowX: 'auto' }}>
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="border-b" style={{ borderBottom: '1px solid #eee' }}>
-                <th style={{ padding: '16px' }}>Name</th>
-                <th>Email Address</th>
-                <th>Phone Number</th>
-                <th>Registered Date</th>
-                <th>Total Orders</th>
-                <th style={{ textAlign: 'right', paddingRight: '16px' }}>Total Spent</th>
+                <th style={{ padding: '16px', whiteSpace: 'nowrap' }}>Name</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Email Address</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Phone Number</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Registered Date</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Total Orders</th>
+                <th style={{ textAlign: 'right', paddingRight: '16px', whiteSpace: 'nowrap' }}>Total Spent</th>
               </tr>
             </thead>
             <tbody>
               {filteredCustomers.map((c) => (
-                <tr key={c.id} className="border-b hover:bg-gray-50" style={{ borderBottom: '1px solid #f7f6f2' }}>
-                  <td style={{ padding: '16px' }} className="serif font-semibold">
-                    {c.name}
+                <tr key={c.id || Math.random().toString()} className="border-b hover:bg-gray-50" style={{ borderBottom: '1px solid #f7f6f2' }}>
+                  <td style={{ padding: '16px', whiteSpace: 'nowrap' }} className="serif font-semibold">
+                    {c.name || 'Guest User'}
                   </td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <span className="flex items-center gap-1" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Mail size={13} className="muted" /> {c.email}
+                      <Mail size={13} className="muted" /> {c.email || 'No Email'}
                     </span>
                   </td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     {c.phone ? (
                       <span className="flex items-center gap-1" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Phone size={13} className="muted" /> {c.phone}
@@ -117,16 +125,16 @@ export default function AdminCustomers() {
                       <span className="muted">-</span>
                     )}
                   </td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <span className="flex items-center gap-1" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Calendar size={13} className="muted" /> {new Date(c.createdAt).toLocaleDateString()}
+                      <Calendar size={13} className="muted" /> {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'N/A'}
                     </span>
                   </td>
-                  <td>
-                    <span className="font-semibold">{c.orderCount} orders</span>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <span className="font-semibold">{c.orderCount ?? 0} orders</span>
                   </td>
-                  <td style={{ textAlign: 'right', paddingRight: '16px' }} className="serif font-bold text-gray-800">
-                    ₹{c.totalSpent.toLocaleString('en-IN')}
+                  <td style={{ textAlign: 'right', paddingRight: '16px', whiteSpace: 'nowrap' }} className="serif font-bold text-gray-800">
+                    ₹{(c.totalSpent ?? 0).toLocaleString('en-IN')}
                   </td>
                 </tr>
               ))}

@@ -131,7 +131,8 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       colors,
       gender,
       ageGroup,
-      material,
+      metal,
+      material: materialInput,
       finish,
       stock,
       tags,
@@ -140,6 +141,8 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       newArrival,
       images,
     } = req.body;
+
+    const material = materialInput || metal || 'Brass';
 
     if (!name || !description || !price || !category || !collection || !material || !finish) {
       res.status(400).json({ error: 'Required fields are missing.' });
@@ -202,7 +205,8 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       colors,
       gender,
       ageGroup,
-      material,
+      metal,
+      material: materialInput,
       finish,
       stock,
       tags,
@@ -212,6 +216,8 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       images,
       isActive,
     } = req.body;
+
+    const material = materialInput || metal;
 
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) {
@@ -301,9 +307,13 @@ export async function getAdminCoupons(req: AuthenticatedRequest, res: Response):
 
 export async function createCoupon(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { code, discountType, discountValue, minOrderValue, maxDiscount, expiryDate, usageLimit } = req.body;
+    const { code, discountType, type, discountValue, value, minOrderValue, minPurchase, maxDiscount, expiryDate, usageLimit } = req.body;
 
-    if (!code || !discountType || !discountValue) {
+    const finalType = discountType || type;
+    const finalValue = discountValue !== undefined ? discountValue : value;
+    const finalMinOrder = minOrderValue !== undefined ? minOrderValue : minPurchase;
+
+    if (!code || !finalType || finalValue === undefined || finalValue === null) {
       res.status(400).json({ error: 'Code, discount type, and discount value are required.' });
       return;
     }
@@ -317,9 +327,9 @@ export async function createCoupon(req: AuthenticatedRequest, res: Response): Pr
     const coupon = await prisma.coupon.create({
       data: {
         code: code.toUpperCase(),
-        discountType,
-        discountValue: parseFloat(discountValue),
-        minOrderValue: parseFloat(minOrderValue) || 0,
+        discountType: finalType,
+        discountValue: parseFloat(finalValue),
+        minOrderValue: parseFloat(finalMinOrder) || 0,
         maxDiscount: maxDiscount ? parseFloat(maxDiscount) : null,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
         usageLimit: usageLimit ? parseInt(usageLimit) : null,
@@ -377,7 +387,7 @@ export async function deleteCoupon(req: AuthenticatedRequest, res: Response): Pr
 // 5. Customers viewer
 export async function getAdminCustomers(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const customers = await prisma.user.findMany({
+    const rawCustomers = await prisma.user.findMany({
       where: { role: 'customer' },
       select: {
         id: true,
@@ -385,14 +395,36 @@ export async function getAdminCustomers(req: AuthenticatedRequest, res: Response
         email: true,
         phone: true,
         createdAt: true,
+        orders: {
+          select: {
+            total: true,
+            paymentStatus: true,
+          },
+        },
         _count: {
           select: { orders: true },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    const customers = rawCustomers.map((user) => {
+      const orderCount = user._count.orders || 0;
+      const totalSpent = user.orders.reduce((sum, order) => sum + (order.total || 0), 0);
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        createdAt: user.createdAt,
+        orderCount,
+        totalSpent,
+      };
+    });
+
     res.status(200).json({ customers });
   } catch (error) {
+    console.error('Fetch customers error:', error);
     res.status(500).json({ error: 'Failed to fetch customers.' });
   }
 }
@@ -406,8 +438,12 @@ export async function adminUploadProductImage(req: AuthenticatedRequest, res: Re
       return;
     }
 
-    const imageUrl = await uploadImage(file.buffer, file.originalname, file.mimetype);
-    res.status(200).json({ imageUrl });
+    const host = req.get('host') || 'localhost:5000';
+    const protocol = req.protocol || 'https';
+    const reqBaseUrl = `${protocol}://${host}`;
+
+    const imageUrl = await uploadImage(file.buffer, file.originalname, file.mimetype, reqBaseUrl);
+    res.status(200).json({ url: imageUrl, imageUrl });
   } catch (error: any) {
     console.error('Admin upload error:', error);
     res.status(500).json({ error: error.message || 'Failed to upload image.' });

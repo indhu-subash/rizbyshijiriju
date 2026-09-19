@@ -127,6 +127,7 @@ export default function NewProductPage() {
       gender,
       ageGroup,
       metal,
+      material: metal || 'Brass',
       finish,
       careInstructions,
       images,

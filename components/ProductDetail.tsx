@@ -156,10 +156,10 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
 
           <div className="detail-price">
-            ₹{product.price.toLocaleString('en-IN')}{' '}
+            ₹{(product.price ?? 0).toLocaleString('en-IN')}{' '}
             {product.originalPrice && (
               <>
-                <del>₹{product.originalPrice.toLocaleString('en-IN')}</del>
+                <del>₹{(product.originalPrice ?? 0).toLocaleString('en-IN')}</del>
                 <em>Sale</em>
               </>
             )}
@@ -307,7 +307,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   <p style={{ color: '#d32f2f' }}>{pinResult.error}</p>
                 ) : (
                   <p style={{ color: '#2e7d32' }}>
-                    Delivery available. {pinResult.estimate || '3–5 working days'}
+                    Delivery available{(pinResult as any).location ? ` to ${(pinResult as any).location}` : ''}. {pinResult.estimate || '3–5 working days'}
                     {pinResult.shippingCharge !== undefined &&
                       (pinResult.shippingCharge === 0
                         ? ' (Free shipping)'

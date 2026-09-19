@@ -11,15 +11,21 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const FRONTEND_URLS = [
+  process.env.FRONTEND_URL,
   'https://rizbyshijiriju.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
-];
+].filter(Boolean) as string[];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || FRONTEND_URLS.includes(origin)) {
+      if (
+        !origin ||
+        FRONTEND_URLS.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.railway.app')
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

@@ -156,6 +156,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       gender,
       ageGroup,
       metal,
+      material: metal || 'Brass',
       finish,
       careInstructions,
       images,
