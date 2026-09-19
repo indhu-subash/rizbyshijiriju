@@ -17,7 +17,13 @@ const FRONTEND_URLS = [
 
 app.use(
   cors({
-    origin: FRONTEND_URLS,
+    origin: (origin, callback) => {
+      if (!origin || FRONTEND_URLS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -52,5 +58,5 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
- console.log(`CORS allowed origins: ${FRONTEND_URLS.join(', ')}`);
+  console.log(`CORS allowed origins: ${FRONTEND_URLS.join(', ')}`);
 });
