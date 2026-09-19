@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Menu, Search, UserRound, Heart, ShoppingBag, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useStore } from './StoreProvider';
 import { QuickCategoryStrip } from './QuickCategoryStrip';
@@ -38,10 +39,15 @@ const columns = [
 ];
 
 export function Header() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [mega, setMega] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>('COLLECTIONS');
   const { cartCount, wishlist, isAuthenticated } = useStore();
+
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   // Prevent body scrolling when mobile drawer is open
   useEffect(() => {
