@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 5000;
 const FRONTEND_URLS = [
   'https://rizbyshijiriju.vercel.app',
   'http://localhost:3000',
+  'http://localhost:3001',
 ];
 
 app.use(
