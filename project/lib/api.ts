@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
 
 async function request(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}${endpoint}`;
@@ -15,7 +15,19 @@ async function request(endpoint: string, options: RequestInit = {}) {
 
   try {
     const res = await fetch(url, options);
-    const data = await res.json();
+
+    const contentType = res.headers.get('content-type') || '';
+    let data: any = {};
+
+    if (contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}: ${res.statusText || 'Error'}`);
+      }
+      data = { text };
+    }
 
     if (!res.ok) {
       throw new Error(data.error || 'An error occurred during the request.');
@@ -76,11 +88,13 @@ export const api = {
     detail: (id: string) => request(`/orders/detail/${id}`),
     track: (orderId: string) => request(`/orders/track/${orderId}`),
     checkShipping: (pincode: string) => request(`/orders/shipping/pincode/${pincode}`),
+    calculateShipping: (body: { country?: string; pincode?: string; postalCode?: string; city?: string; state?: string; district?: string }) =>
+      request('/shipping/calculate', { method: 'POST', body: JSON.stringify(body) }),
   },
 
   // Checkout & Payments
   payments: {
-    checkout: (body: { items: { productId: string; quantity: number }[]; shippingAddress: any; couponCode?: string; paymentMethod: string }) =>
+    checkout: (body: { items: { productId: string; quantity: number; color?: string | null }[]; shippingAddress: any; couponCode?: string; paymentMethod: string; manualShippingCharge?: number }) =>
       request('/payments/checkout', { method: 'POST', body: JSON.stringify(body) }),
     verify: (body: { orderId: string; razorpayPaymentId?: string; razorpayOrderId?: string; razorpaySignature?: string }) =>
       request('/payments/verify', { method: 'POST', body: JSON.stringify(body) }),
@@ -123,5 +137,5 @@ export const api = {
     createShippingRule: (body: any) => request('/admin/shipping-rules', { method: 'POST', body: JSON.stringify(body) }),
     editShippingRule: (id: string, body: any) => request(`/admin/shipping-rules/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteShippingRule: (id: string) => request(`/admin/shipping-rules/${id}`, { method: 'DELETE' }),
-  }
+  },
 };
