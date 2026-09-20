@@ -1,2 +1,0 @@
-import Link from 'next/link';
-export default function NotFound(){return <main><section className="success-page container"><span className="eyebrow">404</span><h1 className="serif">Looks like this piece<br/><i>is out of reach.</i></h1><p>The page you are looking for has moved on. Let’s find you something beautiful instead.</p><Link href="/shop" className="button">Back to shop</Link></section></main>}
