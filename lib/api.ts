@@ -71,7 +71,11 @@ export const api = {
       try {
         return await request('/categories');
       } catch (err) {
-        return { categories: [] };
+        try {
+          return await request('/admin/categories');
+        } catch (err2) {
+          return { categories: [] };
+        }
       }
     },
     active: async () => {
