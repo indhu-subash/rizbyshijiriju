@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
+// Force overwrite of any stale Railway production URLs without -2116
+const API_URL = RAW_API_URL.replace(/rizbyshijiriju-production\.up\.railway\.app/g, 'rizbyshijiriju-production-2116.up.railway.app');
 
 async function request(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}${endpoint}`;
