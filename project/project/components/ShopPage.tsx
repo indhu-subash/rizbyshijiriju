@@ -105,9 +105,34 @@ export function ShopPage({
           if (res && Array.isArray(res.products) && res.products.length > 0) {
             setItems(res.products);
           } else {
+            const matchesCategory = (p: any, cat: string) => {
+              const c = cat.toLowerCase();
+              const singular = c.endsWith('s') ? c.slice(0, -1) : c;
+              const pCat = (p.category || '').toLowerCase();
+              const pName = (p.name || '').toLowerCase();
+              const pTags = (p.tags || []).map((t: string) => t.toLowerCase());
+              return (
+                pCat === c ||
+                pCat.includes(c) ||
+                pCat.includes(singular) ||
+                pName.includes(c) ||
+                pName.includes(singular) ||
+                pTags.includes(c) ||
+                pTags.includes(singular)
+              );
+            };
+
+            const matchesCollection = (p: any, col: string) => {
+              const c = col.toLowerCase();
+              const pCol = (p.collection || '').toLowerCase();
+              const pName = (p.name || '').toLowerCase();
+              const pTags = (p.tags || []).map((t: string) => t.toLowerCase());
+              return pCol === c || pCol.includes(c) || pName.includes(c) || pTags.includes(c);
+            };
+
             const filteredFallback = fallbackProducts.filter((p) => {
-              if (category && p.category.toLowerCase() !== category.toLowerCase()) return false;
-              if (collection && p.collection.toLowerCase() !== collection.toLowerCase()) return false;
+              if (category && !matchesCategory(p, category)) return false;
+              if (collection && !matchesCollection(p, collection)) return false;
               if (
                 colors.length > 0 &&
                 !colors.some((c) => p.colors?.some((pc: string) => pc.toLowerCase() === c.toLowerCase()))
@@ -122,16 +147,29 @@ export function ShopPage({
               }
               return true;
             });
-            setItems(filteredFallback);
+            setItems(filteredFallback.length > 0 ? filteredFallback : fallbackProducts);
           }
         }
       })
       .catch((err) => {
         console.error('API load products failed, using fallback:', err);
         if (isMounted) {
+          const matchesCategory = (p: any, cat: string) => {
+            const c = cat.toLowerCase();
+            const singular = c.endsWith('s') ? c.slice(0, -1) : c;
+            const pCat = (p.category || '').toLowerCase();
+            const pName = (p.name || '').toLowerCase();
+            return pCat.includes(c) || pCat.includes(singular) || pName.includes(c) || pName.includes(singular);
+          };
+          const matchesCollection = (p: any, col: string) => {
+            const c = col.toLowerCase();
+            const pCol = (p.collection || '').toLowerCase();
+            const pName = (p.name || '').toLowerCase();
+            return pCol.includes(c) || pName.includes(c);
+          };
           const filteredFallback = fallbackProducts.filter((p) => {
-            if (category && p.category.toLowerCase() !== category.toLowerCase()) return false;
-            if (collection && p.collection.toLowerCase() !== collection.toLowerCase()) return false;
+            if (category && !matchesCategory(p, category)) return false;
+            if (collection && !matchesCollection(p, collection)) return false;
             return true;
           });
           setItems(filteredFallback.length > 0 ? filteredFallback : fallbackProducts);
