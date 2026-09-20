@@ -32,12 +32,10 @@ export default function AdminProducts() {
 
   const loadProducts = async () => {
     setLoading(true);
+    setError('');
     try {
-      // Include deactivated ones too by requesting via administrative list or general list.
-      // General list handles active only by default on endpoints, but since getProducts is general, 
-      // let's fetch using our lists endpoint.
-      const res = await api.products.list({ category, collection });
-      setProducts(res.products);
+      const res = await api.admin.getProducts({ category, collection });
+      setProducts(res.products || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load products list.');
     } finally {

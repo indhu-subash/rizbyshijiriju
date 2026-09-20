@@ -114,6 +114,14 @@ export const api = {
     },
     updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) =>
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    getProducts: (params: { category?: string; collection?: string; query?: string } = {}) => {
+      const q = new URLSearchParams();
+      if (params.category) q.append('category', params.category);
+      if (params.collection) q.append('collection', params.collection);
+      if (params.query) q.append('query', params.query);
+      const str = q.toString();
+      return request(`/admin/products${str ? `?${str}` : ''}`);
+    },
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteProduct: (id: string) => request(`/admin/products/${id}`, { method: 'DELETE' }),

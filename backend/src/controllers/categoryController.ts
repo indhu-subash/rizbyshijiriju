@@ -26,7 +26,7 @@ export const INITIAL_CATEGORIES = [
 
 export async function getCategories(req: Request, res: Response): Promise<void> {
   try {
-    const categories = await prisma.category.findMany({
+    let categories = await prisma.category.findMany({
       orderBy: [{ group: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         _count: {
@@ -34,6 +34,34 @@ export async function getCategories(req: Request, res: Response): Promise<void> 
         },
       },
     });
+
+    if (categories.length === 0) {
+      for (const cat of INITIAL_CATEGORIES) {
+        const slug = cat.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const existing = await prisma.category.findUnique({ where: { slug } });
+        if (!existing) {
+          await prisma.category.create({
+            data: {
+              name: cat.name,
+              slug,
+              group: cat.group,
+              sortOrder: cat.sortOrder,
+              description: cat.description,
+              isActive: true,
+            },
+          });
+        }
+      }
+      categories = await prisma.category.findMany({
+        orderBy: [{ group: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+        include: {
+          _count: {
+            select: { products: true },
+          },
+        },
+      });
+    }
+
     res.status(200).json({ categories });
   } catch (error) {
     console.error('Fetch categories error:', error);

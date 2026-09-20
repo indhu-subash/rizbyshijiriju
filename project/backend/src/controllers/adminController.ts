@@ -573,3 +573,34 @@ export async function deleteShippingRule(req: AuthenticatedRequest, res: Respons
   }
 }
 
+export async function getAdminProducts(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { category, collection, query } = req.query;
+
+    const where: any = {};
+    if (category) where.category = String(category);
+    if (collection) where.collection = String(collection);
+    if (query) {
+      const q = String(query);
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { category: { contains: q, mode: 'insensitive' } },
+        { collection: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const products = await prisma.product.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        categoryRel: true,
+      },
+    });
+
+    res.status(200).json({ products });
+  } catch (error) {
+    console.error('Fetch admin products error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin products.' });
+  }
+}
+
