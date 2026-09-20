@@ -2,37 +2,55 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 import * as fs from 'fs';
 import * as path from 'path';
 
-const isProd = process.env.NODE_ENV === 'production';
+// Helper to resolve Cloudflare R2 credentials dynamically per request
+function getR2Config() {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+  const bucketName = process.env.R2_BUCKET_NAME || process.env.CLOUDFLARE_R2_BUCKET || 'rizbyshijiriju-images';
+  const publicUrl = process.env.R2_PUBLIC_URL || process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://pub-522048b574af4e7aa4d991056322b29a.r2.dev';
 
-const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-const bucketName = process.env.R2_BUCKET_NAME;
-const publicUrl = process.env.R2_PUBLIC_URL;
+  const isConfigured = Boolean(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl);
 
-const isR2Configured = accountId && accessKeyId && secretAccessKey && bucketName && publicUrl;
-
-// Check production safety
-if (isProd && !isR2Configured) {
-  throw new Error('Production Configuration Error: Cloudflare R2 credentials are not configured.');
+  return {
+    accountId,
+    accessKeyId,
+    secretAccessKey,
+    bucketName,
+    publicUrl,
+    isConfigured,
+  };
 }
 
-let s3Client: S3Client | null = null;
-if (isR2Configured) {
-  s3Client = new S3Client({
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: accessKeyId!,
-      secretAccessKey: secretAccessKey!,
-    },
-    region: 'auto',
-  });
+function getS3Client() {
+  const config = getR2Config();
+  if (!config.isConfigured) {
+    return null;
+  }
+
+  try {
+    return new S3Client({
+      endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: config.accessKeyId!,
+        secretAccessKey: config.secretAccessKey!,
+      },
+      region: 'auto',
+    });
+  } catch (err) {
+    console.error('[R2 S3Client Init Error]', err);
+    return null;
+  }
 }
 
 // Ensure local uploads directory exists for development fallback
 const localUploadsDir = path.join(__dirname, '../../public/uploads');
-if (!fs.existsSync(localUploadsDir)) {
-  fs.mkdirSync(localUploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(localUploadsDir)) {
+    fs.mkdirSync(localUploadsDir, { recursive: true });
+  }
+} catch (err) {
+  // Ignore in read-only filesystems
 }
 
 export async function uploadImage(
@@ -40,34 +58,58 @@ export async function uploadImage(
   originalName: string,
   mimeType: string
 ): Promise<string> {
+  const isProd = process.env.NODE_ENV === 'production';
+  const config = getR2Config();
+  const client = getS3Client();
+
   const fileExt = path.extname(originalName) || '.jpg';
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${fileExt}`;
 
   // 1. Upload to Cloudflare R2 if configured
-  if (s3Client && bucketName && publicUrl) {
+  if (client && config.bucketName && config.publicUrl) {
+    console.log(`[R2 UPLOAD START] Bucket: ${config.bucketName}, Key: ${fileName}, Size: ${fileBuffer.length} bytes`);
     try {
       const uploadParams = {
-        Bucket: bucketName,
+        Bucket: config.bucketName,
         Key: fileName,
         Body: fileBuffer,
-        ContentType: mimeType,
+        ContentType: mimeType || 'image/jpeg',
       };
 
-      await s3Client.send(new PutObjectCommand(uploadParams));
-      return `${publicUrl.replace(/\/$/, '')}/${fileName}`;
-    } catch (error) {
-      console.error('R2 upload failed, checking fallback options:', error);
+      await client.send(new PutObjectCommand(uploadParams));
+
+      const r2Domain = config.publicUrl.replace(/\/$/, '');
+      const finalUrl = `${r2Domain}/${fileName}`;
+      console.log(`[R2 UPLOAD SUCCESS] Object uploaded to R2: ${finalUrl}`);
+      return finalUrl;
+    } catch (error: any) {
+      console.error('[R2 UPLOAD FAILURE]', {
+        message: error?.message,
+        name: error?.name,
+        code: error?.code,
+        bucket: config.bucketName,
+        key: fileName,
+      });
+
       if (isProd) {
-        throw new Error('Image upload failed under production environment.');
+        throw new Error(`R2 Upload failed: ${error?.message || 'Cloudflare R2 storage error.'}`);
       }
     }
   }
 
-  // 2. Development local upload fallback
+  // If R2 is not configured in production, raise explicit error
   if (isProd) {
-    throw new Error('R2 configuration missing or unavailable in production.');
+    console.error('[R2 CONFIG FAILURE] Missing R2 credentials in production environment.', {
+      hasAccountId: !!config.accountId,
+      hasAccessKeyId: !!config.accessKeyId,
+      hasSecretKey: !!config.secretAccessKey,
+      bucketName: config.bucketName,
+      publicUrl: config.publicUrl,
+    });
+    throw new Error('Production Configuration Error: Cloudflare R2 credentials are missing or incomplete on Railway.');
   }
 
+  // 2. Development local upload fallback
   const filePath = path.join(localUploadsDir, fileName);
   await fs.promises.writeFile(filePath, fileBuffer);
   
@@ -76,18 +118,27 @@ export async function uploadImage(
 }
 
 export async function deleteImage(imageUrl: string): Promise<void> {
-  if (s3Client && bucketName && publicUrl && imageUrl.startsWith(publicUrl)) {
-    const key = imageUrl.replace(`${publicUrl.replace(/\/$/, '')}/`, '');
+  const isProd = process.env.NODE_ENV === 'production';
+  const config = getR2Config();
+  const client = getS3Client();
+
+  if (client && config.bucketName && config.publicUrl && imageUrl.startsWith(config.publicUrl)) {
+    const key = imageUrl.replace(`${config.publicUrl.replace(/\/$/, '')}/`, '');
     try {
-      await s3Client.send(
+      await client.send(
         new DeleteObjectCommand({
-          Bucket: bucketName,
+          Bucket: config.bucketName,
           Key: key,
         })
       );
+      console.log(`[R2 DELETE SUCCESS] Object deleted from R2: ${key}`);
       return;
-    } catch (error) {
-      console.error('R2 delete failed:', error);
+    } catch (error: any) {
+      console.error('[R2 DELETE FAILURE]', {
+        message: error?.message,
+        bucket: config.bucketName,
+        key,
+      });
       if (isProd) {
         throw error;
       }

@@ -155,7 +155,8 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : [];
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : [];
-    const imagesArr = images ? (Array.isArray(images) ? images : [images]) : [];
+    const rawImages = images ? (Array.isArray(images) ? images : [images]) : [];
+    const imagesArr = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
 
     const product = await prisma.product.create({
       data: {
@@ -221,7 +222,12 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : product.tags;
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : product.colors;
-    const imagesArr = images ? (Array.isArray(images) ? images : [images]) : product.images;
+    
+    let imagesArr = product.images;
+    if (images !== undefined) {
+      const rawImages = Array.isArray(images) ? images : [images];
+      imagesArr = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+    }
 
     let slug = product.slug;
     if (name && name !== product.name) {
@@ -407,7 +413,7 @@ export async function adminUploadProductImage(req: AuthenticatedRequest, res: Re
     }
 
     const imageUrl = await uploadImage(file.buffer, file.originalname, file.mimetype);
-    res.status(200).json({ imageUrl });
+    res.status(200).json({ url: imageUrl, imageUrl });
   } catch (error: any) {
     console.error('Admin upload error:', error);
     res.status(500).json({ error: error.message || 'Failed to upload image.' });

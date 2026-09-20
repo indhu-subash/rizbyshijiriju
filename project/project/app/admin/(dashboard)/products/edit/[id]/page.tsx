@@ -120,11 +120,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
     setUploading(true);
     setError('');
+    setSuccess('');
     
     try {
       const res = await api.admin.uploadImage(file);
-      setImages((prev) => [...prev, res.url]);
-      setSuccess('Image uploaded successfully.');
+      const uploadedUrl = res?.url || res?.imageUrl;
+      if (!uploadedUrl) {
+        throw new Error('Server returned an empty image URL.');
+      }
+      setImages((prev) => [...prev, uploadedUrl]);
+      setSuccess('Image uploaded successfully to Cloudflare R2.');
     } catch (err: any) {
       setError(err.message || 'Image upload failed.');
     } finally {
