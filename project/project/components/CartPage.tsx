@@ -47,7 +47,7 @@ export function CartPage() {
                         Colour: <b>{color}</b>
                       </p>
                     )}
-                    <p>₹{product.price.toLocaleString('en-IN')}</p>
+                    <p>₹{(product.price || 0).toLocaleString('en-IN')}</p>
                     <div className="cart-actions">
                       <div className="quantity">
                         <button onClick={() => updateQuantity(product.id, color, quantity - 1)}>
@@ -63,7 +63,7 @@ export function CartPage() {
                       </button>
                     </div>
                   </div>
-                  <strong>₹{(product.price * quantity).toLocaleString('en-IN')}</strong>
+                  <strong>₹{((product.price || 0) * quantity).toLocaleString('en-IN')}</strong>
                 </div>
               ))}
             </div>
@@ -71,7 +71,7 @@ export function CartPage() {
               <h2 className="serif">Order summary</h2>
               <div className="summary-line">
                 <span>Subtotal</span>
-                <b>₹{subtotal.toLocaleString('en-IN')}</b>
+                <b>₹{(subtotal || 0).toLocaleString('en-IN')}</b>
               </div>
               <div className="summary-line">
                 <span>Shipping</span>
@@ -80,7 +80,7 @@ export function CartPage() {
               {discount > 0 && (
                 <div className="summary-line discount">
                   <span>Discount</span>
-                  <b>−₹{discount.toLocaleString('en-IN')}</b>
+                  <b>−₹{(discount || 0).toLocaleString('en-IN')}</b>
                 </div>
               )}
               <div className="coupon">
@@ -90,7 +90,7 @@ export function CartPage() {
               {message && <small className={discount ? 'coupon-ok' : 'coupon-error'}>{message}</small>}
               <div className="summary-total">
                 <span>Total</span>
-                <strong>₹{total.toLocaleString('en-IN')}</strong>
+                <strong>₹{(total || 0).toLocaleString('en-IN')}</strong>
               </div>
               <Link href="/checkout" className="button add-button">
                 Proceed to checkout <ArrowRight size={15} />

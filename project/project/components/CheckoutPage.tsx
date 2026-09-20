@@ -826,7 +826,7 @@ export function CheckoutPage() {
                 )}
                 <small>× {quantity}</small>
               </span>
-              <b>₹{(product.price * quantity).toLocaleString('en-IN')}</b>
+              <b>₹{((product.price || 0) * quantity).toLocaleString('en-IN')}</b>
             </div>
           ))}
 
@@ -852,12 +852,12 @@ export function CheckoutPage() {
           <div className="price-lines border-t pt-4 mt-4" style={{ display: 'grid', gap: '8px' }}>
             <div className="flex justify-between text-sm">
               <span>Bag Subtotal</span>
-              <span>₹{subtotal.toLocaleString('en-IN')}</span>
+              <span>₹{(subtotal || 0).toLocaleString('en-IN')}</span>
             </div>
             {discountAmount > 0 && (
               <div className="flex justify-between text-sm text-green-600" style={{ color: '#2e7d32' }}>
                 <span>Coupon Discount ({appliedCoupon?.code})</span>
-                <span>- ₹{discountAmount.toLocaleString('en-IN')}</span>
+                <span>- ₹{(discountAmount || 0).toLocaleString('en-IN')}</span>
               </div>
             )}
             <div className="flex justify-between text-sm">
@@ -868,7 +868,7 @@ export function CheckoutPage() {
                 ) : deliveryType === 'IN' && shippingCharge === 0 ? (
                   'Free'
                 ) : (
-                  `₹${shippingCharge.toLocaleString('en-IN')}`
+                  `₹${(shippingCharge || 0).toLocaleString('en-IN')}`
                 )}
               </span>
             </div>
@@ -876,7 +876,7 @@ export function CheckoutPage() {
 
           <div className="summary-total border-t pt-4 mt-4">
             <span>Total</span>
-            <strong>₹{totalAmount.toLocaleString('en-IN')}</strong>
+            <strong>₹{(totalAmount || 0).toLocaleString('en-IN')}</strong>
           </div>
         </aside>
       </section>

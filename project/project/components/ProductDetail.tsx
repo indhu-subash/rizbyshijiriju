@@ -156,10 +156,10 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
 
           <div className="detail-price">
-            ₹{product.price.toLocaleString('en-IN')}{' '}
+            ₹{(product.price || 0).toLocaleString('en-IN')}{' '}
             {product.originalPrice && (
               <>
-                <del>₹{product.originalPrice.toLocaleString('en-IN')}</del>
+                <del>₹{(product.originalPrice || 0).toLocaleString('en-IN')}</del>
                 <em>Sale</em>
               </>
             )}

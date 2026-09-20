@@ -126,7 +126,7 @@ export default function AdminCustomers() {
                     <span className="font-semibold">{c.orderCount} orders</span>
                   </td>
                   <td style={{ textAlign: 'right', paddingRight: '16px' }} className="serif font-bold text-gray-800">
-                    ₹{c.totalSpent.toLocaleString('en-IN')}
+                    ₹{(c.totalSpent || 0).toLocaleString('en-IN')}
                   </td>
                 </tr>
               ))}
