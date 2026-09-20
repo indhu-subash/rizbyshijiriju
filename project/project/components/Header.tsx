@@ -68,7 +68,7 @@ export function Header() {
   return (
     <>
       <div className="announcement">
-        FREE SHIPPING ON ORDERS ABOVE ₹999 <span>·</span> EASY 7-DAY RETURNS
+        FREE SHIPPING ON ORDERS ABOVE ₹2,000 <span>·</span> EASY 7-DAY RETURNS
       </div>
       <header className="header">
         <div className="container header-inner">
