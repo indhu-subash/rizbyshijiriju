@@ -102,17 +102,39 @@ export function ShopPage({
       })
       .then((res) => {
         if (isMounted) {
-          if (res && res.products) {
+          if (res && Array.isArray(res.products) && res.products.length > 0) {
             setItems(res.products);
           } else {
-            setItems(fallbackProducts);
+            const filteredFallback = fallbackProducts.filter((p) => {
+              if (category && p.category.toLowerCase() !== category.toLowerCase()) return false;
+              if (collection && p.collection.toLowerCase() !== collection.toLowerCase()) return false;
+              if (
+                colors.length > 0 &&
+                !colors.some((c) => p.colors?.some((pc: string) => pc.toLowerCase() === c.toLowerCase()))
+              )
+                return false;
+              if (debouncedQuery) {
+                const q = debouncedQuery.toLowerCase();
+                const matchName = p.name.toLowerCase().includes(q);
+                const matchCat = p.category.toLowerCase().includes(q);
+                const matchCol = p.collection.toLowerCase().includes(q);
+                if (!matchName && !matchCat && !matchCol) return false;
+              }
+              return true;
+            });
+            setItems(filteredFallback);
           }
         }
       })
       .catch((err) => {
         console.error('API load products failed, using fallback:', err);
         if (isMounted) {
-          setItems(fallbackProducts);
+          const filteredFallback = fallbackProducts.filter((p) => {
+            if (category && p.category.toLowerCase() !== category.toLowerCase()) return false;
+            if (collection && p.collection.toLowerCase() !== collection.toLowerCase()) return false;
+            return true;
+          });
+          setItems(filteredFallback.length > 0 ? filteredFallback : fallbackProducts);
         }
       })
       .finally(() => {

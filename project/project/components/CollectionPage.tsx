@@ -15,7 +15,7 @@ export function CollectionPage({
   image: string;
   items?: any[];
 }) {
-  const displayItems = items || (filter ? localProducts.filter(filter) : localProducts);
+  const displayItems = items && items.length > 0 ? items : filter ? localProducts.filter(filter) : localProducts;
   return (
     <main>
       <div className="collection-hero">

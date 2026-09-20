@@ -8,11 +8,19 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     const whereClause: any = { isActive: true };
 
     if (category) {
-      whereClause.category = String(category);
+      const catStr = String(category).trim();
+      whereClause.category = {
+        equals: catStr,
+        mode: 'insensitive',
+      };
     }
 
     if (collection) {
-      whereClause.collection = String(collection);
+      const colStr = String(collection).trim();
+      whereClause.collection = {
+        equals: colStr,
+        mode: 'insensitive',
+      };
     }
 
     // Color filter parameter support (single 'color' or 'colors' array / comma-separated)

@@ -105,14 +105,14 @@ export default async function Page({ params }: { params: Promise<{ type: string 
   // Fetch from the backend API, falling back to local filter on error
   let items: any[] | undefined = undefined;
   try {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
     const res = await fetch(
       `${API_URL}/products?collection=${encodeURIComponent(config.dbCollectionName)}`,
       { cache: 'no-store' }
     );
     if (res.ok) {
       const data = await res.json();
-      if (data && Array.isArray(data.products)) {
+      if (data && Array.isArray(data.products) && data.products.length > 0) {
         items = data.products;
       }
     }
