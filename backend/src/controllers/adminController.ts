@@ -144,16 +144,42 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
 
     const material = materialInput || metal || 'Brass';
 
-    if (!name || !description || !price || !category || !collection || !material || !finish) {
-      res.status(400).json({ error: 'Required fields are missing.' });
+    if (!name || !description || price === undefined || price === null || !category || !collection || !material || !finish) {
+      res.status(400).json({ error: 'Required fields are missing (name, description, price, category, collection, material, finish).' });
       return;
     }
 
-    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const existing = await prisma.product.findUnique({ where: { slug } });
-    if (existing) {
-      res.status(400).json({ error: 'A product with this name (or similar URL slug) already exists.' });
-      return;
+    // Auto generate or fix slug for uniqueness
+    let slug = (req.body.slug || name).toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    if (!slug) {
+      slug = `product-${Date.now()}`;
+    }
+
+    const existingSlug = await prisma.product.findUnique({ where: { slug } });
+    if (existingSlug) {
+      slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    }
+
+    // Safely validate categoryId foreign key to avoid P2003 Foreign Key constraint failure
+    let validCategoryId: string | null = null;
+    if (categoryId) {
+      const catExists = await prisma.category.findUnique({ where: { id: String(categoryId) } });
+      if (catExists) {
+        validCategoryId = catExists.id;
+      }
+    }
+    if (!validCategoryId && category) {
+      const catByName = await prisma.category.findFirst({
+        where: {
+          OR: [
+            { name: { equals: String(category).trim(), mode: 'insensitive' } },
+            { slug: { equals: String(category).toLowerCase().trim().replace(/\s+/g, '-'), mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (catByName) {
+        validCategoryId = catByName.id;
+      }
     }
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : [];
@@ -162,20 +188,20 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
 
     const product = await prisma.product.create({
       data: {
-        name,
+        name: String(name).trim(),
         slug,
-        description,
+        description: String(description).trim(),
         price: parseFloat(price),
         originalPrice: originalPrice ? parseFloat(originalPrice) : null,
-        category,
-        collection,
-        categoryId: categoryId || null,
+        category: String(category).trim(),
+        collection: String(collection).trim(),
+        categoryId: validCategoryId,
         colors: colorsArr,
         gender: gender || 'Women',
         ageGroup: ageGroup || 'Adult',
         images: imagesArr,
-        material,
-        finish,
+        material: String(material).trim(),
+        finish: String(finish).trim(),
         stock: parseInt(stock) || 0,
         tags: tagsArr,
         featured: !!featured,
@@ -185,9 +211,9 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
     });
 
     res.status(201).json({ message: 'Product created successfully.', product });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create product error:', error);
-    res.status(500).json({ error: 'Failed to create product.' });
+    res.status(500).json({ error: error?.message || 'Failed to create product.' });
   }
 }
 
@@ -239,6 +265,16 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       }
     }
 
+    let validCategoryId = product.categoryId;
+    if (categoryId !== undefined) {
+      if (categoryId) {
+        const catExists = await prisma.category.findUnique({ where: { id: String(categoryId) } });
+        validCategoryId = catExists ? catExists.id : null;
+      } else {
+        validCategoryId = null;
+      }
+    }
+
     const updated = await prisma.product.update({
       where: { id },
       data: {
@@ -249,7 +285,7 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
         originalPrice: originalPrice !== undefined ? (originalPrice ? parseFloat(originalPrice) : null) : product.originalPrice,
         category: category || product.category,
         collection: collection || product.collection,
-        categoryId: categoryId !== undefined ? categoryId : product.categoryId,
+        categoryId: validCategoryId,
         colors: colorsArr,
         gender: gender || product.gender,
         ageGroup: ageGroup || product.ageGroup,
@@ -266,9 +302,9 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     });
 
     res.status(200).json({ message: 'Product updated successfully.', product: updated });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Edit product error:', error);
-    res.status(500).json({ error: 'Failed to update product.' });
+    res.status(500).json({ error: error?.message || 'Failed to update product.' });
   }
 }
 
