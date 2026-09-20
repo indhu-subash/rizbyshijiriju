@@ -123,11 +123,45 @@ export const api = {
         body: formData,
       });
     },
-    getCategories: () => request('/admin/categories'),
-    createCategory: (body: any) => request('/admin/categories', { method: 'POST', body: JSON.stringify(body) }),
-    editCategory: (id: string, body: any) => request(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
-    deleteCategory: (id: string) => request(`/admin/categories/${id}`, { method: 'DELETE' }),
-    seedCategories: () => request('/admin/categories/seed', { method: 'POST' }),
+    getCategories: async () => {
+      try {
+        return await request('/admin/categories');
+      } catch (err) {
+        try {
+          return await request('/categories');
+        } catch (err2) {
+          return { categories: [] };
+        }
+      }
+    },
+    createCategory: async (body: any) => {
+      try {
+        return await request('/admin/categories', { method: 'POST', body: JSON.stringify(body) });
+      } catch (err) {
+        return await request('/categories', { method: 'POST', body: JSON.stringify(body) });
+      }
+    },
+    editCategory: async (id: string, body: any) => {
+      try {
+        return await request(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+      } catch (err) {
+        return await request(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+      }
+    },
+    deleteCategory: async (id: string) => {
+      try {
+        return await request(`/admin/categories/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        return await request(`/categories/${id}`, { method: 'DELETE' });
+      }
+    },
+    seedCategories: async () => {
+      try {
+        return await request('/admin/categories/seed', { method: 'POST' });
+      } catch (err) {
+        return await request('/categories/seed', { method: 'POST' });
+      }
+    },
     getCoupons: () => request('/admin/coupons'),
     createCoupon: (body: any) => request('/admin/coupons', { method: 'POST', body: JSON.stringify(body) }),
     editCoupon: (id: string, body: any) => request(`/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
