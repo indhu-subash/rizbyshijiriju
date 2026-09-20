@@ -4,11 +4,36 @@ import * as path from 'path';
 
 // Helper to resolve Cloudflare R2 credentials dynamically per request
 function getR2Config() {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-  const bucketName = process.env.R2_BUCKET_NAME || process.env.CLOUDFLARE_R2_BUCKET || 'rizbyshijiriju-images';
-  const publicUrl = process.env.R2_PUBLIC_URL || process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://pub-522048b574af4e7aa4d991056322b29a.r2.dev';
+  const accountId =
+    process.env.CLOUDFLARE_ACCOUNT_ID ||
+    process.env.R2_ACCOUNT_ID ||
+    process.env.ACCOUNT_ID ||
+    process.env.CF_ACCOUNT_ID;
+
+  const accessKeyId =
+    process.env.R2_ACCESS_KEY_ID ||
+    process.env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    process.env.R2_KEY_ID ||
+    process.env.AWS_ACCESS_KEY_ID;
+
+  const secretAccessKey =
+    process.env.R2_SECRET_ACCESS_KEY ||
+    process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ||
+    process.env.R2_SECRET ||
+    process.env.AWS_SECRET_ACCESS_KEY;
+
+  const bucketName =
+    process.env.R2_BUCKET_NAME ||
+    process.env.CLOUDFLARE_R2_BUCKET ||
+    process.env.R2_BUCKET ||
+    process.env.BUCKET_NAME ||
+    'rizbyshijiriju-images';
+
+  const publicUrl =
+    process.env.R2_PUBLIC_URL ||
+    process.env.CLOUDFLARE_R2_PUBLIC_URL ||
+    process.env.PUBLIC_URL ||
+    'https://pub-522048b574af4e7aa4d991056322b29a.r2.dev';
 
   const isConfigured = Boolean(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl);
 

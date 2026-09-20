@@ -158,6 +158,14 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
     const rawImages = images ? (Array.isArray(images) ? images : [images]) : [];
     const imagesArr = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
 
+    let validCategoryId: string | null = null;
+    if (categoryId && typeof categoryId === 'string' && categoryId.trim().length > 0) {
+      const catExists = await prisma.category.findUnique({ where: { id: categoryId.trim() } });
+      if (catExists) {
+        validCategoryId = catExists.id;
+      }
+    }
+
     const product = await prisma.product.create({
       data: {
         name,
@@ -167,7 +175,7 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
         originalPrice: originalPrice ? parseFloat(originalPrice) : null,
         category,
         collection,
-        categoryId: categoryId || null,
+        categoryId: validCategoryId,
         colors: colorsArr,
         gender: gender || 'Women',
         ageGroup: ageGroup || 'Adult',
@@ -239,6 +247,16 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       }
     }
 
+    // Safely validate categoryId to prevent Prisma foreign key constraint errors (P2003)
+    let validCategoryId: string | null = null;
+    const candidateCatId = categoryId !== undefined ? categoryId : product.categoryId;
+    if (candidateCatId && typeof candidateCatId === 'string' && candidateCatId.trim().length > 0) {
+      const catExists = await prisma.category.findUnique({ where: { id: candidateCatId.trim() } });
+      if (catExists) {
+        validCategoryId = catExists.id;
+      }
+    }
+
     const updated = await prisma.product.update({
       where: { id },
       data: {
@@ -249,7 +267,7 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
         originalPrice: originalPrice !== undefined ? (originalPrice ? parseFloat(originalPrice) : null) : product.originalPrice,
         category: category || product.category,
         collection: collection || product.collection,
-        categoryId: categoryId !== undefined ? categoryId : product.categoryId,
+        categoryId: validCategoryId,
         colors: colorsArr,
         gender: gender || product.gender,
         ageGroup: ageGroup || product.ageGroup,
