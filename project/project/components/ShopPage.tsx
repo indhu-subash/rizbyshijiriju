@@ -72,6 +72,20 @@ export function ShopPage({
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Keep state synchronized with URL search parameter changes
+  useEffect(() => {
+    setCategory(initialCategory || '');
+  }, [initialCategory]);
+
+  useEffect(() => {
+    setCollection(initialCollection || '');
+  }, [initialCollection]);
+
+  useEffect(() => {
+    setQuery(initialQuery || '');
+    setDebouncedQuery(initialQuery || '');
+  }, [initialQuery]);
+
   // Debounce search query input
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -106,11 +120,24 @@ export function ShopPage({
             setItems(res.products);
           } else {
             const matchesCategory = (p: any, cat: string) => {
-              const c = cat.toLowerCase();
+              if (!cat) return true;
+              const c = cat.toLowerCase().trim();
               const singular = c.endsWith('s') ? c.slice(0, -1) : c;
               const pCat = (p.category || '').toLowerCase();
               const pName = (p.name || '').toLowerCase();
+              const pGender = (p.gender || '').toLowerCase();
+              const pCollection = (p.collection || '').toLowerCase();
               const pTags = (p.tags || []).map((t: string) => t.toLowerCase());
+
+              if (c.includes('anklet')) return pCat.includes('anklet') || pName.includes('anklet') || pTags.includes('anklets') || pTags.includes('anklet');
+              if (c.includes('bangle')) return pCat.includes('bangle') || pCat.includes('bracelet') || pName.includes('bangle') || pTags.includes('bangles') || pTags.includes('bangle');
+              if (c.includes('pendant')) return pCat.includes('pendant') || pCat.includes('necklace') || pName.includes('pendant') || pTags.includes('pendants') || pTags.includes('pendant');
+              if (c.includes('hair')) return pCat.includes('hair') || pName.includes('hair') || pTags.includes('hair');
+              if (c.includes('nose')) return pCat.includes('nose') || pName.includes('nose') || pTags.includes('nose');
+              if (c.includes('stud')) return pCat.includes('stud') || pCat.includes('earring') || pName.includes('stud') || pTags.includes('studs');
+              if (c.includes('men')) return pGender === 'men' || pCollection.includes('men') || pCat.includes('men') || pTags.includes('men');
+              if (c.includes('kid')) return pGender === 'kids' || pCollection.includes('kids') || pCat.includes('kid') || pTags.includes('kids');
+
               return (
                 pCat === c ||
                 pCat.includes(c) ||
@@ -123,7 +150,8 @@ export function ShopPage({
             };
 
             const matchesCollection = (p: any, col: string) => {
-              const c = col.toLowerCase();
+              if (!col) return true;
+              const c = col.toLowerCase().trim();
               const pCol = (p.collection || '').toLowerCase();
               const pName = (p.name || '').toLowerCase();
               const pTags = (p.tags || []).map((t: string) => t.toLowerCase());
@@ -155,14 +183,17 @@ export function ShopPage({
         console.error('API load products failed, using fallback:', err);
         if (isMounted) {
           const matchesCategory = (p: any, cat: string) => {
-            const c = cat.toLowerCase();
+            if (!cat) return true;
+            const c = cat.toLowerCase().trim();
             const singular = c.endsWith('s') ? c.slice(0, -1) : c;
             const pCat = (p.category || '').toLowerCase();
             const pName = (p.name || '').toLowerCase();
-            return pCat.includes(c) || pCat.includes(singular) || pName.includes(c) || pName.includes(singular);
+            const pGender = (p.gender || '').toLowerCase();
+            return pCat.includes(c) || pCat.includes(singular) || pName.includes(c) || pName.includes(singular) || (c.includes('men') && pGender === 'men') || (c.includes('kid') && pGender === 'kids');
           };
           const matchesCollection = (p: any, col: string) => {
-            const c = col.toLowerCase();
+            if (!col) return true;
+            const c = col.toLowerCase().trim();
             const pCol = (p.collection || '').toLowerCase();
             const pName = (p.name || '').toLowerCase();
             return pCol.includes(c) || pName.includes(c);
