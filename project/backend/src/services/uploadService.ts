@@ -83,14 +83,19 @@ export async function uploadImage(
   originalName: string,
   mimeType: string
 ): Promise<string> {
-  const isProd = process.env.NODE_ENV === 'production';
+  const isServerProduction =
+    process.env.NODE_ENV === 'production' ||
+    !!process.env.RAILWAY_ENVIRONMENT ||
+    !!process.env.RAILWAY_STATIC_URL ||
+    process.env.PORT !== undefined;
+
   const config = getR2Config();
   const client = getS3Client();
 
   const fileExt = path.extname(originalName) || '.jpg';
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${fileExt}`;
 
-  // 1. Upload to Cloudflare R2 if configured
+  // 1. Upload to Cloudflare R2 if client is configured
   if (client && config.bucketName && config.publicUrl) {
     console.log(`[R2 UPLOAD START] Bucket: ${config.bucketName}, Key: ${fileName}, Size: ${fileBuffer.length} bytes`);
     try {
@@ -116,25 +121,33 @@ export async function uploadImage(
         key: fileName,
       });
 
-      if (isProd) {
-        throw new Error(`R2 Upload failed: ${error?.message || 'Cloudflare R2 storage error.'}`);
-      }
+      throw new Error(`Cloudflare R2 upload failed: ${error?.message || 'Storage service error.'}`);
     }
   }
 
-  // If R2 is not configured in production, raise explicit error
-  if (isProd) {
-    console.error('[R2 CONFIG FAILURE] Missing R2 credentials in production environment.', {
+  // 2. In server / production / Railway environment, throw explicit error if R2 credentials missing
+  if (isServerProduction || !config.isConfigured) {
+    console.error('[R2 CONFIG FAILURE] Missing or invalid R2 credentials on Railway server.', {
       hasAccountId: !!config.accountId,
       hasAccessKeyId: !!config.accessKeyId,
       hasSecretKey: !!config.secretAccessKey,
       bucketName: config.bucketName,
       publicUrl: config.publicUrl,
     });
-    throw new Error('Production Configuration Error: Cloudflare R2 credentials are missing or incomplete on Railway.');
+    throw new Error(
+      `R2 Configuration Error: Cloudflare R2 credentials (${
+        !config.accountId
+          ? 'Account ID'
+          : !config.accessKeyId
+          ? 'Access Key'
+          : !config.secretAccessKey
+          ? 'Secret Key'
+          : 'Config'
+      }) are missing or incomplete on Railway.`
+    );
   }
 
-  // 2. Development local upload fallback
+  // 3. Pure local development fallback ONLY when running on local machine
   const filePath = path.join(localUploadsDir, fileName);
   await fs.promises.writeFile(filePath, fileBuffer);
   
