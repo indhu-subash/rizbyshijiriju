@@ -33,13 +33,16 @@ export default function AdminProducts() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      // Include deactivated ones too by requesting via administrative list or general list.
-      // General list handles active only by default on endpoints, but since getProducts is general, 
-      // let's fetch using our lists endpoint.
       const res = await api.products.list({ category, collection });
-      setProducts(res.products);
+      if (res && Array.isArray(res.products)) {
+        setProducts(res.products);
+      } else {
+        setProducts([]);
+        if (res?.error) setError(res.error);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load products list.');
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -56,13 +59,13 @@ export default function AdminProducts() {
   };
 
   // Filter products by search query client-side
-  const filteredProducts = products.filter((p) => {
+  const filteredProducts = (products || []).filter((p) => {
+    if (!p) return false;
     const q = query.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q) ||
-      p.collection.toLowerCase().includes(q)
-    );
+    const nameStr = (p.name || '').toLowerCase();
+    const catStr = (p.category || '').toLowerCase();
+    const colStr = (p.collection || '').toLowerCase();
+    return nameStr.includes(q) || catStr.includes(q) || colStr.includes(q);
   });
 
   return (

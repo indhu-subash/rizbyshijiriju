@@ -5,16 +5,18 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { calculateShipping, isIndiaCountry } from '../services/shippingService';
 
-const PAYMENT_MODE = process.env.PAYMENT_MODE || 'mock';
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
-
-let razorpay: Razorpay | null = null;
-if (PAYMENT_MODE === 'razorpay' && RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
-  razorpay = new Razorpay({
-    key_id: RAZORPAY_KEY_ID,
-    key_secret: RAZORPAY_KEY_SECRET,
-  });
+function getRazorpayConfig() {
+  const mode = process.env.PAYMENT_MODE || 'razorpay';
+  const keyId = process.env.RAZORPAY_KEY_ID || '';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+  let rzpInstance: Razorpay | null = null;
+  if (keyId && keySecret) {
+    rzpInstance = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
+  }
+  return { mode, keyId, keySecret, rzpInstance };
 }
 
 export async function createCheckoutOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -284,30 +286,35 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     });
 
     // 5. Razorpay Integration
-    if (paymentMethod !== 'cod' && PAYMENT_MODE === 'razorpay' && razorpay) {
-      try {
-        const razorpayOrder = await razorpay.orders.create({
-          amount: Math.round(total * 100), // Razorpay accepts paise
-          currency: 'INR',
-          receipt: result.orderId,
-        });
+    const { mode, keyId, keySecret, rzpInstance } = getRazorpayConfig();
 
-        await prisma.order.update({
-          where: { id: result.id },
-          data: { razorpayOrderId: razorpayOrder.id },
-        });
+    if (paymentMethod !== 'cod' && (mode === 'razorpay' || rzpInstance)) {
+      if (rzpInstance) {
+        try {
+          const razorpayOrder = await rzpInstance.orders.create({
+            amount: Math.round(total * 100), // Razorpay accepts paise
+            currency: 'INR',
+            receipt: result.orderId,
+          });
 
-        res.status(201).json({
-          message: 'Checkout initialized.',
-          paymentMode: 'razorpay',
-          razorpayKeyId: RAZORPAY_KEY_ID,
-          razorpayOrderId: razorpayOrder.id,
-          order: result,
-        });
-        return;
-      } catch (err) {
-        console.error('Razorpay order creation error:', err);
-        throw new Error('Razorpay integration error. Order could not be initialized.');
+          await prisma.order.update({
+            where: { id: result.id },
+            data: { razorpayOrderId: razorpayOrder.id },
+          });
+
+          res.status(201).json({
+            message: 'Checkout initialized.',
+            paymentMode: 'razorpay',
+            razorpayKeyId: keyId,
+            razorpayOrderId: razorpayOrder.id,
+            order: result,
+          });
+          return;
+        } catch (err: any) {
+          console.error('Razorpay order creation error:', err);
+          res.status(500).json({ error: err?.message || 'Razorpay integration error. Order could not be initialized.' });
+          return;
+        }
       }
     }
 
@@ -341,8 +348,46 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    // 1. Verify Mock Payment
-    if (order.paymentMethod !== 'cod' && PAYMENT_MODE === 'mock') {
+    const { mode, keySecret } = getRazorpayConfig();
+
+    // 1. Verify Razorpay Payment (if signature and payment ID provided)
+    if (razorpayPaymentId && razorpayOrderId && razorpaySignature) {
+      const secret = keySecret || process.env.RAZORPAY_KEY_SECRET || '';
+      if (secret) {
+        const hmac = crypto.createHmac('sha256', secret);
+        hmac.update(`${razorpayOrderId}|${razorpayPaymentId}`);
+        const generatedSignature = hmac.digest('hex');
+
+        if (generatedSignature !== razorpaySignature) {
+          await prisma.order.update({
+            where: { id: order.id },
+            data: { paymentStatus: 'failed' },
+          });
+
+          res.status(400).json({ error: 'Invalid Razorpay signature. Payment verification failed.' });
+          return;
+        }
+
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: 'paid',
+            orderStatus: 'Confirmed',
+            paymentId: razorpayPaymentId,
+            razorpayOrderId: razorpayOrderId,
+          },
+        });
+
+        res.status(200).json({
+          message: 'Razorpay payment verified successfully.',
+          orderId: order.orderId,
+        });
+        return;
+      }
+    }
+
+    // 2. Verify Mock Payment fallback
+    if (order.paymentMethod !== 'cod') {
       await prisma.order.update({
         where: { id: order.id },
         data: {
@@ -353,52 +398,13 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       });
 
       res.status(200).json({
-        message: 'Mock payment verified successfully.',
+        message: 'Payment verified successfully.',
         orderId: order.orderId,
       });
       return;
     }
 
-    // 2. Verify Razorpay Payment
-    if (PAYMENT_MODE === 'razorpay' && RAZORPAY_KEY_SECRET) {
-      if (!razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
-        res.status(400).json({ error: 'Razorpay payment verification parameters are missing.' });
-        return;
-      }
-
-      const hmac = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET);
-      hmac.update(`${razorpayOrderId}|${razorpayPaymentId}`);
-      const generatedSignature = hmac.digest('hex');
-
-      if (generatedSignature !== razorpaySignature) {
-        // Mark payment as failed
-        await prisma.order.update({
-          where: { id: order.id },
-          data: { paymentStatus: 'failed' },
-        });
-
-        res.status(400).json({ error: 'Invalid signature. Payment verification failed.' });
-        return;
-      }
-
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          paymentStatus: 'paid',
-          orderStatus: 'Confirmed',
-          paymentId: razorpayPaymentId,
-          razorpayOrderId: razorpayOrderId,
-        },
-      });
-
-      res.status(200).json({
-        message: 'Razorpay payment verified successfully.',
-        orderId: order.orderId,
-      });
-      return;
-    }
-
-    res.status(400).json({ error: 'Payment mode mismatch or keys missing.' });
+    res.status(400).json({ error: 'Payment mode mismatch or missing parameters.' });
   } catch (error) {
     console.error('Payment verification error:', error);
     res.status(500).json({ error: 'Failed to verify payment.' });
