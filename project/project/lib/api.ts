@@ -123,6 +123,7 @@ export const api = {
       return request(`/admin/products${str ? `?${str}` : ''}`);
     },
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
+    seedProducts: () => request('/admin/products/seed', { method: 'POST' }),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteProduct: (id: string) => request(`/admin/products/${id}`, { method: 'DELETE' }),
     uploadImage: (file: File) => {

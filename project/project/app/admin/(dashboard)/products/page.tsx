@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Sparkles } from 'lucide-react';
 
 type Product = {
   id: string;
@@ -43,6 +43,24 @@ export default function AdminProducts() {
     }
   };
 
+  const [seeding, setSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState('');
+
+  const handleSeedProducts = async () => {
+    setSeeding(true);
+    setError('');
+    setSeedMessage('');
+    try {
+      const res = await api.admin.seedProducts();
+      setSeedMessage(res.message || 'Default catalog seeded successfully!');
+      await loadProducts();
+    } catch (err: any) {
+      setError(err.message || 'Failed to seed products catalog.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const handleDeactivate = async (id: string) => {
     if (!confirm('Are you sure you want to deactivate this product? It will no longer show up in the shop.')) return;
     try {
@@ -71,9 +89,19 @@ export default function AdminProducts() {
           <span className="eyebrow">Inventory</span>
           <h1 className="serif text-3xl font-semibold">Manage Products</h1>
         </div>
-        <Link href="/admin/products/new" className="button flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={16} /> Add Product
-        </Link>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={handleSeedProducts}
+            disabled={seeding}
+            className="button secondary flex items-center gap-2"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Sparkles size={16} /> {seeding ? 'Seeding Catalog...' : 'Seed Defaults'}
+          </button>
+          <Link href="/admin/products/new" className="button flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={16} /> Add Product
+          </Link>
+        </div>
       </div>
 
       {/* Filters Bar */}
@@ -131,13 +159,27 @@ export default function AdminProducts() {
       </div>
 
       {error && <div className="error-banner mb-6">{error}</div>}
+      {seedMessage && <div className="success-banner mb-6">{seedMessage}</div>}
 
       {/* Table */}
       {loading ? (
         <p className="muted text-center py-10">Loading products...</p>
       ) : filteredProducts.length === 0 ? (
-        <div className="text-center py-12 border rounded bg-white">
+        <div className="text-center py-12 border rounded bg-white" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
           <p className="muted">No products found matching your filters.</p>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+            <button
+              onClick={handleSeedProducts}
+              disabled={seeding}
+              className="button secondary flex items-center gap-2"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Sparkles size={15} /> {seeding ? 'Seeding Products...' : 'Seed Default Catalog'}
+            </button>
+            <Link href="/admin/products/new" className="button" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Plus size={15} /> Add New Product
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="table-responsive border rounded bg-white">

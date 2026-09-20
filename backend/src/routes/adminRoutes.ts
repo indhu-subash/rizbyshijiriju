@@ -18,6 +18,7 @@ import {
   createShippingRule,
   editShippingRule,
   deleteShippingRule,
+  seedProducts,
 } from '../controllers/adminController';
 import {
   getCategories,
@@ -51,6 +52,7 @@ router.put('/orders/:id', updateOrderStatus as any);
 // Products CRUD
 router.get('/products', getAdminProducts as any);
 router.post('/products', createProduct as any);
+router.post('/products/seed', seedProducts as any);
 router.put('/products/:id', editProduct as any);
 router.delete('/products/:id', deleteProduct as any);
 
