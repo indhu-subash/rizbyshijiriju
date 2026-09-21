@@ -264,8 +264,29 @@ export function CheckoutPage() {
   };
 
   const validateStep1 = () => {
-    if (!name.trim() || !phone.trim() || !email.trim() || !addressLine.trim() || !city.trim() || !state.trim()) {
-      setCheckoutError('Please fill in all required shipping address fields.');
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
+    const cleanEmail = email.trim();
+    const cleanAddress = addressLine.trim();
+    const cleanCity = city.trim();
+    const cleanState = state.trim();
+
+    if (!cleanName || !cleanPhone || !cleanEmail || !cleanAddress || !cleanCity || !cleanState) {
+      setCheckoutError('All customer details (Name, Phone, Email, Address, City, State) are strictly required before proceeding.');
+      return false;
+    }
+
+    // Email regex validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setCheckoutError('Please enter a valid email address (e.g., name@example.com).');
+      return false;
+    }
+
+    // Phone number validation (at least 10 digits)
+    const digitsOnly = cleanPhone.replace(/[^0-9]/g, '');
+    if (digitsOnly.length < 10) {
+      setCheckoutError('Please enter a valid 10-digit mobile phone number.');
       return false;
     }
 
@@ -307,12 +328,12 @@ export function CheckoutPage() {
     setIsSubmitting(true);
 
     const shippingAddress = {
-      name,
-      phone,
-      email,
-      addressLine,
-      city,
-      state,
+      name: name.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+      addressLine: addressLine.trim(),
+      city: city.trim(),
+      state: state.trim(),
       pincode: deliveryType === 'IN' ? pincode.trim() : postalCode.trim(),
       postalCode: deliveryType === 'IN' ? pincode.trim() : postalCode.trim(),
       country: deliveryType === 'IN' ? 'India' : selectedCountryObj.name,
@@ -325,7 +346,7 @@ export function CheckoutPage() {
     }));
 
     try {
-      // 1. Initialize Order Creation on Backend (Authoritative Rate Calculation)
+      // 1. Initialize Order Creation on Backend
       const res = await api.payments.checkout({
         items: cartItems,
         shippingAddress,
@@ -347,7 +368,7 @@ export function CheckoutPage() {
         return;
       }
 
-      // 4. Handle Razorpay Checkout
+      // 3. Handle Razorpay Checkout
       if (res.paymentMode === 'razorpay') {
         const isLoaded = await loadRazorpayScript();
         if (!isLoaded) {
@@ -376,9 +397,22 @@ export function CheckoutPage() {
               setPlaced(true);
             } catch (err: any) {
               alert(err.message || 'Payment verification failed.');
+              await api.payments.cancel({ orderId: dbOrder.orderId });
             } finally {
               setIsSubmitting(false);
             }
+          },
+          modal: {
+            ondismiss: async function () {
+              console.log('Razorpay modal closed without payment.');
+              try {
+                await api.payments.cancel({ orderId: dbOrder.orderId });
+              } catch (e) {
+                console.error('Failed to mark unpaid order as cancelled:', e);
+              }
+              setCheckoutError('Payment was not completed or was cancelled. Your order has been marked as cancelled.');
+              setIsSubmitting(false);
+            },
           },
           prefill: {
             name: shippingAddress.name,
@@ -391,6 +425,13 @@ export function CheckoutPage() {
         };
 
         const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', async function (resp: any) {
+          try {
+            await api.payments.cancel({ orderId: dbOrder.orderId });
+          } catch (e) {}
+          setCheckoutError(resp.error?.description || 'Payment failed. Please try again.');
+          setIsSubmitting(false);
+        });
         rzp.open();
       }
     } catch (err: any) {
@@ -401,27 +442,58 @@ export function CheckoutPage() {
   };
 
   if (placed) {
+    const waText = encodeURIComponent(
+      `Hi RIZ by Shijiriju, I have placed Order #${placedOrderId}. Please process my order!`
+    );
+
     return (
       <main>
-        <section className="success-page container">
-          <div className="success-icon">
-            <Check size={28} />
+        <section className="success-page container" style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div className="success-icon" style={{ width: '64px', height: '64px', margin: '0 auto 20px', background: '#334c3d', color: '#fff', borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
+            <Check size={32} />
           </div>
-          <span className="eyebrow">Thank you</span>
-          <h1 className="serif font-semibold">
-            Order placed<br />
-            <i>successfully.</i>
+          <span className="eyebrow" style={{ color: '#a9895b', textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.82rem', fontWeight: 600 }}>Order Confirmed</span>
+          <h1 className="serif font-semibold" style={{ fontSize: '2.4rem', margin: '12px 0' }}>
+            Thank you for your purchase.<br />
+            <i style={{ fontWeight: 400, color: '#334c3d' }}>Your order is confirmed.</i>
           </h1>
-          <p>
-            Your order <b>{placedOrderId}</b> has been received and is being prepared with care.
+          <p style={{ color: '#555', fontSize: '1.05rem', maxWidth: '520px', margin: '0 auto 24px' }}>
+            Your order <strong>#{placedOrderId}</strong> has been received and verified. Confirmation details have been sent to your email (<strong>{email}</strong>).
           </p>
-          <Link href={`/track-order?order=${placedOrderId}`} className="button">
-            Track your order
-          </Link>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', maxWidth: '420px', margin: '0 auto 30px' }}>
+            <a
+              href={`https://wa.me/919072308686?text=${waText}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: '#25D366',
+                color: '#ffffff',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '0.92rem',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                boxShadow: '0 4px 12px rgba(37, 211, 102, 0.25)',
+              }}
+            >
+              📲 Connect & Track on WhatsApp (+91 9072308686)
+            </a>
+
+            <Link href={`/track-order?order=${placedOrderId}`} className="button" style={{ width: '100%', textAlign: 'center' }}>
+              Track order status
+            </Link>
+          </div>
         </section>
       </main>
     );
   }
+
 
   if (!cart.length) {
     return (
