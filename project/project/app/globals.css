@@ -3009,3 +3009,78 @@ img {
   color: var(--muted);
   margin-top: 8px;
 }
+
+/* ==========================================================================
+   AUTHORITATIVE MOBILE & TABLET RESPONSIVE OVERRIDES (END OF FILE)
+   ========================================================================== */
+
+@media screen and (max-width: 1024px) {
+  .product-detail {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 35px !important;
+    padding-top: 25px !important;
+    padding-bottom: 50px !important;
+  }
+  .cart-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 32px !important;
+    padding-top: 25px !important;
+    padding-bottom: 50px !important;
+  }
+  .checkout-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 32px !important;
+    padding-top: 25px !important;
+    padding-bottom: 50px !important;
+  }
+  .contact-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 40px !important;
+    padding-top: 30px !important;
+    padding-bottom: 60px !important;
+  }
+  .wholesale-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 40px !important;
+  }
+  .account-dashboard {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 30px !important;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .cart-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 24px !important;
+    padding-top: 15px !important;
+  }
+  .cart-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+    padding-bottom: 20px !important;
+    position: relative !important;
+  }
+  .cart-thumb {
+    width: 85px !important;
+    height: 110px !important;
+    flex-shrink: 0 !important;
+  }
+  .summary {
+    width: 100% !important;
+    padding: 20px !important;
+  }
+  .whatsapp {
+    right: 16px !important;
+    bottom: 20px !important;
+  }
+}
