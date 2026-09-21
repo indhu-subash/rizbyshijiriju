@@ -256,10 +256,11 @@ export function ProductDetail({ product }: { product: Product }) {
             </div>
             <button
               className={`wishlist-detail ${wishlist.includes(product.id) ? 'active' : ''}`}
-              onClick={() => toggleWishlist(product.id)}
+              onClick={() => toggleWishlist(product.id, product)}
             >
               <Heart size={17} fill={wishlist.includes(product.id) ? 'currentColor' : 'none'} /> Wishlist
             </button>
+
           </div>
 
           {/* Action Buttons */}

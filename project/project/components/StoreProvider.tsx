@@ -18,13 +18,21 @@ export type User = {
   role: string;
 };
 
+export type ToastNotification = {
+  id: number;
+  message: string;
+  type: 'cart' | 'wishlist';
+  productName?: string;
+  image?: string;
+};
+
 export type Store = {
   cart: CartItem[];
   wishlist: string[];
   addToCart: (p: Product, quantity?: number, color?: string) => void;
   removeFromCart: (id: string, color?: string) => void;
   updateQuantity: (id: string, color: string | undefined, n: number) => void;
-  toggleWishlist: (id: string) => void;
+  toggleWishlist: (id: string, product?: Product) => void;
   clearCart: () => void;
   cartCount: number;
   subtotal: number;
@@ -35,6 +43,10 @@ export type Store = {
   login: (u: User) => void;
   logout: () => void;
   loadingAuth: boolean;
+
+  // Toast System
+  toast: ToastNotification | null;
+  closeToast: () => void;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -48,9 +60,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loadingAuth, setLoadingAuth] = useState<boolean>(true);
 
+  // Toast State
+  const [toast, setToast] = useState<ToastNotification | null>(null);
+
+  const showToast = (message: string, type: 'cart' | 'wishlist', productName?: string, image?: string) => {
+    setToast({ id: Date.now(), message, type, productName, image });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   // Load cart, wishlist, and session on mount
   useEffect(() => {
-    // 1. Load Local Storage safely with backward compatibility for legacy items
     try {
       const rawCart = JSON.parse(localStorage.getItem('riz-cart') || '[]');
       const parsedCart: CartItem[] = Array.isArray(rawCart)
@@ -66,7 +93,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to load local storage:', e);
     }
 
-    // 2. Fetch authenticated session from backend via httpOnly Cookie
     const fetchSession = async () => {
       try {
         const data = await api.auth.me();
@@ -75,7 +101,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(true);
         }
       } catch (err) {
-        // No active session is normal for guests
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -100,7 +125,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return {
       cart,
       wishlist,
-      addToCart: (product: Product, quantity: number = 1, color?: string) =>
+      addToCart: (product: Product, quantity: number = 1, color?: string) => {
         setCart((items) => {
           const targetColor = color || undefined;
           const index = items.findIndex(
@@ -112,7 +137,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             );
           }
           return [...items, { product, quantity, color: targetColor }];
-        }),
+        });
+        showToast('Item added to cart', 'cart', product.name, product.images?.[0]);
+      },
       removeFromCart: (id: string, color?: string) =>
         setCart((items) =>
           items.filter(
@@ -127,10 +154,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               : item
           )
         ),
-      toggleWishlist: (id: string) =>
-        setWishlist((items) =>
-          items.includes(id) ? items.filter((item) => item !== id) : [...items, id]
-        ),
+      toggleWishlist: (id: string, product?: Product) => {
+        setWishlist((items) => {
+          const exists = items.includes(id);
+          if (exists) {
+            showToast('Item removed from wishlist', 'wishlist', product?.name);
+            return items.filter((item) => item !== id);
+          } else {
+            showToast('Item added to wishlist', 'wishlist', product?.name, product?.images?.[0]);
+            return [...items, id];
+          }
+        });
+      },
       clearCart: () => setCart([]),
       cartCount: cart.reduce((sum, item) => sum + item.quantity, 0),
       subtotal: cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
@@ -147,10 +182,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false);
       },
       loadingAuth,
-    };
-  }, [cart, wishlist, user, isAuthenticated, loadingAuth]);
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+      // Toast System
+      toast,
+      closeToast: () => setToast(null),
+    };
+  }, [cart, wishlist, user, isAuthenticated, loadingAuth, toast]);
+
+  return (
+    <StoreContext.Provider value={value}>
+      {children}
+
+      {/* Global Toast Notification Popup */}
+      {toast && (
+        <div className={`toast-notification ${toast.type}`}>
+          {toast.image && <img src={toast.image} alt={toast.productName || 'Product'} className="toast-img" />}
+          <div className="toast-text">
+            <strong>{toast.type === 'cart' ? 'Shopping Bag' : 'Wishlist'}</strong>
+            <span>{toast.message}{toast.productName ? `: ${toast.productName}` : ''}</span>
+          </div>
+          <button onClick={() => setToast(null)} className="toast-close" aria-label="Close notification">✕</button>
+        </div>
+      )}
+    </StoreContext.Provider>
+  );
 }
 
 export const useStore = () => {
@@ -158,3 +213,4 @@ export const useStore = () => {
   if (!value) throw new Error('StoreProvider missing');
   return value;
 };
+
