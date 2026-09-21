@@ -25,16 +25,16 @@ export function Footer() {
               Contemporary pieces, thoughtfully made.
             </p>
             <div className="socials">
-              <a href="https://instagram.com" aria-label="Instagram">
+              <a href="https://www.instagram.com/rizbyshijiriju?stkn=bnducXZ3MGFsd3ZA0" target="_blank" rel="noreferrer" aria-label="Instagram">
                 <Instagram size={17} />
               </a>
-              <a href="https://wa.me/919999999999" aria-label="WhatsApp">
+              <a href="https://wa.me/919072308686" target="_blank" rel="noreferrer" aria-label="WhatsApp">
                 <MessageCircle size={17} />
               </a>
-              <a href="https://facebook.com" aria-label="Facebook">
+              <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook">
                 <Facebook size={17} />
               </a>
-              <a href="mailto:hello@rizbyshijiriju.com" aria-label="Email">
+              <a href="mailto:rizbyshijiriju@gmail.com" aria-label="Email">
                 <Mail size={17} />
               </a>
             </div>
