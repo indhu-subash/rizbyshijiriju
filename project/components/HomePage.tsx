@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Star } from 'lucide-react';
+import { ArrowRight, Star, ShieldCheck, Sparkles, Truck, RefreshCw } from 'lucide-react';
 import { categoriesList, products } from '@/data/products';
 import { ProductGrid } from './ProductCard';
 import { Newsletter } from './Newsletter';
@@ -11,58 +11,40 @@ const heroImage = '/hero-banner.png';
 
 const featuredCollections = [
   [
-    'Anti-Tarnish',
-    'Made for everyday shine & durability.',
+    'Anti-Tarnish Collection',
+    'Made for everyday shine, water-resistant & durable.',
     '/collections/anti-tarnish',
     'https://images.pexels.com/photos/29502912/pexels-photo-29502912.jpeg?auto=compress&cs=tinysrgb&w=900',
   ],
   [
-    'Traditional',
-    'Timeless Kerala-inspired elegance.',
+    'Traditional Kerala Heritage',
+    'Timeless Kerala-inspired royal elegance.',
     '/collections/traditional',
     'https://images.pexels.com/photos/38344601/pexels-photo-38344601.jpeg?auto=compress&cs=tinysrgb&w=900',
   ],
   [
-    'Bridal',
-    'For moments that deserve to last forever.',
+    'Bridal & Celebration',
+    'For grand moments that deserve to last forever.',
     '/collections/bridal',
     'https://images.pexels.com/photos/9901809/pexels-photo-9901809.jpeg?auto=compress&cs=tinysrgb&w=900',
   ],
   [
-    'Silver Replica',
-    'High-grade silver finish statement pieces.',
+    'Silver Replica Statement',
+    'High-grade silver finish statement craft.',
     '/collections/silver-replica',
     'https://images.pexels.com/photos/6256046/pexels-photo-6256046.jpeg?auto=compress&cs=tinysrgb&w=900',
   ],
   [
-    'Diamond Replica',
-    'High polish diamond replica brilliance.',
+    'Diamond Replica Polish',
+    'High Polish AD Diamond brilliance.',
     '/collections/diamond-replica',
     'https://images.pexels.com/photos/10907855/pexels-photo-10907855.jpeg?auto=compress&cs=tinysrgb&w=900',
   ],
   [
-    'AD Collections',
-    'Intricate American Diamond artistry.',
+    'AD Artistry Collection',
+    'Intricate American Diamond design.',
     '/collections/ad-collections',
     'https://images.pexels.com/photos/30200528/pexels-photo-30200528.jpeg?auto=compress&cs=tinysrgb&w=900',
-  ],
-  [
-    "Men's Collection",
-    'Quietly bold. Effortlessly refined.',
-    '/collections/mens',
-    'https://images.pexels.com/photos/8512143/pexels-photo-8512143.jpeg?auto=compress&cs=tinysrgb&w=900',
-  ],
-  [
-    'Kids Collection',
-    'Delicate treasures for little celebrations.',
-    '/collections/kids',
-    'https://images.pexels.com/photos/37601638/pexels-photo-37601638.jpeg?auto=compress&cs=tinysrgb&w=900',
-  ],
-  [
-    'RIZ House of Fashion',
-    'Exclusive signature house creations.',
-    '/collections/riz-house-of-fashion',
-    'https://images.pexels.com/photos/29502932/pexels-photo-29502932.jpeg?auto=compress&cs=tinysrgb&w=900',
   ],
 ];
 
@@ -72,66 +54,75 @@ export function HomePage() {
   const bestsellers = products.filter((p) => p.bestseller).slice(0, 4);
 
   return (
-    <main>
-      {/* Editorial Hero Section */}
-      <section className="hero-editorial">
-        <div className="container hero-editorial-inner">
-          <div className="hero-editorial-copy">
-            <span className="eyebrow">TIMELESS JEWELLERY • MODERN WOMEN</span>
-            <h1 className="serif">
+    <main className="homepage-root">
+      {/* Full-Width Luxury Editorial Hero Banner - Matching Reference Image */}
+      <section className="hero-editorial-full">
+        <div className="hero-banner-image-wrap">
+          <Image
+            src={heroImage}
+            alt="Elegance in Every Detail - RIZ BY SHIJIRIJU"
+            fill
+            priority
+            sizes="100vw"
+            className="hero-full-bg-img"
+          />
+        </div>
+        <div className="container hero-full-content-container">
+          <div className="hero-editorial-copy-full">
+            <span className="eyebrow-hero">TIMELESS JEWELLERY • MODERN WOMEN</span>
+            <h1 className="hero-title-serif">
               Elegance<br />
-              in Every <i>Detail</i>
+              in Every <i className="serif-italic-accent">Detail</i>
             </h1>
-            <p>
+            <p className="hero-subtitle">
               Beautifully crafted, anti-tarnish jewellery for your everyday and every special moment.
             </p>
             <div className="hero-actions">
-              <Link className="button" href="/shop">
+              <Link className="button button-hero-primary" href="/shop">
                 Shop Now <ArrowRight size={15} />
               </Link>
-              <Link className="button secondary" href="/collections/anti-tarnish">
+              <Link className="button button-hero-secondary" href="/collections/anti-tarnish">
                 Explore Collections
               </Link>
             </div>
             <div className="hero-signoff">
-              <span /> Affordable luxury, made to live in
+              <span className="signoff-dot" /> Affordable luxury, made to live in
             </div>
-          </div>
-          <div className="hero-editorial-image">
-            <Image
-              src={heroImage}
-              alt="Elegance in Every Detail - RIZ BY SHIJIRIJU"
-              fill
-              priority
-              sizes="(max-width:640px) 100vw, 50vw"
-            />
           </div>
         </div>
       </section>
 
-      {/* Featured Collections Grid */}
-      <section className="section container">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">FIND YOUR KIND OF GLOW</span>
-            <h2>Explore Our Collections</h2>
+      {/* Brand Value Pillars Bar */}
+      <section className="pillars-bar">
+        <div className="container pillars-grid">
+          <div className="pillar-item">
+            <ShieldCheck size={20} className="pillar-icon" />
+            <div>
+              <strong>Anti-Tarnish Guaranteed</strong>
+              <small>Water-resistant & everyday durable</small>
+            </div>
           </div>
-          <p>Curated lines for everyday wear, wedding celebrations, and distinct statement looks.</p>
-        </div>
-        <div className="collection-editorial-grid">
-          {featuredCollections.map(([title, description, href, image], i) => (
-            <Link href={href} className={`collection-editorial-card card-${i}`} key={title}>
-              <Image src={image} alt={title} fill sizes="(max-width:640px) 50vw, 25vw" />
-              <div className="collection-card-shade" />
-              <div className="collection-card-copy">
-                <span>{title}</span>
-                <small>{description}</small>
-                <b>
-                  Explore Collection <ArrowRight size={13} />
-                </b>
-              </div>
-            </Link>
-          ))}
+          <div className="pillar-item">
+            <Sparkles size={20} className="pillar-icon" />
+            <div>
+              <strong>Kerala Craftsmanship</strong>
+              <small>Heritage motifs reimagined for today</small>
+            </div>
+          </div>
+          <div className="pillar-item">
+            <Truck size={20} className="pillar-icon" />
+            <div>
+              <strong>Free Shipping over ₹2,000</strong>
+              <small>Fast insured delivery across India</small>
+            </div>
+          </div>
+          <div className="pillar-item">
+            <RefreshCw size={20} className="pillar-icon" />
+            <div>
+              <strong>Easy 7-Day Returns</strong>
+              <small>Hassle-free guarantee & support</small>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -152,6 +143,32 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* Featured Collections Grid */}
+      <section className="section container">
+        <div className="section-head">
+          <div>
+            <span className="eyebrow">FIND YOUR KIND OF GLOW</span>
+            <h2>Explore Our Collections</h2>
+          </div>
+          <p>Curated lines for everyday wear, wedding celebrations, and distinct statement looks.</p>
+        </div>
+        <div className="collection-editorial-grid">
+          {featuredCollections.map(([title, description, href, image], i) => (
+            <Link href={href} className={`collection-editorial-card card-${i}`} key={title}>
+              <Image src={image} alt={title} fill sizes="(max-width:640px) 100vw, (max-width:1024px) 50vw, 33vw" />
+              <div className="collection-card-shade" />
+              <div className="collection-card-copy">
+                <span>{title}</span>
+                <small>{description}</small>
+                <b>
+                  Explore Collection <ArrowRight size={13} />
+                </b>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {/* Split Feature: Traditional Collection */}
       <section className="split-feature container">
         <div className="split-feature-image">
@@ -166,10 +183,10 @@ export function HomePage() {
           <span className="eyebrow">TRADITIONAL HERITAGE</span>
           <h2 className="serif">
             Kerala Craft,<br />
-            <i>Reimagined.</i>
+            <i className="serif-italic-accent">Reimagined.</i>
           </h2>
           <p>Pieces inspired by Kerala’s rich cultural legacy, gracefully reimagined for the modern connoisseur.</p>
-          <Link href="/collections/traditional" className="button">
+          <Link href="/collections/traditional" className="button button-hero-primary">
             Explore Traditional <ArrowRight size={15} />
           </Link>
         </div>
@@ -196,7 +213,7 @@ export function HomePage() {
             <span className="eyebrow">FOR HIM</span>
             <h2 className="serif">
               Quietly Bold.<br />
-              <i>Effortlessly Refined.</i>
+              <i className="serif-italic-accent">Effortlessly Refined.</i>
             </h2>
             <p>Sleek rings, minimalist chains, and polished bracelets designed for effortless daily confidence.</p>
             <Link href="/collections/mens" className="button light">

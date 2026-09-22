@@ -4416,3 +4416,190 @@ img {
     scroll-behavior: auto !important;
   }
 }
+
+/* 10. Luxury Editorial Full-Width Hero Banner */
+.hero-editorial-full {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7.2;
+  min-height: 520px;
+  max-height: 680px;
+  background-color: #f7f3ed;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.hero-banner-image-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.hero-full-bg-img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.hero-full-content-container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 48px;
+}
+
+.hero-editorial-copy-full {
+  max-width: 480px;
+}
+
+.eyebrow-hero {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #596759;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.hero-title-serif {
+  font-family: var(--serif);
+  font-size: clamp(38px, 4.5vw, 62px);
+  line-height: 1.1;
+  color: #2c382e;
+  margin: 0 0 20px;
+  font-weight: 500;
+}
+
+.serif-italic-accent {
+  font-style: italic;
+  font-weight: 400;
+  color: #596759;
+}
+
+.hero-subtitle {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #5d534c;
+  margin: 0 0 32px;
+  max-width: 420px;
+}
+
+.button-hero-primary {
+  background: #334c3d !important;
+  border-color: #334c3d !important;
+  color: #ffffff !important;
+  padding: 14px 26px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+}
+
+.button-hero-primary:hover {
+  background: #596759 !important;
+  border-color: #596759 !important;
+}
+
+.button-hero-secondary {
+  background: transparent !important;
+  border: 1px solid #b7a896 !important;
+  color: #334c3d !important;
+  padding: 14px 24px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+}
+
+.button-hero-secondary:hover {
+  background: #334c3d !important;
+  border-color: #334c3d !important;
+  color: #ffffff !important;
+}
+
+.hero-signoff {
+  margin-top: 36px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8c7e72;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signoff-dot {
+  width: 20px;
+  height: 1px;
+  background: #b7a896;
+  display: inline-block;
+}
+
+/* Brand Pillars Bar */
+.pillars-bar {
+  background: #f4efe7;
+  border-top: 1px solid #e5dcd0;
+  border-bottom: 1px solid #e5dcd0;
+  padding: 24px 0;
+}
+
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.pillar-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #334c3d;
+}
+
+.pillar-icon {
+  color: #596759;
+  flex-shrink: 0;
+}
+
+.pillar-item strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c382e;
+}
+
+.pillar-item small {
+  display: block;
+  font-size: 11px;
+  color: #756a61;
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .pillars-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-editorial-full {
+    min-height: 480px;
+    aspect-ratio: auto;
+    padding: 40px 0;
+  }
+
+  .hero-full-content-container {
+    padding: 0 20px;
+  }
+
+  .hero-title-serif {
+    font-size: 36px;
+  }
+
+  .pillars-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
