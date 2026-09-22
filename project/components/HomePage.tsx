@@ -205,21 +205,27 @@ export function HomePage() {
         <ProductGrid items={newArrivals} />
       </section>
 
-      {/* Men's Feature Banner - Clean Full-Width Display */}
-      <section className="section container">
-        <Link href="/collections/mens" className="mens-banner-link" aria-label="Shop Men's Jewellery Collection">
-          <div className="mens-banner-image-wrap">
-            <Image
-              src="/mens-banner.jpg"
-              alt="Men's Jewellery Collection - Crafted for Modern Men"
-              width={1280}
-              height={640}
-              className="mens-banner-img"
-              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 100vw, 1280px"
-              priority
-            />
+      {/* Men's Feature Banner */}
+      <section className="dark-feature">
+        <div className="container dark-feature-inner">
+          <div>
+            <span className="eyebrow">FOR HIM</span>
+            <h2 className="serif">
+              Quietly Bold.<br />
+              <i className="serif-italic-accent">Effortlessly Refined.</i>
+            </h2>
+            <p>Sleek rings, minimalist chains, and polished bracelets designed for effortless daily confidence.</p>
+            <Link href="/collections/mens" className="button light">
+              Shop Men's <ArrowRight size={15} />
+            </Link>
           </div>
-        </Link>
+          <Image
+            src="/mens-banner.png"
+            alt="Men's Jewellery Collection - Quietly Bold. Effortlessly Refined."
+            fill
+            sizes="50vw"
+          />
+        </div>
       </section>
 
       {/* Bestsellers Section */}
