@@ -220,8 +220,8 @@ export function HomePage() {
             </Link>
           </div>
           <Image
-            src="https://images.pexels.com/photos/8512143/pexels-photo-8512143.jpeg?auto=compress&cs=tinysrgb&w=1200"
-            alt="Men's Jewellery Collection"
+            src="/mens-banner.jpg"
+            alt="Men's Jewellery Collection - Crafted for Modern Men"
             fill
             sizes="50vw"
           />
