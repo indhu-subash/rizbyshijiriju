@@ -78,7 +78,73 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-app.listen(PORT, () => {
+import prisma from './config/db';
+import { INITIAL_PRODUCTS } from './config/initialProducts';
+
+app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
+
+  // Auto-seed default products if database is empty on server startup
+  try {
+    const productCount = await prisma.product.count();
+
+    if (productCount === 0) {
+      console.log('Database empty! Auto-seeding default product catalog...');
+
+      let seeded = 0;
+
+      for (const item of INITIAL_PRODUCTS) {
+        const slug = item.name
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '');
+
+        const existing = await prisma.product.findUnique({
+          where: { slug },
+        });
+
+        if (!existing) {
+          await prisma.product.create({
+            data: {
+              name: item.name,
+              slug,
+              description:
+                item.description ||
+                'A considered piece for days that call for a little more glow. Light enough to live in, distinctive enough to be remembered.',
+              price: item.price,
+              originalPrice: item.originalPrice || null,
+              category: item.category,
+              collection: item.collection,
+              colors: item.colors || [],
+              gender: item.gender || 'Women',
+              ageGroup: item.gender === 'Kids' ? 'Kids' : 'Adult',
+              images: item.images,
+              material: item.material || '925 silver',
+              finish: item.finish || '18K gold vermeil',
+              stock: item.stock ?? 15,
+              tags: [
+                item.collection.toLowerCase(),
+                'gold',
+                'giftable',
+                item.category.toLowerCase(),
+              ],
+              featured: item.featured ?? false,
+              bestseller: item.bestseller ?? false,
+              newArrival: item.newArrival ?? false,
+              isActive: true,
+            },
+          });
+
+          seeded++;
+        }
+      }
+
+      console.log(
+        `Successfully auto-seeded ${seeded} default products on startup.`
+      );
+    }
+  } catch (seedErr) {
+    console.error('Auto-seed check error on startup:', seedErr);
+  }
 });

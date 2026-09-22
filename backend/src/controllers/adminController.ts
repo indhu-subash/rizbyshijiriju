@@ -2,6 +2,7 @@ import { Response } from 'express';
 import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { uploadImage, deleteImage } from '../services/uploadService';
+import { INITIAL_PRODUCTS } from '../config/initialProducts';
 
 // 1. Dashboard Analytics
 export async function getDashboardStats(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -155,7 +156,16 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : [];
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : [];
-    const imagesArr = images ? (Array.isArray(images) ? images : [images]) : [];
+    const rawImages = images ? (Array.isArray(images) ? images : [images]) : [];
+    const imagesArr = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+
+    let validCategoryId: string | null = null;
+    if (categoryId && typeof categoryId === 'string' && categoryId.trim().length > 0) {
+      const catExists = await prisma.category.findUnique({ where: { id: categoryId.trim() } });
+      if (catExists) {
+        validCategoryId = catExists.id;
+      }
+    }
 
     const product = await prisma.product.create({
       data: {
@@ -166,7 +176,7 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
         originalPrice: originalPrice ? parseFloat(originalPrice) : null,
         category,
         collection,
-        categoryId: categoryId || null,
+        categoryId: validCategoryId,
         colors: colorsArr,
         gender: gender || 'Women',
         ageGroup: ageGroup || 'Adult',
@@ -221,36 +231,67 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : product.tags;
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : product.colors;
-    const imagesArr = images ? (Array.isArray(images) ? images : [images]) : product.images;
-
-    let slug = product.slug;
-    if (name && name !== product.name) {
-      slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const existing = await prisma.product.findFirst({ where: { slug, id: { not: id } } });
-      if (existing) {
-        res.status(400).json({ error: 'A product with this name already exists.' });
-        return;
+    
+    let imagesArr = product.images;
+    if (images !== undefined) {
+      const rawImages = Array.isArray(images) ? images : [images];
+      const validImages = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+      if (validImages.length > 0) {
+        imagesArr = validImages;
       }
     }
+
+    let slug = product.slug;
+    if (name && typeof name === 'string' && name.trim() && name.trim() !== product.name) {
+      const generatedSlug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      if (generatedSlug.length > 0) {
+        slug = generatedSlug;
+        const existing = await prisma.product.findFirst({ where: { slug, id: { not: id } } });
+        if (existing) {
+          slug = `${generatedSlug}-${Date.now().toString().slice(-4)}`;
+        }
+      }
+    }
+
+    // Safely validate categoryId to prevent Prisma foreign key constraint errors (P2003)
+    let validCategoryId: string | null = null;
+    const candidateCatId = categoryId !== undefined ? categoryId : product.categoryId;
+    if (candidateCatId && typeof candidateCatId === 'string' && candidateCatId.trim().length > 0) {
+      const catExists = await prisma.category.findUnique({ where: { id: candidateCatId.trim() } });
+      if (catExists) {
+        validCategoryId = catExists.id;
+      }
+    }
+
+    const parsedPrice = price !== undefined && !isNaN(parseFloat(price)) ? parseFloat(price) : product.price;
+    
+    let parsedOriginalPrice: number | null = product.originalPrice;
+    if (originalPrice !== undefined) {
+      parsedOriginalPrice = originalPrice && !isNaN(parseFloat(originalPrice)) ? parseFloat(originalPrice) : null;
+    }
+
+    const parsedStock = stock !== undefined && !isNaN(parseInt(stock)) ? parseInt(stock) : product.stock;
+    const itemMaterial = material || req.body.metal || product.material || 'Silver';
+    const itemFinish = finish || product.finish || 'Polished';
 
     const updated = await prisma.product.update({
       where: { id },
       data: {
-        name: name || product.name,
+        name: name ? String(name).trim() : product.name,
         slug,
-        description: description || product.description,
-        price: price !== undefined ? parseFloat(price) : product.price,
-        originalPrice: originalPrice !== undefined ? (originalPrice ? parseFloat(originalPrice) : null) : product.originalPrice,
-        category: category || product.category,
-        collection: collection || product.collection,
-        categoryId: categoryId !== undefined ? categoryId : product.categoryId,
+        description: description ? String(description).trim() : product.description,
+        price: parsedPrice,
+        originalPrice: parsedOriginalPrice,
+        category: category ? String(category).trim() : product.category,
+        collection: collection ? String(collection).trim() : product.collection,
+        categoryId: validCategoryId,
         colors: colorsArr,
         gender: gender || product.gender,
         ageGroup: ageGroup || product.ageGroup,
         images: imagesArr,
-        material: material || product.material,
-        finish: finish || product.finish,
-        stock: stock !== undefined ? parseInt(stock) : product.stock,
+        material: itemMaterial,
+        finish: itemFinish,
+        stock: parsedStock,
         tags: tagsArr,
         featured: featured !== undefined ? !!featured : product.featured,
         bestseller: bestseller !== undefined ? !!bestseller : product.bestseller,
@@ -260,9 +301,9 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     });
 
     res.status(200).json({ message: 'Product updated successfully.', product: updated });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Edit product error:', error);
-    res.status(500).json({ error: 'Failed to update product.' });
+    res.status(500).json({ error: error?.message || 'Failed to update product.' });
   }
 }
 
@@ -407,7 +448,7 @@ export async function adminUploadProductImage(req: AuthenticatedRequest, res: Re
     }
 
     const imageUrl = await uploadImage(file.buffer, file.originalname, file.mimetype);
-    res.status(200).json({ imageUrl });
+    res.status(200).json({ url: imageUrl, imageUrl });
   } catch (error: any) {
     console.error('Admin upload error:', error);
     res.status(500).json({ error: error.message || 'Failed to upload image.' });
@@ -532,4 +573,76 @@ export async function deleteShippingRule(req: AuthenticatedRequest, res: Respons
     res.status(500).json({ error: 'Failed to delete shipping rule.' });
   }
 }
+
+export async function getAdminProducts(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { category, collection, query } = req.query;
+
+    const where: any = {};
+    if (category) where.category = String(category);
+    if (collection) where.collection = String(collection);
+    if (query) {
+      const q = String(query);
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { category: { contains: q, mode: 'insensitive' } },
+        { collection: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const products = await prisma.product.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        categoryRel: true,
+      },
+    });
+
+    res.status(200).json({ products });
+  } catch (error) {
+    console.error('Fetch admin products error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin products.' });
+  }
+}
+
+export async function seedProducts(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    let createdCount = 0;
+    for (const item of INITIAL_PRODUCTS) {
+      const slug = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const existing = await prisma.product.findUnique({ where: { slug } });
+      if (!existing) {
+        await prisma.product.create({
+          data: {
+            name: item.name,
+            slug,
+            description: item.description || 'A considered piece for days that call for a little more glow. Light enough to live in, distinctive enough to be remembered.',
+            price: item.price,
+            originalPrice: item.originalPrice || null,
+            category: item.category,
+            collection: item.collection,
+            colors: item.colors || [],
+            gender: item.gender || 'Women',
+            ageGroup: item.gender === 'Kids' ? 'Kids' : 'Adult',
+            images: item.images,
+            material: item.material || '925 silver',
+            finish: item.finish || '18K gold vermeil',
+            stock: item.stock ?? 15,
+            tags: [item.collection.toLowerCase(), 'gold', 'giftable', item.category.toLowerCase()],
+            featured: item.featured ?? false,
+            bestseller: item.bestseller ?? false,
+            newArrival: item.newArrival ?? false,
+            isActive: true,
+          },
+        });
+        createdCount++;
+      }
+    }
+    res.status(200).json({ message: `Seeded ${createdCount} products successfully.` });
+  } catch (error) {
+    console.error('Seed products error:', error);
+    res.status(500).json({ error: 'Failed to seed products.' });
+  }
+}
+
 
