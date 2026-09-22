@@ -55,25 +55,38 @@ export function HomePage() {
 
   return (
     <main className="homepage-root">
-      {/* 1:1 Authoritative Full-Width Hero Banner */}
-      <section className="hero-editorial-exact">
-        <div className="hero-banner-exact-wrap">
-          <Image
-            src={heroImage}
-            alt="TIMELESS JEWELLERY • MODERN WOMEN | Elegance in Every Detail — RIZ BY SHIJIRIJU"
-            fill
-            priority
-            sizes="100vw"
-            className="hero-banner-exact-img"
-          />
-          {/* Accessible & Clickable Interactive Overlay Link Areas */}
-          <div className="hero-banner-overlay-links">
-            <Link href="/shop" className="hero-clickable-shop" aria-label="Shop Now">
-              <span className="sr-only">Shop Now</span>
-            </Link>
-            <Link href="/collections/anti-tarnish" className="hero-clickable-explore" aria-label="Explore Collections">
-              <span className="sr-only">Explore Collections</span>
-            </Link>
+      {/* Standard Clean Editorial Hero Section */}
+      <section className="hero-editorial">
+        <div className="container hero-editorial-inner">
+          <div className="hero-editorial-copy">
+            <span className="eyebrow">TIMELESS JEWELLERY • MODERN WOMEN</span>
+            <h1 className="serif">
+              Elegance<br />
+              in Every <i>Detail</i>
+            </h1>
+            <p>
+              Beautifully crafted, anti-tarnish jewellery for your everyday and every special moment.
+            </p>
+            <div className="hero-actions">
+              <Link className="button" href="/shop">
+                Shop Now <ArrowRight size={15} />
+              </Link>
+              <Link className="button secondary" href="/collections/anti-tarnish">
+                Explore Collections
+              </Link>
+            </div>
+            <div className="hero-signoff">
+              <span /> Affordable luxury, made to live in
+            </div>
+          </div>
+          <div className="hero-editorial-image">
+            <Image
+              src={heroImage}
+              alt="Elegance in Every Detail - RIZ BY SHIJIRIJU"
+              fill
+              priority
+              sizes="(max-width:640px) 100vw, 50vw"
+            />
           </div>
         </div>
       </section>
@@ -172,7 +185,7 @@ export function HomePage() {
             <i className="serif-italic-accent">Reimagined.</i>
           </h2>
           <p>Pieces inspired by Kerala’s rich cultural legacy, gracefully reimagined for the modern connoisseur.</p>
-          <Link href="/collections/traditional" className="button button-hero-primary">
+          <Link href="/collections/traditional" className="button">
             Explore Traditional <ArrowRight size={15} />
           </Link>
         </div>
