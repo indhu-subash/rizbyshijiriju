@@ -70,13 +70,13 @@ export function Header() {
       <div className="announcement">
         COMPLIMENTARY ANTI-TARNISH JEWELLERY CARE WITH EVERY ORDER <span>·</span> EXPRESS INSURED SHIPPING ACROSS INDIA
       </div>
-      <header className="header header-dark-green">
+      <header className="header">
         <div className="container header-inner">
           <button className="mobile-menu" aria-label="Open menu" onClick={() => setOpen(true)}>
             <Menu size={22} />
           </button>
 
-          <Link href="/" className="logo brand-mark brand-mark-header">
+          <Link href="/" className="logo brand-mark">
             <Image src="/logo.png" alt="Riz by Shijiriju" width={76} height={58} priority />
           </Link>
 
