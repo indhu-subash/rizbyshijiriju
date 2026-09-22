@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Check, Lock, Globe, MapPin } from 'lucide-react';
-import { FormEvent, useState, useEffect, useMemo } from 'react';
+import { FormEvent, useState, useEffect, useMemo, useRef } from 'react';
 import { useStore } from './StoreProvider';
 import { api } from '@/lib/api';
 import { INTERNATIONAL_COUNTRIES, isIndia, CountryOption } from '@/lib/countries';
@@ -13,7 +13,9 @@ export function CheckoutPage() {
 
   const [placed, setPlaced] = useState(false);
   const [placedOrderId, setPlacedOrderId] = useState('');
+  const hasVerifiedRef = useRef(false);
   const [step, setStep] = useState(1);
+
 
   // Delivery Location Mode: 'IN' or 'INTL'
   const [deliveryType, setDeliveryType] = useState<'IN' | 'INTL'>('IN');
@@ -363,6 +365,8 @@ export function CheckoutPage() {
           throw new Error('Failed to load payment gateway SDK. Please check your internet connection.');
         }
 
+        hasVerifiedRef.current = false;
+
         const options = {
           key: res.razorpayKeyId,
           amount: Math.round(dbOrder.total * 100),
@@ -373,6 +377,12 @@ export function CheckoutPage() {
           handler: async function (response: any) {
             try {
               setIsSubmitting(true);
+              setCheckoutError('');
+
+              if (!response?.razorpay_payment_id || !response?.razorpay_order_id || !response?.razorpay_signature) {
+                throw new Error('Missing payment verification parameters from Razorpay gateway.');
+              }
+
               const verification = await api.payments.verify({
                 orderId: dbOrder.orderId,
                 razorpayPaymentId: response.razorpay_payment_id,
@@ -380,14 +390,44 @@ export function CheckoutPage() {
                 razorpaySignature: response.razorpay_signature,
               });
 
-              clearCart();
-              setPlacedOrderId(verification.orderId);
-              setPlaced(true);
+              if (verification && verification.orderId) {
+                hasVerifiedRef.current = true;
+                clearCart();
+                setPlacedOrderId(verification.orderId);
+                setPlaced(true);
+                setCheckoutError('');
+              } else {
+                throw new Error('Backend payment verification failed.');
+              }
             } catch (err: any) {
-              alert(err.message || 'Payment verification failed.');
+              console.error('Razorpay verification error:', err);
+              hasVerifiedRef.current = false;
+              setPlaced(false);
+              setCheckoutError(err.message || 'Payment verification failed. Your order has not been placed.');
+              try {
+                await api.payments.cancel({ orderId: dbOrder.orderId });
+              } catch (e) {
+                console.error('Failed to cancel unverified order:', e);
+              }
             } finally {
               setIsSubmitting(false);
             }
+          },
+          modal: {
+            ondismiss: async function () {
+              if (hasVerifiedRef.current) return;
+
+              console.log('Razorpay modal closed without completed payment.');
+              setPlaced(false);
+              setCheckoutError('Payment was cancelled or closed. Your order has not been placed.');
+              setIsSubmitting(false);
+
+              try {
+                await api.payments.cancel({ orderId: dbOrder.orderId });
+              } catch (e) {
+                console.error('Failed to mark cancelled order in DB:', e);
+              }
+            },
           },
           prefill: {
             name: shippingAddress.name,
@@ -400,6 +440,20 @@ export function CheckoutPage() {
         };
 
         const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', async function (resp: any) {
+          if (hasVerifiedRef.current) return;
+
+          console.log('Razorpay payment failed:', resp);
+          setPlaced(false);
+          setCheckoutError(resp.error?.description || 'Payment failed. Your order has not been placed.');
+          setIsSubmitting(false);
+
+          try {
+            await api.payments.cancel({ orderId: dbOrder.orderId });
+          } catch (e) {
+            console.error('Failed to cancel failed-payment order:', e);
+          }
+        });
         rzp.open();
       }
     } catch (err: any) {

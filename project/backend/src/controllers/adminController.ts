@@ -2,6 +2,7 @@ import { Response } from 'express';
 import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { uploadImage, deleteImage } from '../services/uploadService';
+import { INITIAL_PRODUCTS } from '../config/initialProducts';
 
 // 1. Dashboard Analytics
 export async function getDashboardStats(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -603,4 +604,45 @@ export async function getAdminProducts(req: AuthenticatedRequest, res: Response)
     res.status(500).json({ error: 'Failed to fetch admin products.' });
   }
 }
+
+export async function seedProducts(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    let createdCount = 0;
+    for (const item of INITIAL_PRODUCTS) {
+      const slug = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const existing = await prisma.product.findUnique({ where: { slug } });
+      if (!existing) {
+        await prisma.product.create({
+          data: {
+            name: item.name,
+            slug,
+            description: item.description || 'A considered piece for days that call for a little more glow. Light enough to live in, distinctive enough to be remembered.',
+            price: item.price,
+            originalPrice: item.originalPrice || null,
+            category: item.category,
+            collection: item.collection,
+            colors: item.colors || [],
+            gender: item.gender || 'Women',
+            ageGroup: item.gender === 'Kids' ? 'Kids' : 'Adult',
+            images: item.images,
+            material: item.material || '925 silver',
+            finish: item.finish || '18K gold vermeil',
+            stock: item.stock ?? 15,
+            tags: [item.collection.toLowerCase(), 'gold', 'giftable', item.category.toLowerCase()],
+            featured: item.featured ?? false,
+            bestseller: item.bestseller ?? false,
+            newArrival: item.newArrival ?? false,
+            isActive: true,
+          },
+        });
+        createdCount++;
+      }
+    }
+    res.status(200).json({ message: `Seeded ${createdCount} products successfully.` });
+  } catch (error) {
+    console.error('Seed products error:', error);
+    res.status(500).json({ error: 'Failed to seed products.' });
+  }
+}
+
 

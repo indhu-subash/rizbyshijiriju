@@ -37,6 +37,10 @@ function getR2Config() {
 
   const isConfigured = Boolean(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl);
 
+  const maskedAccountId = accountId
+    ? `${accountId.substring(0, 4)}...${accountId.substring(Math.max(0, accountId.length - 4))}`
+    : 'MISSING';
+
   return {
     accountId,
     accessKeyId,
@@ -44,6 +48,7 @@ function getR2Config() {
     bucketName,
     publicUrl,
     isConfigured,
+    maskedAccountId,
   };
 }
 
@@ -61,6 +66,7 @@ function getS3Client() {
         secretAccessKey: config.secretAccessKey!,
       },
       region: 'auto',
+      forcePathStyle: true,
     });
   } catch (err) {
     console.error('[R2 S3Client Init Error]', err);
@@ -90,6 +96,19 @@ export async function uploadImage(
     process.env.PORT !== undefined;
 
   const config = getR2Config();
+
+  // SAFE DIAGNOSTIC LOGGING (NO SECRETS LOGGED)
+  console.log('[R2 DIAGNOSTIC AUDIT]', {
+    hasAccountId: !!config.accountId,
+    maskedAccountId: config.maskedAccountId,
+    hasAccessKeyId: !!config.accessKeyId,
+    hasSecretAccessKey: !!config.secretAccessKey,
+    bucketName: config.bucketName,
+    publicUrl: config.publicUrl,
+    isConfigured: config.isConfigured,
+    isServerProduction,
+  });
+
   const client = getS3Client();
 
   const fileExt = path.extname(originalName) || '.jpg';
@@ -97,7 +116,14 @@ export async function uploadImage(
 
   // 1. Upload to Cloudflare R2 if client is configured
   if (client && config.bucketName && config.publicUrl) {
-    console.log(`[R2 UPLOAD START] Bucket: ${config.bucketName}, Key: ${fileName}, Size: ${fileBuffer.length} bytes`);
+    console.log('[R2 UPLOAD STARTED]', {
+      bucket: config.bucketName,
+      objectKey: fileName,
+      contentType: mimeType || 'image/jpeg',
+      fileSizeBytes: fileBuffer.length,
+      endpoint: `https://${config.maskedAccountId}.r2.cloudflarestorage.com`,
+    });
+
     try {
       const uploadParams = {
         Bucket: config.bucketName,
@@ -106,22 +132,31 @@ export async function uploadImage(
         ContentType: mimeType || 'image/jpeg',
       };
 
-      await client.send(new PutObjectCommand(uploadParams));
+      console.log('[R2 PutObjectCommand STARTED]', { bucket: config.bucketName, key: fileName });
+      const commandResult = await client.send(new PutObjectCommand(uploadParams));
 
       const r2Domain = config.publicUrl.replace(/\/$/, '');
       const finalUrl = `${r2Domain}/${fileName}`;
-      console.log(`[R2 UPLOAD SUCCESS] Object uploaded to R2: ${finalUrl}`);
+
+      console.log('[R2 PutObjectCommand SUCCEEDED]', {
+        bucket: config.bucketName,
+        key: fileName,
+        etag: commandResult?.ETag,
+        returnedPublicUrl: finalUrl,
+      });
+
       return finalUrl;
     } catch (error: any) {
-      console.error('[R2 UPLOAD FAILURE]', {
+      console.error('[R2 PutObjectCommand FAILED]', {
         message: error?.message,
         name: error?.name,
         code: error?.code,
+        statusCode: error?.$metadata?.httpStatusCode,
         bucket: config.bucketName,
         key: fileName,
       });
 
-      throw new Error(`Cloudflare R2 upload failed: ${error?.message || 'Storage service error.'}`);
+      throw new Error(`Cloudflare R2 upload failed [${error?.name || 'Error'}]: ${error?.message || 'Storage service error.'}`);
     }
   }
 

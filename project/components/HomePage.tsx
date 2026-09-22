@@ -7,7 +7,7 @@ import { categoriesList, products } from '@/data/products';
 import { ProductGrid } from './ProductCard';
 import { Newsletter } from './Newsletter';
 
-const heroImage = 'https://images.pexels.com/photos/29502932/pexels-photo-29502932.jpeg?auto=compress&cs=tinysrgb&w=1800';
+const heroImage = '/hero-banner.png';
 
 const featuredCollections = [
   [
@@ -77,20 +77,20 @@ export function HomePage() {
       <section className="hero-editorial">
         <div className="container hero-editorial-inner">
           <div className="hero-editorial-copy">
-            <span className="eyebrow">KERALA HERITAGE · ANTI-TARNISH CRAFT</span>
+            <span className="eyebrow">TIMELESS JEWELLERY • MODERN WOMEN</span>
             <h1 className="serif">
-              Jewellery that keeps<br />
-              <i>its glow, day after day.</i>
+              Elegance<br />
+              in Every <i>Detail</i>
             </h1>
             <p>
-              Thoughtfully crafted jewellery inspired by Kerala's timeless elegance — designed to become an enduring part of your daily style story.
+              Beautifully crafted, anti-tarnish jewellery for your everyday and every special moment.
             </p>
             <div className="hero-actions">
               <Link className="button" href="/shop">
                 Shop Now <ArrowRight size={15} />
               </Link>
-              <Link className="button secondary" href="/about">
-                Our Story
+              <Link className="button secondary" href="/collections/anti-tarnish">
+                Explore Collections
               </Link>
             </div>
             <div className="hero-signoff">
@@ -100,7 +100,7 @@ export function HomePage() {
           <div className="hero-editorial-image">
             <Image
               src={heroImage}
-              alt="RIZ BY SHIJIRIJU Editorial Jewellery Showcase"
+              alt="Elegance in Every Detail - RIZ BY SHIJIRIJU"
               fill
               priority
               sizes="(max-width:640px) 100vw, 50vw"

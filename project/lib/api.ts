@@ -98,6 +98,8 @@ export const api = {
       request('/payments/checkout', { method: 'POST', body: JSON.stringify(body) }),
     verify: (body: { orderId: string; razorpayPaymentId?: string; razorpayOrderId?: string; razorpaySignature?: string }) =>
       request('/payments/verify', { method: 'POST', body: JSON.stringify(body) }),
+    cancel: (body: { orderId: string }) =>
+      request('/payments/cancel', { method: 'POST', body: JSON.stringify(body) }),
   },
 
   // Admin Operations
