@@ -4667,4 +4667,33 @@ img {
     grid-template-columns: 1fr;
     gap: 16px;
   }
+}
+
+/* Men's Feature Banner - Clean Interactive Link */
+.mens-banner-link {
+  display: block;
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mens-banner-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
+}
+
+.mens-banner-image-wrap {
+  position: relative;
+  width: 100%;
+  height: auto;
+}
+
+.mens-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
 }
