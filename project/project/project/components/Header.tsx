@@ -45,6 +45,10 @@ export function Header() {
   const [expandedSection, setExpandedSection] = useState<string | null>('COLLECTIONS');
   const { cartCount, wishlist, isAuthenticated } = useStore();
 
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+
   // Prevent body scrolling when mobile drawer is open
   useEffect(() => {
     if (open) {
@@ -57,10 +61,6 @@ export function Header() {
     };
   }, [open]);
 
-  if (pathname?.startsWith('/admin')) {
-    return null;
-  }
-
   const toggleSection = (title: string) => {
     setExpandedSection(expandedSection === title ? null : title);
   };
@@ -68,15 +68,15 @@ export function Header() {
   return (
     <>
       <div className="announcement">
-        FREE SHIPPING ON ORDERS ABOVE ₹2,000 <span>·</span> EASY 7-DAY RETURNS
+        COMPLIMENTARY ANTI-TARNISH JEWELLERY CARE WITH EVERY ORDER <span>·</span> EXPRESS INSURED SHIPPING ACROSS INDIA
       </div>
-      <header className="header">
+      <header className="header header-dark-green">
         <div className="container header-inner">
           <button className="mobile-menu" aria-label="Open menu" onClick={() => setOpen(true)}>
             <Menu size={22} />
           </button>
 
-          <Link href="/" className="logo brand-mark">
+          <Link href="/" className="logo brand-mark brand-mark-header">
             <Image src="/logo.png" alt="Riz by Shijiriju" width={76} height={58} priority />
           </Link>
 

@@ -7,9 +7,6 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useStore } from './StoreProvider';
 import { QuickCategoryStrip } from './QuickCategoryStrip';
-import { CartDrawer } from './CartDrawer';
-import { api } from '@/lib/api';
-import { Product } from '@/data/products';
 
 const columns = [
   {
@@ -46,64 +43,15 @@ export function Header() {
   const [open, setOpen] = useState(false);
   const [mega, setMega] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>('COLLECTIONS');
-  const { cartCount, wishlist, isAuthenticated, toast } = useStore();
+  const { cartCount, wishlist, isAuthenticated } = useStore();
 
-  // New Interactivity States
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Product[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
-  // Open cart drawer automatically when an item is added to cart
+  // Prevent body scrolling when mobile drawer is open
   useEffect(() => {
-    if (toast?.type === 'cart') {
-      setIsCartOpen(true);
-    }
-  }, [toast]);
-
-  // Scroll listener for compact header
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 30);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Fetch products for live search overlay
-  useEffect(() => {
-    if (isSearchOpen && allProducts.length === 0) {
-      api.products.list().then((res: any) => {
-        if (res && res.products) {
-          setAllProducts(res.products);
-        }
-      }).catch(console.error);
-    }
-  }, [isSearchOpen, allProducts.length]);
-
-
-  // Handle live search filter
-  useEffect(() => {
-    if (searchQuery.trim().length > 1) {
-      const q = searchQuery.toLowerCase();
-      setSearchResults(
-        allProducts.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.category.toLowerCase().includes(q) ||
-            p.description.toLowerCase().includes(q)
-        ).slice(0, 6)
-      );
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchQuery, allProducts]);
-
-  // Prevent body scrolling when mobile drawer or search is open
-  useEffect(() => {
-    if (open || isSearchOpen) {
+    if (open) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -111,11 +59,7 @@ export function Header() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [open, isSearchOpen]);
-
-  if (pathname?.startsWith('/admin')) {
-    return null;
-  }
+  }, [open]);
 
   const toggleSection = (title: string) => {
     setExpandedSection(expandedSection === title ? null : title);
@@ -124,15 +68,15 @@ export function Header() {
   return (
     <>
       <div className="announcement">
-        FREE SHIPPING ON ORDERS ABOVE ₹2,000 <span>·</span> EASY 7-DAY RETURNS
+        COMPLIMENTARY ANTI-TARNISH JEWELLERY CARE WITH EVERY ORDER <span>·</span> EXPRESS INSURED SHIPPING ACROSS INDIA
       </div>
-      <header className={`header ${isScrolled ? 'scrolled' : ''}`}>
+      <header className="header header-dark-green">
         <div className="container header-inner">
           <button className="mobile-menu" aria-label="Open menu" onClick={() => setOpen(true)}>
             <Menu size={22} />
           </button>
 
-          <Link href="/" className="logo brand-mark">
+          <Link href="/" className="logo brand-mark brand-mark-header">
             <Image src="/logo.png" alt="Riz by Shijiriju" width={76} height={58} priority />
           </Link>
 
@@ -144,7 +88,6 @@ export function Header() {
               onMouseEnter={() => setMega(true)}
               onClick={() => setMega(!mega)}
               aria-expanded={mega}
-              style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', display: 'inline-flex', alignItems: 'center' }}
             >
               Collections <ChevronDown size={13} style={{ marginLeft: 4 }} />
             </button>
@@ -155,13 +98,9 @@ export function Header() {
           </nav>
 
           <div className="header-actions">
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              aria-label="Search"
-              style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', display: 'flex', alignItems: 'center' }}
-            >
+            <Link href="/search" aria-label="Search">
               <Search size={19} />
-            </button>
+            </Link>
             <Link href="/wishlist" aria-label="Wishlist" className="action-badge">
               <Heart size={19} />
               {wishlist.length > 0 && <b>{wishlist.length}</b>}
@@ -169,15 +108,10 @@ export function Header() {
             <Link href={isAuthenticated ? '/account' : '/login'} aria-label="Account">
               <UserRound size={19} />
             </Link>
-            <button
-              onClick={() => setIsCartOpen(true)}
-              aria-label="Cart"
-              className="action-badge"
-              style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', display: 'flex', alignItems: 'center' }}
-            >
+            <Link href="/cart" aria-label="Cart" className="action-badge">
               <ShoppingBag size={19} />
               {cartCount > 0 && <b>{cartCount}</b>}
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -211,68 +145,6 @@ export function Header() {
           </div>
         )}
       </header>
-
-      {/* Live Search Overlay Drawer */}
-      {isSearchOpen && (
-        <>
-          <div className="search-overlay-backdrop" onClick={() => setIsSearchOpen(false)} />
-          <div className="search-overlay">
-            <div className="container">
-              <div className="search-input-box">
-                <Search size={24} style={{ color: 'var(--gold)' }} />
-                <input
-                  type="text"
-                  placeholder="Search earrings, necklaces, bangles, bridal..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  autoFocus
-                />
-                <button
-                  onClick={() => setIsSearchOpen(false)}
-                  style={{ border: 0, background: 'none', color: 'var(--brown)', cursor: 'pointer', padding: '4px' }}
-                  aria-label="Close search"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              {/* Live matching results preview */}
-              {searchResults.length > 0 && (
-                <div className="search-suggestions-grid">
-                  {searchResults.map((product) => (
-                    <Link
-                      key={product.id}
-                      href={`/product/${product.slug}`}
-                      onClick={() => setIsSearchOpen(false)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '10px',
-                        borderRadius: '4px',
-                        background: 'var(--ivory)',
-                        border: '1px solid var(--line)',
-                      }}
-                    >
-                      <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0, background: 'var(--sand)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <Image src={product.images[0]} alt={product.name} fill style={{ objectFit: 'cover' }} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--brown)', lineHeight: 1.2 }}>{product.name}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginTop: '2px' }}>₹{product.price.toLocaleString('en-IN')}</div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Slide-out Cart Drawer */}
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-
 
       {/* Quick Product Type Navigation Strip */}
       <QuickCategoryStrip />
