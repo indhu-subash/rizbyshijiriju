@@ -55,39 +55,25 @@ export function HomePage() {
 
   return (
     <main className="homepage-root">
-      {/* Full-Width Luxury Editorial Hero Banner - Matching Reference Image */}
-      <section className="hero-editorial-full">
-        <div className="hero-banner-image-wrap">
+      {/* 1:1 Authoritative Full-Width Hero Banner */}
+      <section className="hero-editorial-exact">
+        <div className="hero-banner-exact-wrap">
           <Image
             src={heroImage}
-            alt="Elegance in Every Detail - RIZ BY SHIJIRIJU"
+            alt="TIMELESS JEWELLERY • MODERN WOMEN | Elegance in Every Detail — RIZ BY SHIJIRIJU"
             fill
             priority
             sizes="100vw"
-            className="hero-full-bg-img"
+            className="hero-banner-exact-img"
           />
-        </div>
-        <div className="container hero-full-content-container">
-          <div className="hero-editorial-copy-full">
-            <span className="eyebrow-hero">TIMELESS JEWELLERY • MODERN WOMEN</span>
-            <h1 className="hero-title-serif">
-              Elegance<br />
-              in Every <i className="serif-italic-accent">Detail</i>
-            </h1>
-            <p className="hero-subtitle">
-              Beautifully crafted, anti-tarnish jewellery for your everyday and every special moment.
-            </p>
-            <div className="hero-actions">
-              <Link className="button button-hero-primary" href="/shop">
-                Shop Now <ArrowRight size={15} />
-              </Link>
-              <Link className="button button-hero-secondary" href="/collections/anti-tarnish">
-                Explore Collections
-              </Link>
-            </div>
-            <div className="hero-signoff">
-              <span className="signoff-dot" /> Affordable luxury, made to live in
-            </div>
+          {/* Accessible & Clickable Interactive Overlay Link Areas */}
+          <div className="hero-banner-overlay-links">
+            <Link href="/shop" className="hero-clickable-shop" aria-label="Shop Now">
+              <span className="sr-only">Shop Now</span>
+            </Link>
+            <Link href="/collections/anti-tarnish" className="hero-clickable-explore" aria-label="Explore Collections">
+              <span className="sr-only">Explore Collections</span>
+            </Link>
           </div>
         </div>
       </section>
