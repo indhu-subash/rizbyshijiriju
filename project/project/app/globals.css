@@ -811,7 +811,25 @@ img {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  box-shadow: 0 8px 25px rgba(40, 40, 30, .15)
+  box-shadow: 0 8px 25px rgba(40, 40, 30, .15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .whatsapp {
+    right: 16px;
+    bottom: 20px;
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    justify-content: center;
+    align-items: center;
+  }
+  .whatsapp-text,
+  .whatsapp span {
+    display: none !important;
+  }
 }
 
 .page-intro {

@@ -1,5 +1,33 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { MessageCircle } from 'lucide-react';
-export function WhatsAppButton() { return <a className="whatsapp" href="https://wa.me/9072308686" target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={21} /><span>Chat with us</span></a> }
+
+export function WhatsAppButton() {
+  const pathname = usePathname();
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+
+  return (
+    <a
+      className="whatsapp"
+      href="https://wa.me/919072308686"
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Chat on WhatsApp"
+    >
+      <svg
+        className="whatsapp-icon"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c0-5.445 4.43-9.874 9.876-9.874 2.639 0 5.121 1.028 6.987 2.895A9.81 9.81 0 0122.006 12c0 5.446-4.43 9.874-9.955 9.874m0-18.066c-6.505 0-11.797 5.292-11.797 11.797 0 2.08.542 4.113 1.57 5.895L0 24l6.635-1.74a11.77 11.77 0 005.61 1.425h.005c6.505 0 11.797-5.292 11.797-11.797 0-3.153-1.228-6.118-3.457-8.347C18.361 1.312 15.396.084 12.051.084z" />
+      </svg>
+      <span className="whatsapp-text">Chat with us</span>
+    </a>
+  );
+}

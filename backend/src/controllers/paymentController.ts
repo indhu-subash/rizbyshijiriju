@@ -68,8 +68,14 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
 
     // Load products from DB and verify stock in a single flow
     for (const item of items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId, isActive: true },
+      const product = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { id: item.productId },
+            { slug: item.productId },
+          ],
+          isActive: true,
+        },
       });
 
       if (!product) {

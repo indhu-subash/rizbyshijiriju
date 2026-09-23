@@ -111,6 +111,68 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     fetchSession();
   }, []);
 
+  // Normalize legacy cart items to matching API products (idempotent)
+  useEffect(() => {
+    if (!cart.length) return;
+
+    let isMounted = true;
+
+    const normalizeCart = async () => {
+      try {
+        const data = await api.products.list();
+        if (!isMounted || !data || !Array.isArray(data.products) || !data.products.length) return;
+
+        const apiProducts: Product[] = data.products;
+        let hasChanges = false;
+
+        const updatedCart = cart.map((item) => {
+          // If item already has a valid API product UUID that matches an API product, keep it
+          const exactMatch = apiProducts.find((p) => p.id === item.product.id);
+          if (exactMatch) {
+            if (exactMatch.price !== item.product.price || exactMatch.stock !== item.product.stock) {
+              hasChanges = true;
+              return { ...item, product: exactMatch };
+            }
+            return item;
+          }
+
+          // Otherwise, attempt matching by slug or name
+          const matchBySlug = apiProducts.find((p) => p.slug && item.product.slug && p.slug === item.product.slug);
+          const matchByName = apiProducts.find(
+            (p) => item.product.name && p.name.trim().toLowerCase() === item.product.name.trim().toLowerCase()
+          );
+          const matchedProduct = matchBySlug || matchByName;
+
+          if (matchedProduct) {
+            hasChanges = true;
+            return {
+              ...item,
+              product: matchedProduct,
+              color:
+                item.color && Array.isArray(matchedProduct.colors) && matchedProduct.colors.includes(item.color)
+                  ? item.color
+                  : item.color,
+            };
+          }
+
+          return item;
+        });
+
+        if (hasChanges && isMounted) {
+          setCart(updatedCart);
+        }
+      } catch (err) {
+        console.error('Failed to normalize cart with API products:', err);
+      }
+    };
+
+    normalizeCart();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Sync cart to local storage
   useEffect(() => {
     localStorage.setItem('riz-cart', JSON.stringify(cart));

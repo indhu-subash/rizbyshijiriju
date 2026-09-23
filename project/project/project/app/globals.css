@@ -426,7 +426,7 @@ img {
 
 .product-image {
   position: relative;
-  aspect-ratio: 1/1.17;
+  aspect-ratio: 1/1;
   background: #ede5db;
   overflow: hidden
 }
@@ -811,7 +811,25 @@ img {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  box-shadow: 0 8px 25px rgba(40, 40, 30, .15)
+  box-shadow: 0 8px 25px rgba(40, 40, 30, .15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .whatsapp {
+    right: 16px;
+    bottom: 20px;
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    justify-content: center;
+    align-items: center;
+  }
+  .whatsapp-text,
+  .whatsapp span {
+    display: none !important;
+  }
 }
 
 .page-intro {
@@ -4696,4 +4714,202 @@ img {
   height: auto;
   display: block;
   object-fit: cover;
+}
+
+/* ==========================================================================
+   Admin Mobile Responsive Design System
+   ========================================================================== */
+.admin-container {
+  display: flex;
+  min-height: 100vh;
+  background: #fcfcf9;
+}
+
+.admin-sidebar {
+  width: 260px;
+  background: #fff;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 50;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-main {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+  max-width: 100%;
+}
+
+.admin-mobile-header {
+  display: none;
+}
+
+.admin-mobile-backdrop {
+  display: none;
+}
+
+/* Admin Mobile Responsiveness (< 768px) */
+@media (max-width: 767px) {
+  .admin-container {
+    flex-direction: column;
+  }
+
+  .admin-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    padding: 0 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .admin-mobile-toggle {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+  }
+
+  .admin-mobile-toggle:hover {
+    background: #f3f4f6;
+  }
+
+  .admin-mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .eyebrow-chip {
+    background: #f7f6f0;
+    color: var(--accent, #6b5840);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .admin-mobile-home-link {
+    color: #6b7280;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+  }
+
+  .admin-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 80;
+  }
+
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    height: 100vh;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    z-index: 90;
+  }
+
+  .admin-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .admin-main {
+    padding: 20px 16px;
+  }
+
+  /* Responsive Admin Tables & Cards */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+
+  .table-responsive table {
+    min-width: 680px;
+  }
+
+  /* Admin Header & Action Buttons Mobile Layout */
+  .admin-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+
+  .admin-page-header-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .admin-page-header-actions > * {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+  }
+
+  /* Admin Filter Bars */
+  .admin-filters-bar {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  /* Admin Forms & Grids */
+  .admin-form-card {
+    padding: 16px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .admin-two-col-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Inputs & Selects touch optimizations */
+  form input,
+  form select,
+  form textarea {
+    font-size: 14px !important;
+    padding: 10px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Color selection chips wrapping */
+  .color-selection-section button {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
 }
