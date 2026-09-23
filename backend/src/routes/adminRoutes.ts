@@ -33,7 +33,10 @@ import {
 import { authenticateUser, requireAdmin } from '../middleware/auth';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
+});
 
 // Apply auth & admin checks to all admin routes
 router.use(authenticateUser as any);

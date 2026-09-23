@@ -90,9 +90,9 @@ export async function uploadImage(
   mimeType: string
 ): Promise<string> {
   // 1. Image Validation (MIME type & Size Limit)
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
   if (fileBuffer.length > MAX_FILE_SIZE) {
-    throw new Error(`File size exceeds maximum allowed limit of 10 MB. Received ${(fileBuffer.length / (1024 * 1024)).toFixed(2)} MB.`);
+    throw new Error(`File size exceeds maximum allowed limit of 50 MB. Received ${(fileBuffer.length / (1024 * 1024)).toFixed(2)} MB.`);
   }
 
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
