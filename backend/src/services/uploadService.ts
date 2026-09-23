@@ -89,6 +89,18 @@ export async function uploadImage(
   originalName: string,
   mimeType: string
 ): Promise<string> {
+  // 1. Image Validation (MIME type & Size Limit)
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+  if (fileBuffer.length > MAX_FILE_SIZE) {
+    throw new Error(`File size exceeds maximum allowed limit of 10 MB. Received ${(fileBuffer.length / (1024 * 1024)).toFixed(2)} MB.`);
+  }
+
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
+  const normalizedMime = (mimeType || 'image/jpeg').toLowerCase();
+  if (!allowedMimeTypes.includes(normalizedMime)) {
+    throw new Error(`Unsupported image MIME type '${mimeType}'. Allowed types: JPEG, PNG, WebP, AVIF, GIF.`);
+  }
+
   const isServerProduction =
     process.env.NODE_ENV === 'production' ||
     !!process.env.RAILWAY_ENVIRONMENT ||
@@ -111,15 +123,16 @@ export async function uploadImage(
 
   const client = getS3Client();
 
-  const fileExt = path.extname(originalName) || '.jpg';
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${fileExt}`;
+  const fileExt = path.extname(originalName) || '.webp';
+  const uniqueId = Math.random().toString(36).substring(2, 10);
+  const objectKey = `products/${Date.now()}-${uniqueId}${fileExt}`;
 
-  // 1. Upload to Cloudflare R2 if client is configured
+  // 2. Upload directly to Cloudflare R2 if client is configured
   if (client && config.bucketName && config.publicUrl) {
     console.log('[R2 UPLOAD STARTED]', {
       bucket: config.bucketName,
-      objectKey: fileName,
-      contentType: mimeType || 'image/jpeg',
+      objectKey,
+      contentType: normalizedMime,
       fileSizeBytes: fileBuffer.length,
       endpoint: `https://${config.maskedAccountId}.r2.cloudflarestorage.com`,
     });
@@ -127,20 +140,20 @@ export async function uploadImage(
     try {
       const uploadParams = {
         Bucket: config.bucketName,
-        Key: fileName,
+        Key: objectKey,
         Body: fileBuffer,
-        ContentType: mimeType || 'image/jpeg',
+        ContentType: normalizedMime,
       };
 
-      console.log('[R2 PutObjectCommand STARTED]', { bucket: config.bucketName, key: fileName });
+      console.log('[R2 PutObjectCommand STARTED]', { bucket: config.bucketName, key: objectKey });
       const commandResult = await client.send(new PutObjectCommand(uploadParams));
 
       const r2Domain = config.publicUrl.replace(/\/$/, '');
-      const finalUrl = `${r2Domain}/${fileName}`;
+      const finalUrl = `${r2Domain}/${objectKey}`;
 
       console.log('[R2 PutObjectCommand SUCCEEDED]', {
         bucket: config.bucketName,
-        key: fileName,
+        key: objectKey,
         etag: commandResult?.ETag,
         returnedPublicUrl: finalUrl,
       });
@@ -153,14 +166,14 @@ export async function uploadImage(
         code: error?.code,
         statusCode: error?.$metadata?.httpStatusCode,
         bucket: config.bucketName,
-        key: fileName,
+        key: objectKey,
       });
 
       throw new Error(`Cloudflare R2 upload failed [${error?.name || 'Error'}]: ${error?.message || 'Storage service error.'}`);
     }
   }
 
-  // 2. In server / production / Railway environment, throw explicit error if R2 credentials missing
+  // 3. In server / production / Railway environment, throw explicit error if R2 credentials missing (NO FALLBACK)
   if (isServerProduction || !config.isConfigured) {
     console.error('[R2 CONFIG FAILURE] Missing or invalid R2 credentials on Railway server.', {
       hasAccountId: !!config.accountId,
@@ -182,12 +195,13 @@ export async function uploadImage(
     );
   }
 
-  // 3. Pure local development fallback ONLY when running on local machine
-  const filePath = path.join(localUploadsDir, fileName);
+  // 4. Pure local development fallback ONLY when running locally without R2 env vars
+  const fileNameOnly = path.basename(objectKey);
+  const filePath = path.join(localUploadsDir, fileNameOnly);
   await fs.promises.writeFile(filePath, fileBuffer);
   
   const port = process.env.PORT || 5000;
-  return `http://localhost:${port}/uploads/${fileName}`;
+  return `http://localhost:${port}/uploads/${fileNameOnly}`;
 }
 
 export async function deleteImage(imageUrl: string): Promise<void> {
