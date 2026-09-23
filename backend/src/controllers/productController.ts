@@ -131,8 +131,14 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
 export async function getProductBySlug(req: Request, res: Response): Promise<void> {
   try {
     const { slug } = req.params;
-    const product = await prisma.product.findUnique({
-      where: { slug, isActive: true },
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { slug: slug },
+          { id: slug },
+        ],
+        isActive: true,
+      },
     });
 
     if (!product) {
@@ -150,8 +156,14 @@ export async function getProductBySlug(req: Request, res: Response): Promise<voi
 export async function getProductById(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const product = await prisma.product.findUnique({
-      where: { id, isActive: true },
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { slug: id },
+        ],
+        isActive: true,
+      },
     });
 
     if (!product) {
