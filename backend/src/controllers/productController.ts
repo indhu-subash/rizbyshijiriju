@@ -95,22 +95,20 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       }
     }
 
-    let orderBy: any = {};
+    let orderBy: any = [{ featured: 'desc' }, { createdAt: 'desc' }];
     if (sort) {
       const sortVal = String(sort);
       if (sortVal === 'Price Low to High') {
-        orderBy = { price: 'asc' };
+        orderBy = [{ price: 'asc' }, { createdAt: 'desc' }];
       } else if (sortVal === 'Price High to Low') {
-        orderBy = { price: 'desc' };
+        orderBy = [{ price: 'desc' }, { createdAt: 'desc' }];
       } else if (sortVal === 'Newest') {
-        orderBy = { newArrival: 'desc' };
+        orderBy = [{ newArrival: 'desc' }, { createdAt: 'desc' }];
       } else if (sortVal === 'Best Selling') {
-        orderBy = { bestseller: 'desc' };
+        orderBy = [{ bestseller: 'desc' }, { createdAt: 'desc' }];
       } else {
-        orderBy = { featured: 'desc' };
+        orderBy = [{ featured: 'desc' }, { createdAt: 'desc' }];
       }
-    } else {
-      orderBy = { featured: 'desc' };
     }
 
     const products = await prisma.product.findMany({

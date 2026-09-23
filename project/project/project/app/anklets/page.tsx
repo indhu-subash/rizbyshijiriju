@@ -1,1 +1,12 @@
-import { CollectionPage } from '@/components/CollectionPage';export default function Page(){return <CollectionPage title="Anklets" description="A quiet detail for warm days." filter={p=>p.category==='Anklets'} image="https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=1800"/>}
+import { CollectionPage } from '@/components/CollectionPage';
+
+export default function Page() {
+  return (
+    <CollectionPage
+      title="Anklets"
+      category="Anklets"
+      description="A quiet whisper at your feet."
+      image="https://images.pexels.com/photos/19373665/pexels-photo-19373665.jpeg?auto=compress&cs=tinysrgb&w=1800"
+    />
+  );
+}

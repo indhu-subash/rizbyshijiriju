@@ -1,1 +1,12 @@
-import { CollectionPage } from '@/components/CollectionPage';export default function Page(){return <CollectionPage title="Second studs" description="A little extra glow, just where you need it." filter={p=>p.category==='Second Studs'} image="https://images.pexels.com/photos/21235147/pexels-photo-21235147.jpeg?auto=compress&cs=tinysrgb&w=1800"/>}
+import { CollectionPage } from '@/components/CollectionPage';
+
+export default function Page() {
+  return (
+    <CollectionPage
+      title="Second Studs"
+      category="Second Studs"
+      description="Quiet pairings for curated ears."
+      image="https://images.pexels.com/photos/6256046/pexels-photo-6256046.jpeg?auto=compress&cs=tinysrgb&w=1800"
+    />
+  );
+}
