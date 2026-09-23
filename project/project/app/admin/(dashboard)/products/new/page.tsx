@@ -132,7 +132,8 @@ export default function NewProductPage() {
       gender,
       ageGroup,
       metal,
-      finish,
+      material: metal || 'Brass',
+      finish: finish || 'Gold Plated',
       careInstructions,
       images,
     };

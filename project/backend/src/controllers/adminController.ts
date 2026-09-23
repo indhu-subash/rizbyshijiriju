@@ -133,6 +133,7 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       gender,
       ageGroup,
       material,
+      metal,
       finish,
       stock,
       tags,
@@ -142,7 +143,10 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       images,
     } = req.body;
 
-    if (!name || !description || !price || !category || !collection || !material || !finish) {
+    const actualMaterial = material || metal || 'Brass';
+    const actualFinish = finish || 'Gold Plated';
+
+    if (!name || !description || price === undefined || price === null || !category || !collection) {
       res.status(400).json({ error: 'Required fields are missing.' });
       return;
     }
@@ -181,8 +185,8 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
         gender: gender || 'Women',
         ageGroup: ageGroup || 'Adult',
         images: imagesArr,
-        material,
-        finish,
+        material: actualMaterial,
+        finish: actualFinish,
         stock: parseInt(stock) || 0,
         tags: tagsArr,
         featured: !!featured,
