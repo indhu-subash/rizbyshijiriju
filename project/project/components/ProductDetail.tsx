@@ -24,7 +24,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Product, products } from '@/data/products';
 import { useStore } from './StoreProvider';
-import { ProductGrid } from './ProductCard';
+import { ProductGrid, getValidImageUrl } from './ProductCard';
 import { api } from '@/lib/api';
 
 export function ProductDetail({ product }: { product: Product }) {
@@ -209,7 +209,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 title="Click to view full size"
               >
                 <Image
-                  src={product.images[activeImage] || product.images[0]}
+                  src={getValidImageUrl(product.images[activeImage] || product.images[0])}
                   alt={product.name}
                   fill
                   priority
@@ -222,16 +222,16 @@ export function ProductDetail({ product }: { product: Product }) {
               </div>
 
               {/* Thumbnails */}
-              {product.images.length > 1 && (
+              {product.images && product.images.length > 1 && (
                 <div className="pdp-thumbs">
                   {product.images.map((image, i) => (
                     <button
-                      key={image}
+                      key={image + i}
                       className={`pdp-thumb-btn ${activeImage === i ? 'active' : ''}`}
                       onClick={() => setActiveImage(i)}
                       aria-label={`View product image ${i + 1}`}
                     >
-                      <Image src={image} alt={`${product.name} thumbnail ${i + 1}`} fill sizes="80px" />
+                      <Image src={getValidImageUrl(image)} alt={`${product.name} thumbnail ${i + 1}`} fill sizes="80px" />
                     </button>
                   ))}
                 </div>
@@ -543,7 +543,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
               <div className="pdp-lightbox-img-wrap">
                 <Image
-                  src={product.images[activeImage] || product.images[0]}
+                  src={getValidImageUrl(product.images[activeImage] || product.images[0])}
                   alt={product.name}
                   fill
                   sizes="100vw"

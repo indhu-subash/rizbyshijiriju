@@ -1,101 +1,73 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Plus, Check, Star } from 'lucide-react';
+import { Heart, Plus, Star } from 'lucide-react';
 import { Product } from '@/data/products';
 import { useStore } from './StoreProvider';
 
-const DEFAULT_FALLBACK_IMAGE = 'https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=900';
+const DEFAULT_IMAGE = 'https://images.pexels.com/photos/36823005/pexels-photo-36823005.jpeg?auto=compress&cs=tinysrgb&w=900';
+
+export function getValidImageUrl(url?: string): string {
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return DEFAULT_IMAGE;
+  }
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    // Correct malformed R2 URLs missing domain suffix like "https://pub-522048b577469-kw5cjma1.jpg"
+    if (trimmed.includes('pub-') && !trimmed.includes('.r2.dev') && !trimmed.includes('.cloudflarestorage.com')) {
+      const defaultDomain = 'https://pub-522048b574af4e7aa4d991056322b29a.r2.dev';
+      const parts = trimmed.split('/');
+      const filename = parts[parts.length - 1];
+      return `${defaultDomain}/products/${filename}`;
+    }
+    return trimmed;
+  }
+  if (trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
 
 export function ProductCard({ product }: { product: Product }) {
   const { toggleWishlist, wishlist, addToCart } = useStore();
-  const [isAdded, setIsAdded] = useState(false);
-
-  const primarySrc = product.images && product.images[0] ? product.images[0] : DEFAULT_FALLBACK_IMAGE;
-  const secondarySrc = product.images && product.images.length > 1 ? product.images[1] : null;
-
-  const [mainImg, setMainImg] = useState<string>(primarySrc);
-  const [secImg, setSecImg] = useState<string | null>(secondarySrc);
-
   const sale = product.originalPrice && Math.round((1 - product.price / product.originalPrice) * 100);
-  const limited = product.tags && product.tags.includes('limited');
-  const hasSecondaryImage = Boolean(secImg);
-  const isWishlisted = wishlist.includes(product.id);
-
-  const reviewCount = product.reviewCount || product.reviews || 0;
-  const ratingValue = typeof product.rating === 'number' && !isNaN(product.rating) ? product.rating : 4.5;
+  const limited = Array.isArray(product.tags) && product.tags.includes('limited');
   const productSlug = product.slug || product.id || encodeURIComponent(product.name);
 
-  const handleQuickAdd = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!product.stock || isAdded) return;
-
-    addToCart(product);
-    setIsAdded(true);
-    setTimeout(() => {
-      setIsAdded(false);
-    }, 1500);
-  };
+  const rawImage = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : undefined;
+  const imageUrl = getValidImageUrl(rawImage);
 
   return (
     <article className="product-card">
       <div className="product-image">
         <Link href={`/product/${productSlug}`}>
           <Image
-            src={mainImg}
-            alt={product.name || 'Jewellery product'}
+            src={imageUrl}
+            alt={product.name || 'Product Image'}
             fill
             sizes="(max-width:640px) 50vw, (max-width:1000px) 33vw, 25vw"
-            className={`primary-img ${hasSecondaryImage ? 'has-secondary' : ''}`}
-            onError={() => setMainImg(DEFAULT_FALLBACK_IMAGE)}
           />
-          {hasSecondaryImage && secImg && (
-            <Image
-              src={secImg}
-              alt={`${product.name || 'Jewellery'} alternate view`}
-              fill
-              sizes="(max-width:640px) 50vw, (max-width:1000px) 33vw, 25vw"
-              className="secondary-img"
-              onError={() => setSecImg(null)}
-            />
-          )}
         </Link>
-
         {product.newArrival && <span className="product-badge">NEW</span>}
         {!product.newArrival && product.bestseller && <span className="product-badge">BESTSELLER</span>}
         {sale && <span className="product-badge sale">SALE</span>}
         {limited && product.stock > 0 && product.stock < 4 && <span className="product-badge limited">LIMITED</span>}
-
         <button
-          className={`wishlist ${isWishlisted ? 'active' : ''}`}
+          className={`wishlist ${wishlist.includes(product.id) ? 'active' : ''}`}
           aria-label="Add to wishlist"
           onClick={() => toggleWishlist(product.id, product)}
         >
-          <Heart size={17} fill={isWishlisted ? 'currentColor' : 'none'} />
+          <Heart size={17} fill={wishlist.includes(product.id) ? 'currentColor' : 'none'} />
         </button>
-
         <button
-          className={`quick-add ${isAdded ? 'added' : ''}`}
-          onClick={handleQuickAdd}
+          className="quick-add"
+          onClick={() => addToCart(product)}
           disabled={!product.stock}
         >
-          {isAdded ? (
-            <>
-              <Check size={14} /> Added ✓
-            </>
-          ) : product.stock ? (
-            <>
-              <Plus size={15} /> Quick add
-            </>
-          ) : (
-            'Sold out'
-          )}
+          <Plus size={15} /> {product.stock ? 'Quick add' : 'Sold out'}
         </button>
       </div>
-
       <Link href={`/product/${productSlug}`} className="product-info">
         <div className="product-category">{product.category}</div>
         <h3>{product.name}</h3>
@@ -109,8 +81,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         <div className="rating">
-          <Star size={12} fill="currentColor" /> {ratingValue.toFixed(1)}
-          {reviewCount > 0 && <span>({reviewCount})</span>}
+          <Star size={12} fill="currentColor" /> {product.rating || 5} <span>({product.reviewCount || 0})</span>
         </div>
       </Link>
     </article>

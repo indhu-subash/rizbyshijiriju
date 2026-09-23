@@ -7,7 +7,7 @@ import { ChevronDown, Heart, Minus, Plus, Star, Truck, Share2, Check } from 'luc
 import { useState, useEffect } from 'react';
 import { Product, products } from '@/data/products';
 import { useStore } from './StoreProvider';
-import { ProductGrid } from './ProductCard';
+import { ProductGrid, getValidImageUrl } from './ProductCard';
 import { api } from '@/lib/api';
 
 export function ProductDetail({ product }: { product: Product }) {
@@ -107,6 +107,9 @@ export function ProductDetail({ product }: { product: Product }) {
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 
+  const rawImages = Array.isArray(product.images) && product.images.length > 0 ? product.images : [];
+  const activeImgSrc = getValidImageUrl(rawImages[activeImage] || rawImages[0]);
+
   return (
     <main>
       <div className="product-detail container">
@@ -114,22 +117,22 @@ export function ProductDetail({ product }: { product: Product }) {
         <div className="gallery">
           <div className="gallery-main" style={{ position: 'relative' }}>
             <Image
-              src={product.images[activeImage] || product.images[0]}
+              src={activeImgSrc}
               alt={product.name}
               fill
               priority
               sizes="(max-width: 640px) 100vw, 55vw"
             />
           </div>
-          {product.images.length > 1 && (
+          {rawImages.length > 1 && (
             <div className="thumbs">
-              {product.images.map((image, i) => (
+              {rawImages.map((image, i) => (
                 <button
-                  key={image}
+                  key={image + i}
                   className={activeImage === i ? 'active' : ''}
                   onClick={() => setActiveImage(i)}
                 >
-                  <Image src={image} alt={`${product.name} view ${i + 1}`} fill sizes="90px" />
+                  <Image src={getValidImageUrl(image)} alt={`${product.name} view ${i + 1}`} fill sizes="90px" />
                 </button>
               ))}
             </div>
