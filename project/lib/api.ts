@@ -116,7 +116,13 @@ export const api = {
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    updateProductStock: (id: string, stock: number) =>
+      request(`/admin/products/${id}/stock`, {
+        method: 'PATCH',
+        body: JSON.stringify({ stock }),
+      }),
     deleteProduct: (id: string) => request(`/admin/products/${id}`, { method: 'DELETE' }),
+
     uploadImage: (file: File) => {
       const formData = new FormData();
       formData.append('image', file);

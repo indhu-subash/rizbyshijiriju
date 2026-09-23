@@ -26,20 +26,99 @@ export default function AdminProducts() {
   const [category, setCategory] = useState('');
   const [collection, setCollection] = useState('');
 
+  // Live Stock Editing & Polling State
+  const [stockSaving, setStockSaving] = useState<{ [id: string]: boolean }>({});
+  const [stockSaved, setStockSaved] = useState<{ [id: string]: boolean }>({});
+  const [editingStock, setEditingStock] = useState<{ [id: string]: string }>({});
+  const [autoRefresh, setAutoRefresh] = useState(false);
+
   useEffect(() => {
     loadProducts();
   }, [category, collection]);
 
-  const loadProducts = async () => {
-    setLoading(true);
+  // Auto-refresh polling effect
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      // Only refresh if user is not actively editing a stock input
+      if (Object.keys(editingStock).length === 0 && Object.values(stockSaving).every((v) => !v)) {
+        loadProducts(true);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, editingStock, stockSaving]);
+
+  const loadProducts = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     setError('');
     try {
       const res = await api.admin.getProducts({ category, collection });
       setProducts(res.products || []);
     } catch (err: any) {
-      setError(err.message || 'Failed to load products list.');
+      if (!isSilent) setError(err.message || 'Failed to load products list.');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
+    }
+  };
+
+  const handleStockChange = (id: string, val: string) => {
+    setEditingStock((prev) => ({ ...prev, [id]: val }));
+  };
+
+  const saveStock = async (id: string, currentStock: number) => {
+    const inputVal = editingStock[id];
+    if (inputVal === undefined) return;
+
+    const newStock = parseInt(inputVal, 10);
+    if (isNaN(newStock) || newStock < 0 || newStock === currentStock) {
+      setEditingStock((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+
+    if (stockSaving[id]) return; // Prevent overlapping saves
+
+    setStockSaving((prev) => ({ ...prev, [id]: true }));
+    try {
+      const res = await api.admin.updateProductStock(id, newStock);
+      const updatedStock = typeof res.stock === 'number' ? res.stock : newStock;
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, stock: updatedStock } : p)));
+      setStockSaved((prev) => ({ ...prev, [id]: true }));
+      setTimeout(() => {
+        setStockSaved((prev) => ({ ...prev, [id]: false }));
+      }, 2000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update product stock.');
+    } finally {
+      setStockSaving((prev) => ({ ...prev, [id]: false }));
+      setEditingStock((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  };
+
+  const adjustStock = async (id: string, currentStock: number, delta: number) => {
+    const targetStock = Math.max(0, currentStock + delta);
+    if (targetStock === currentStock || stockSaving[id]) return;
+
+    setStockSaving((prev) => ({ ...prev, [id]: true }));
+    try {
+      const res = await api.admin.updateProductStock(id, targetStock);
+      const updatedStock = typeof res.stock === 'number' ? res.stock : targetStock;
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, stock: updatedStock } : p)));
+      setStockSaved((prev) => ({ ...prev, [id]: true }));
+      setTimeout(() => {
+        setStockSaved((prev) => ({ ...prev, [id]: false }));
+      }, 2000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update product stock.');
+    } finally {
+      setStockSaving((prev) => ({ ...prev, [id]: false }));
     }
   };
 
@@ -84,12 +163,27 @@ export default function AdminProducts() {
   return (
     <div>
       {/* Header */}
-      <div className="admin-page-header flex justify-between items-center mb-8" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="flex justify-between items-center mb-8" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <span className="eyebrow">Inventory</span>
           <h1 className="serif text-3xl font-semibold">Manage Products</h1>
         </div>
-        <div className="admin-page-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`button ${autoRefresh ? 'secondary' : 'outline'}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.82rem',
+              background: autoRefresh ? '#e6f4ea' : 'transparent',
+              borderColor: autoRefresh ? '#334c3d' : '#ccc',
+              color: autoRefresh ? '#334c3d' : '#555',
+            }}
+          >
+            {autoRefresh ? '🟢 Live Sync On (5s)' : '⚪ Live Sync Off'}
+          </button>
           <button
             onClick={handleSeedProducts}
             disabled={seeding}
@@ -106,7 +200,7 @@ export default function AdminProducts() {
 
       {/* Filters Bar */}
       <div
-        className="admin-filters-bar filters-bar border p-4 rounded mb-6"
+        className="filters-bar border p-4 rounded mb-6"
         style={{
           background: '#fff',
           display: 'grid',
@@ -191,7 +285,7 @@ export default function AdminProducts() {
                 <th>Category</th>
                 <th>Collection</th>
                 <th>Price</th>
-                <th>Stock</th>
+                <th style={{ width: '190px' }}>Live Stock</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right', paddingRight: '16px' }}>Actions</th>
               </tr>
@@ -221,10 +315,82 @@ export default function AdminProducts() {
                   <td>{p.category}</td>
                   <td>{p.collection}</td>
                   <td>₹{p.price}</td>
-                  <td>
-                    <span className={p.stock === 0 ? 'text-red-500 font-bold' : p.stock <= 3 ? 'text-amber-600 font-bold' : ''}>
-                      {p.stock}
-                    </span>
+                  <td style={{ width: '190px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <button
+                          type="button"
+                          disabled={p.stock <= 0 || stockSaving[p.id]}
+                          onClick={() => adjustStock(p.id, p.stock, -1)}
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            background: '#f8f8f8',
+                            fontWeight: 'bold',
+                            cursor: p.stock <= 0 || stockSaving[p.id] ? 'not-allowed' : 'pointer',
+                            display: 'grid',
+                            placeItems: 'center',
+                            lineHeight: 1,
+                            fontSize: '0.9rem',
+                          }}
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={stockSaving[p.id]}
+                          value={editingStock[p.id] !== undefined ? editingStock[p.id] : p.stock}
+                          onChange={(e) => handleStockChange(p.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveStock(p.id, p.stock);
+                          }}
+                          onBlur={() => saveStock(p.id, p.stock)}
+                          style={{
+                            width: '56px',
+                            padding: '3px 4px',
+                            textAlign: 'center',
+                            borderRadius: '4px',
+                            border: stockSaving[p.id] ? '1.5px solid #3b82f6' : '1px solid #ccc',
+                            fontWeight: '600',
+                            fontSize: '0.85rem',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          disabled={stockSaving[p.id]}
+                          onClick={() => adjustStock(p.id, p.stock, 1)}
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            background: '#f8f8f8',
+                            fontWeight: 'bold',
+                            cursor: stockSaving[p.id] ? 'not-allowed' : 'pointer',
+                            display: 'grid',
+                            placeItems: 'center',
+                            lineHeight: 1,
+                            fontSize: '0.9rem',
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', minHeight: '14px' }}>
+                        {stockSaving[p.id] ? (
+                          <span style={{ color: '#3b82f6', fontWeight: 600 }}>Saving...</span>
+                        ) : stockSaved[p.id] ? (
+                          <span style={{ color: '#16a34a', fontWeight: 600 }}>Saved ✓</span>
+                        ) : p.stock === 0 ? (
+                          <span style={{ color: '#ef4444', fontWeight: 700 }}>Out of Stock</span>
+                        ) : p.stock <= 3 ? (
+                          <span style={{ color: '#d97706', fontWeight: 600 }}>Low Stock ({p.stock})</span>
+                        ) : null}
+                      </div>
+                    </div>
                   </td>
                   <td>
                     <span className={`status-tag ${p.isActive ? 'confirmed' : 'cancelled'}`} style={{ fontSize: '10px' }}>

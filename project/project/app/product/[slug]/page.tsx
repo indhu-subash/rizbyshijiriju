@@ -5,10 +5,17 @@ import { api } from '@/lib/api';
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  let decodedSlug = slug;
+  try {
+    decodedSlug = decodeURIComponent(slug).trim();
+  } catch (e) {
+    decodedSlug = (slug || '').trim();
+  }
+
   let product = null;
 
   try {
-    const res = await api.products.getBySlug(slug);
+    const res = await api.products.getBySlug(decodedSlug);
     if (res && res.product) {
       product = {
         ...res.product,
@@ -17,12 +24,13 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       };
     }
   } catch (err) {
-    product = getFallbackProduct(slug);
+    product = getFallbackProduct(decodedSlug);
   }
 
   if (!product) {
-    product = getFallbackProduct(slug);
+    product = getFallbackProduct(decodedSlug);
   }
+
 
   if (!product) return notFound();
 

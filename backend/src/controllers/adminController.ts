@@ -338,6 +338,42 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
   }
 }
 
+export async function updateProductStock(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { stock } = req.body;
+
+    const parsedStock = typeof stock === 'number' ? stock : parseInt(stock, 10);
+
+    if (isNaN(parsedStock) || !Number.isInteger(parsedStock) || parsedStock < 0) {
+      res.status(400).json({ error: 'Stock must be a non-negative integer.' });
+      return;
+    }
+
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { stock: parsedStock },
+    });
+
+    res.status(200).json({
+      message: 'Product stock updated successfully.',
+      id: updated.id,
+      stock: updated.stock,
+      product: updated,
+    });
+  } catch (error: any) {
+    console.error('Update product stock error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to update product stock.' });
+  }
+}
+
+
 export async function deleteProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;

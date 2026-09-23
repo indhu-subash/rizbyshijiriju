@@ -8,7 +8,9 @@ import {
   getAdminProducts,
   createProduct,
   editProduct,
+  updateProductStock,
   deleteProduct,
+
   getAdminCoupons,
   createCoupon,
   editCoupon,
@@ -56,7 +58,9 @@ router.get('/products', getAdminProducts as any);
 router.post('/products', createProduct as any);
 router.post('/products/seed', seedProducts as any);
 router.put('/products/:id', editProduct as any);
+router.patch('/products/:id/stock', updateProductStock as any);
 router.delete('/products/:id', deleteProduct as any);
+
 
 // Image Upload
 router.post('/upload', upload.single('image'), adminUploadProductImage as any);

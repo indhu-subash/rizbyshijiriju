@@ -5,6 +5,8 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { calculateShipping, isIndiaCountry } from '../services/shippingService';
 import { sendOrderConfirmationEmail, sendOrderConfirmationWhatsApp } from '../services/notificationService';
+import { findProductBySlugOrId } from './productController';
+
 
 const PAYMENT_MODE = (process.env.PAYMENT_MODE || 'razorpay').toLowerCase();
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
@@ -68,18 +70,21 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
 
     // Load products from DB and verify stock in a single flow
     for (const item of items) {
-      const product = await prisma.product.findFirst({
-        where: {
-          OR: [
-            { id: item.productId },
-            { slug: item.productId },
-          ],
-          isActive: true,
-        },
-      });
+      let product = await findProductBySlugOrId(item.productId, true);
 
       if (!product) {
+        // Check if product exists but is inactive
+        const inactiveProduct = await findProductBySlugOrId(item.productId, false);
+        if (inactiveProduct) {
+          res.status(404).json({ error: `Product ${item.name || item.productId} is currently inactive.` });
+          return;
+        }
         res.status(404).json({ error: `Product ${item.name || item.productId} is no longer available.` });
+        return;
+      }
+
+      if (product.stock === 0) {
+        res.status(400).json({ error: `Product ${product.name} is out of stock.` });
         return;
       }
 
@@ -88,15 +93,18 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         return;
       }
 
-      // Validate colour selection against product.colors array
+      // Validate colour selection against product.colors array (case-insensitive)
       if (Array.isArray(product.colors) && product.colors.length > 0) {
-        if (!item.color || !product.colors.includes(item.color)) {
+        const validColorsLower = product.colors.map((c) => c.toLowerCase().trim());
+        const selectedColorLower = (item.color || '').toLowerCase().trim();
+        if (!item.color || !validColorsLower.includes(selectedColorLower)) {
           res.status(400).json({
             error: `Please select a valid colour for ${product.name}. Available colours: ${product.colors.join(', ')}`,
           });
           return;
         }
       }
+
 
       subtotal += product.price * item.quantity;
       checkoutItems.push({
