@@ -56,7 +56,7 @@ const pages: Record<
     intro: 'Everything you need to feel good about your Riz order.',
     sections: [
       ['How long does delivery take?', 'Orders are packed within 1–2 working days and delivered in 3–5 working days across India.'],
-      ['Do you offer COD?', 'Yes, cash on delivery is available on eligible orders.'],
+      ['What payment methods do you accept?', 'We accept secure online payments via Instant UPI (GPay, PhonePe, Paytm), Credit Cards, Debit Cards, and Net Banking powered by Razorpay.'],
       ['Are the pieces anti-tarnish?', 'Selected pieces have an anti-tarnish finish, noted clearly on their product page.'],
       ['How should I care for my jewellery?', 'Keep it dry, avoid perfumes and chemicals, store separately and clean gently with a soft cloth.'],
       ['Do you accept returns?', 'We accept return and refund requests for eligible order issues (such as damaged or wrong items) within 7 days of delivery. Approved refunds are processed within 5–7 working days.'],
@@ -107,7 +107,7 @@ const pages: Record<
     sections: [
       ['Orders & Availability', 'All orders placed on our website are subject to product availability and acceptance. We reserve the right to cancel or limit orders if an item becomes unavailable.'],
       ['Product Information', 'We make every effort to display product colors, details, and finishes accurately. Small variations may occur due to screen settings or handcrafted material characteristics.'],
-      ['Pricing & Payment', 'Prices are displayed in Indian Rupees (INR). Payments must be completed online via Razorpay or through Cash on Delivery where applicable.'],
+      ['Pricing & Payment', 'Prices are displayed in Indian Rupees (INR). Payments must be completed online via Razorpay (Instant UPI or Credit/Debit Cards).'],
       ['Shipping & Delivery', 'Delivery timelines and shipping charges are governed by our Shipping Policy. Free shipping applies to eligible Indian orders of ₹2,000 or more.'],
       ['Returns & Refunds', 'Return and refund requests are handled according to our 7-day Return & Refund Policy for eligible order issues.'],
       ['Customer Support', 'If you have any questions regarding these terms, please email us at rizbyshijiriju@gmail.com or WhatsApp +91 9072308686.'],
