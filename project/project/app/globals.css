@@ -4829,15 +4829,69 @@ img {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
   }
 
-  /* Admin Grid Adjustments */
-  .admin-grid {
+  .table-responsive table {
+    min-width: 680px;
+  }
+
+  /* Admin Header & Action Buttons Mobile Layout */
+  .admin-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+
+  .admin-page-header-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .admin-page-header-actions > * {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+  }
+
+  /* Admin Filter Bars */
+  .admin-filters-bar {
     grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px !important;
   }
 
-  /* Admin Form Responsiveness */
-  form label {
-    font-size: 13px;
+  /* Admin Forms & Grids */
+  .admin-form-card {
+    padding: 16px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .admin-two-col-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Inputs & Selects touch optimizations */
+  form input,
+  form select,
+  form textarea {
+    font-size: 14px !important;
+    padding: 10px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Color selection chips wrapping */
+  .color-selection-section button {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
   }
 }

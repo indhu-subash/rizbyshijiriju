@@ -162,8 +162,8 @@ export default function NewProductPage() {
       {error && <div className="error-banner mb-6">{error}</div>}
       {success && <div className="success-banner mb-6">{success}</div>}
 
-      <form onSubmit={handleSubmit} style={{ background: '#fff', padding: '32px', borderRadius: '8px', border: '1px solid #eee' }}>
-        <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+      <form onSubmit={handleSubmit} className="admin-form-card" style={{ background: '#fff', padding: '32px', borderRadius: '8px', border: '1px solid #eee' }}>
+        <div className="admin-form-grid" style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
           {/* Details Section */}
           <div style={{ display: 'grid', gap: '15px' }}>
             <h3 className="serif border-b pb-2">Product Info</h3>
@@ -313,7 +313,7 @@ export default function NewProductPage() {
           <div style={{ display: 'grid', gap: '15px' }}>
             <h3 className="serif border-b pb-2">Categorization & Craft</h3>
 
-            <div style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
+            <div className="admin-two-col-grid" style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
               <label>
                 Category Name
                 <select

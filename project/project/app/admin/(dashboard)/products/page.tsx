@@ -84,12 +84,12 @@ export default function AdminProducts() {
   return (
     <div>
       {/* Header */}
-      <div className="flex justify-between items-center mb-8" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="admin-page-header flex justify-between items-center mb-8" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <span className="eyebrow">Inventory</span>
           <h1 className="serif text-3xl font-semibold">Manage Products</h1>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="admin-page-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
             onClick={handleSeedProducts}
             disabled={seeding}
@@ -106,7 +106,7 @@ export default function AdminProducts() {
 
       {/* Filters Bar */}
       <div
-        className="filters-bar border p-4 rounded mb-6"
+        className="admin-filters-bar filters-bar border p-4 rounded mb-6"
         style={{
           background: '#fff',
           display: 'grid',
