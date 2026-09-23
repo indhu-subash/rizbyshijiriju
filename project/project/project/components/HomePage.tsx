@@ -7,7 +7,7 @@ import { categoriesList, products } from '@/data/products';
 import { ProductGrid } from './ProductCard';
 import { Newsletter } from './Newsletter';
 
-const heroImage = 'https://images.pexels.com/photos/29502932/pexels-photo-29502932.jpeg?auto=compress&cs=tinysrgb&w=1800';
+const heroImage = '/hero-jewellery.jpg';
 
 const featuredCollections = [
   [

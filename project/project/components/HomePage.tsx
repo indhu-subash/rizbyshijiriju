@@ -7,7 +7,7 @@ import { categoriesList, products } from '@/data/products';
 import { ProductGrid } from './ProductCard';
 import { Newsletter } from './Newsletter';
 
-const heroImage = '/hero-banner.png';
+const heroImage = '/hero-jewellery.jpg';
 
 const featuredCollections = [
   [
