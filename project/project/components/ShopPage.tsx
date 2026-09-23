@@ -338,7 +338,7 @@ export function ShopPage({
               )}
             </div>
 
-            <span className="result-count">{displayedItems.length} pieces</span>
+            <span className="result-count">{displayedItems.length} {displayedItems.length === 1 ? 'piece' : 'pieces'}</span>
 
             <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort products">
               <option value="Featured">Featured</option>

@@ -4,6 +4,7 @@ import {
   getDashboardStats,
   getAdminOrders,
   updateOrderStatus,
+  deleteAdminOrder,
   getAdminProducts,
   createProduct,
   editProduct,
@@ -48,6 +49,7 @@ router.post('/categories/seed', seedCategories as any);
 // Orders
 router.get('/orders', getAdminOrders as any);
 router.put('/orders/:id', updateOrderStatus as any);
+router.delete('/orders/:id', deleteAdminOrder as any);
 
 // Products CRUD
 router.get('/products', getAdminProducts as any);

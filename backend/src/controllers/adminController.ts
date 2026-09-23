@@ -118,6 +118,33 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
   }
 }
 
+export async function deleteAdminOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id || typeof id !== 'string') {
+      res.status(400).json({ error: 'Valid order ID is required.' });
+      return;
+    }
+
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) {
+      res.status(404).json({ error: 'Order not found.' });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({ where: { orderId: id } });
+      await tx.order.delete({ where: { id } });
+    });
+
+    res.status(200).json({ message: 'Order deleted successfully.', deletedOrderId: order.orderId });
+  } catch (error: any) {
+    console.error('Delete order error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to delete order.' });
+  }
+}
+
 // 3. Products CRUD
 export async function createProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {

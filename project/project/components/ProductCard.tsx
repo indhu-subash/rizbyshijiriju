@@ -7,14 +7,25 @@ import { Heart, Plus, Check, Star } from 'lucide-react';
 import { Product } from '@/data/products';
 import { useStore } from './StoreProvider';
 
+const DEFAULT_FALLBACK_IMAGE = 'https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=900';
+
 export function ProductCard({ product }: { product: Product }) {
   const { toggleWishlist, wishlist, addToCart } = useStore();
   const [isAdded, setIsAdded] = useState(false);
 
+  const primarySrc = product.images && product.images[0] ? product.images[0] : DEFAULT_FALLBACK_IMAGE;
+  const secondarySrc = product.images && product.images.length > 1 ? product.images[1] : null;
+
+  const [mainImg, setMainImg] = useState<string>(primarySrc);
+  const [secImg, setSecImg] = useState<string | null>(secondarySrc);
+
   const sale = product.originalPrice && Math.round((1 - product.price / product.originalPrice) * 100);
-  const limited = product.tags.includes('limited');
-  const hasSecondaryImage = product.images && product.images.length > 1;
+  const limited = product.tags && product.tags.includes('limited');
+  const hasSecondaryImage = Boolean(secImg);
   const isWishlisted = wishlist.includes(product.id);
+
+  const reviewCount = product.reviewCount || product.reviews || 0;
+  const ratingValue = typeof product.rating === 'number' && !isNaN(product.rating) ? product.rating : 4.5;
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -33,19 +44,21 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="product-image">
         <Link href={`/product/${product.slug}`}>
           <Image
-            src={product.images[0]}
-            alt={product.name}
+            src={mainImg}
+            alt={product.name || 'Jewellery product'}
             fill
             sizes="(max-width:640px) 50vw, (max-width:1000px) 33vw, 25vw"
             className={`primary-img ${hasSecondaryImage ? 'has-secondary' : ''}`}
+            onError={() => setMainImg(DEFAULT_FALLBACK_IMAGE)}
           />
-          {hasSecondaryImage && (
+          {hasSecondaryImage && secImg && (
             <Image
-              src={product.images[1]}
-              alt={`${product.name} alternate view`}
+              src={secImg}
+              alt={`${product.name || 'Jewellery'} alternate view`}
               fill
               sizes="(max-width:640px) 50vw, (max-width:1000px) 33vw, 25vw"
               className="secondary-img"
+              onError={() => setSecImg(null)}
             />
           )}
         </Link>
@@ -95,7 +108,8 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         <div className="rating">
-          <Star size={12} fill="currentColor" /> {product.rating} <span>({product.reviewCount})</span>
+          <Star size={12} fill="currentColor" /> {ratingValue.toFixed(1)}
+          {reviewCount > 0 && <span>({reviewCount})</span>}
         </div>
       </Link>
     </article>

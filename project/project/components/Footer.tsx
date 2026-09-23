@@ -82,11 +82,12 @@ export function Footer() {
               ['Privacy', '/privacy'],
               ['Terms', '/terms'],
               ['Refund policy', '/returns'],
+              ['Admin Portal', '/admin/login'],
             ]}
           />
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Riz by Shijiriju</span>
+          <span>© 2026 Riz by Shijiriju · <Link href="/admin/login" style={{ color: 'var(--muted)', textDecoration: 'none' }}>Admin Portal</Link></span>
           <span>Secure checkout · Made with intention</span>
         </div>
       </div>

@@ -426,7 +426,7 @@ img {
 
 .product-image {
   position: relative;
-  aspect-ratio: 1/1.17;
+  aspect-ratio: 1/1;
   background: #ede5db;
   overflow: hidden
 }

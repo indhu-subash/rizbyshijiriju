@@ -220,6 +220,9 @@ export function Header() {
 
             <div className="drawer-footer">
               <p>Affordable luxury, made to live in.</p>
+              <Link href="/admin/login" onClick={() => setOpen(false)} className="admin-drawer-link" style={{ display: 'inline-block', marginTop: '8px', fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.05em' }}>
+                Admin Portal →
+              </Link>
             </div>
           </div>
         </>
