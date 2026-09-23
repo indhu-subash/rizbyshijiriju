@@ -26,6 +26,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   const reviewCount = product.reviewCount || product.reviews || 0;
   const ratingValue = typeof product.rating === 'number' && !isNaN(product.rating) ? product.rating : 4.5;
+  const productSlug = product.slug || product.id || encodeURIComponent(product.name);
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -42,7 +43,7 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <article className="product-card">
       <div className="product-image">
-        <Link href={`/product/${product.slug}`}>
+        <Link href={`/product/${productSlug}`}>
           <Image
             src={mainImg}
             alt={product.name || 'Jewellery product'}
@@ -95,7 +96,7 @@ export function ProductCard({ product }: { product: Product }) {
         </button>
       </div>
 
-      <Link href={`/product/${product.slug}`} className="product-info">
+      <Link href={`/product/${productSlug}`} className="product-info">
         <div className="product-category">{product.category}</div>
         <h3>{product.name}</h3>
         <div className="product-meta">

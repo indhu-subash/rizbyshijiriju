@@ -155,52 +155,82 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
     decoded = identifier.trim();
   }
 
-  const normalized = normalizeSlug(decoded);
-  const isUuid = UUID_REGEX.test(decoded);
+  if (!decoded) return null;
 
+  const normalized = normalizeSlug(decoded);
+  const unhyphenated = decoded.replace(/-/g, ' ').trim();
   const activeCondition = mustBeActive ? { isActive: true } : {};
 
-  // 1. Try exact UUID/id match if valid UUID
-  if (isUuid) {
-    const byId = await prisma.product.findFirst({
-      where: { id: decoded, ...activeCondition },
-    });
-    if (byId) return byId;
-  }
+  // 1. Try exact ID match (whether UUID or custom string ID)
+  let product = await prisma.product.findFirst({
+    where: { id: decoded, ...activeCondition },
+  });
+  if (product) return product;
 
-  // 2. Try exact slug match
-  const byExactSlug = await prisma.product.findFirst({
+  // 2. Try case-insensitive ID match
+  product = await prisma.product.findFirst({
+    where: { id: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
+  });
+  if (product) return product;
+
+  // 3. Try exact slug match
+  product = await prisma.product.findFirst({
     where: { slug: decoded, ...activeCondition },
   });
-  if (byExactSlug) return byExactSlug;
+  if (product) return product;
 
-  // 3. Try case-insensitive slug match
-  const byCaseSlug = await prisma.product.findFirst({
+  // 4. Try case-insensitive slug match
+  product = await prisma.product.findFirst({
     where: { slug: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
   });
-  if (byCaseSlug) return byCaseSlug;
+  if (product) return product;
 
-  // 4. Try normalized slug match
+  // 5. Try normalized slug match (equals & contains)
   if (normalized) {
-    const byNormSlug = await prisma.product.findFirst({
+    product = await prisma.product.findFirst({
       where: { slug: { equals: normalized, mode: 'insensitive' }, ...activeCondition },
     });
-    if (byNormSlug) return byNormSlug;
+    if (product) return product;
+
+    product = await prisma.product.findFirst({
+      where: { slug: { contains: normalized, mode: 'insensitive' }, ...activeCondition },
+    });
+    if (product) return product;
   }
 
-  // 5. Try case-insensitive name match
-  const byName = await prisma.product.findFirst({
+  // 6. Try exact case-insensitive name match
+  product = await prisma.product.findFirst({
     where: { name: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
   });
-  if (byName) return byName;
+  if (product) return product;
 
-  // 6. Try matching name with hyphens replaced by spaces
-  if (decoded.includes('-')) {
-    const unhyphenated = decoded.replace(/-/g, ' ');
-    const byUnhyphenatedName = await prisma.product.findFirst({
+  // 7. Try name match with hyphens replaced by spaces (equals & contains)
+  if (unhyphenated) {
+    product = await prisma.product.findFirst({
       where: { name: { equals: unhyphenated, mode: 'insensitive' }, ...activeCondition },
     });
-    if (byUnhyphenatedName) return byUnhyphenatedName;
+    if (product) return product;
+
+    product = await prisma.product.findFirst({
+      where: { name: { contains: unhyphenated, mode: 'insensitive' }, ...activeCondition },
+    });
+    if (product) return product;
+  }
+
+  // 8. Try startsWith or contains match on name
+  product = await prisma.product.findFirst({
+    where: { name: { startsWith: decoded, mode: 'insensitive' }, ...activeCondition },
+  });
+  if (product) return product;
+
+  product = await prisma.product.findFirst({
+    where: { name: { contains: decoded, mode: 'insensitive' }, ...activeCondition },
+  });
+  if (product) return product;
+
+  // 9. If mustBeActive was true and product was still not found, try searching active=false products
+  if (mustBeActive) {
+    return findProductBySlugOrId(identifier, false);
   }
 
   return null;
