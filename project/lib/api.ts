@@ -1,17 +1,49 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
 
+export const AUTH_TOKEN_KEY = 'riz_auth_token';
+
+function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch (e) {
+    return null;
+  }
+}
+
+export function setStoredToken(token: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+  } catch (e) {
+    // Ignore storage errors
+  }
+}
+
 async function request(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}${endpoint}`;
 
   // Ensure cookies are sent and received
   options.credentials = 'include';
 
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
   if (options.body && !(options.body instanceof FormData)) {
-    options.headers = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
+    headers['Content-Type'] = 'application/json';
   }
+
+  if (token && typeof token === 'string' && token.trim().length > 0) {
+    headers['Authorization'] = `Bearer ${token.trim()}`;
+  }
+
+  options.headers = headers;
 
   try {
     const res = await fetch(url, options);
@@ -24,12 +56,18 @@ async function request(endpoint: string, options: RequestInit = {}) {
     } else {
       const text = await res.text();
       if (!res.ok) {
+        if (res.status === 401) {
+          setStoredToken(null);
+        }
         throw new Error(`Server returned ${res.status}: ${res.statusText || 'Error'}`);
       }
       data = { text };
     }
 
     if (!res.ok) {
+      if (res.status === 401) {
+        setStoredToken(null);
+      }
       throw new Error(data.error || 'An error occurred during the request.');
     }
 
@@ -49,9 +87,27 @@ async function request(endpoint: string, options: RequestInit = {}) {
 export const api = {
   // Authentication
   auth: {
-    register: (body: any) => request('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
-    login: (body: any) => request('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
-    logout: () => request('/auth/logout', { method: 'POST' }),
+    register: async (body: any) => {
+      const data = await request('/auth/register', { method: 'POST', body: JSON.stringify(body) });
+      if (data && data.token) {
+        setStoredToken(data.token);
+      }
+      return data;
+    },
+    login: async (body: any) => {
+      const data = await request('/auth/login', { method: 'POST', body: JSON.stringify(body) });
+      if (data && data.token) {
+        setStoredToken(data.token);
+      }
+      return data;
+    },
+    logout: async () => {
+      try {
+        return await request('/auth/logout', { method: 'POST' });
+      } finally {
+        setStoredToken(null);
+      }
+    },
     me: () => request('/auth/me'),
     getAddresses: () => request('/auth/addresses'),
     addAddress: (body: any) => request('/auth/addresses', { method: 'POST', body: JSON.stringify(body) }),

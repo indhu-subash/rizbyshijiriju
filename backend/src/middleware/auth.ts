@@ -11,13 +11,30 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
+function extractToken(req: Request): string | undefined {
+  const cookieToken = req.cookies?.token;
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    const bearerToken = authHeader.slice(7).trim();
+    if (bearerToken) {
+      return bearerToken;
+    }
+  }
+
+  return undefined;
+}
+
 export async function authenticateUser(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
-    const token = req.cookies?.token;
+    const token = extractToken(req);
 
     if (!token) {
       res.status(401).json({ error: 'Authentication required. No token provided.' });
@@ -50,7 +67,7 @@ export async function optionalAuthenticateUser(
   next: NextFunction
 ): Promise<void> {
   try {
-    const token = req.cookies?.token;
+    const token = extractToken(req);
     if (token) {
       const jwtSecret = process.env.JWT_SECRET || 'fallback_secret';
       const decoded = jwt.verify(token, jwtSecret) as { id: string; email: string; role: string; name: string };

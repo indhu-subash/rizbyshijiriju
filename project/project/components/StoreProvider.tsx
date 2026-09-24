@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Product } from '@/data/products';
-import { api } from '@/lib/api';
+import { api, setStoredToken } from '@/lib/api';
 
 export type CartItem = {
   product: Product;
@@ -242,6 +242,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       logout: () => {
         setUser(null);
         setIsAuthenticated(false);
+        setStoredToken(null);
+        api.auth.logout().catch(() => {});
       },
       loadingAuth,
 
