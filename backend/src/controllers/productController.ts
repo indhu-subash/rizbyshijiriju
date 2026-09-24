@@ -124,13 +124,29 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       }
     }
 
-    let products = await prisma.product.findMany({
-      where: whereClause,
-      orderBy: isBestsellerSort ? undefined : orderBy,
-      include: {
-        categoryRel: true,
-      },
-    });
+    let products: any[] = [];
+    try {
+      products = await prisma.product.findMany({
+        where: whereClause,
+        orderBy: isBestsellerSort ? undefined : orderBy,
+        include: {
+          categoryRel: true,
+        },
+      });
+    } catch (dbErr: any) {
+      console.warn('findMany with relation include failed, executing base query fallback:', dbErr?.message || dbErr);
+      // Clean relational conditions from whereClause for safe execution
+      const safeWhere = { ...whereClause };
+      delete safeWhere.categoryRel;
+      delete safeWhere.collectionRel;
+      if (Array.isArray(safeWhere.OR)) {
+        safeWhere.OR = safeWhere.OR.filter((cond: any) => !cond.categoryRel && !cond.collectionRel);
+      }
+      products = await prisma.product.findMany({
+        where: safeWhere,
+        orderBy: isBestsellerSort ? undefined : orderBy,
+      });
+    }
 
     // Compute actual units sold from confirmed/paid OrderItems cleanly
     const salesMap = new Map<string, number>();
