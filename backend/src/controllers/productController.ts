@@ -7,6 +7,8 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
 
     const whereClause: any = { isActive: true };
 
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
     if (category) {
       const catStr = String(category).trim();
       const singularCat = catStr.endsWith('s') ? catStr.slice(0, -1) : catStr;
@@ -22,16 +24,25 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
 
     if (collection) {
       const colStr = String(collection).trim();
-      const colConditions = [
-        { collection: { contains: colStr, mode: 'insensitive' } },
-        { name: { contains: colStr, mode: 'insensitive' } },
-        { tags: { has: colStr.toLowerCase() } },
-      ];
-      if (whereClause.OR) {
-        whereClause.AND = [{ OR: whereClause.OR }, { OR: colConditions }];
-        delete whereClause.OR;
+      const lowerCol = colStr.toLowerCase();
+
+      if (lowerCol.includes('new arrival') || lowerCol.includes('new-arrival') || lowerCol === 'new arrivals') {
+        whereClause.OR = [
+          { createdAt: { gte: thirtyDaysAgo } },
+          { newArrival: true },
+        ];
       } else {
-        whereClause.OR = colConditions;
+        const colConditions = [
+          { collection: { contains: colStr, mode: 'insensitive' } },
+          { name: { contains: colStr, mode: 'insensitive' } },
+          { tags: { has: colStr.toLowerCase() } },
+        ];
+        if (whereClause.OR) {
+          whereClause.AND = [{ OR: whereClause.OR }, { OR: colConditions }];
+          delete whereClause.OR;
+        } else {
+          whereClause.OR = colConditions;
+        }
       }
     }
 
@@ -43,7 +54,6 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
         .filter(Boolean);
 
       if (colorList.length > 0) {
-        // Expand variants (e.g. "Blue", "blue", "BLUE") for maximum match flexibility
         const colorVariants = Array.from(
           new Set(
             colorList.flatMap((c) => [
@@ -96,6 +106,8 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     }
 
     let orderBy: any = [{ featured: 'desc' }, { createdAt: 'desc' }];
+    const isBestsellerSort = sort && (String(sort).toLowerCase().includes('best') || String(sort).toLowerCase().includes('bestseller'));
+
     if (sort) {
       const sortVal = String(sort);
       if (sortVal === 'Price Low to High') {
@@ -103,23 +115,70 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       } else if (sortVal === 'Price High to Low') {
         orderBy = [{ price: 'desc' }, { createdAt: 'desc' }];
       } else if (sortVal === 'Newest') {
-        orderBy = [{ newArrival: 'desc' }, { createdAt: 'desc' }];
-      } else if (sortVal === 'Best Selling') {
-        orderBy = [{ bestseller: 'desc' }, { createdAt: 'desc' }];
-      } else {
+        orderBy = [{ createdAt: 'desc' }];
+      } else if (!isBestsellerSort) {
         orderBy = [{ featured: 'desc' }, { createdAt: 'desc' }];
       }
     }
 
-    const products = await prisma.product.findMany({
+    let products = await prisma.product.findMany({
       where: whereClause,
-      orderBy,
+      orderBy: isBestsellerSort ? undefined : orderBy,
       include: {
         categoryRel: true,
       },
     });
 
-    res.status(200).json({ products });
+    // Compute actual units sold from confirmed/paid OrderItems
+    const salesGroup = await prisma.orderItem.groupBy({
+      by: ['productId'],
+      _sum: {
+        quantity: true,
+      },
+      where: {
+        productId: { not: null },
+        order: {
+          orderStatus: { notIn: ['Cancelled', 'cancelled', 'FAILED', 'failed'] },
+          OR: [
+            { paymentStatus: { mode: 'insensitive', equals: 'paid' } },
+            { orderStatus: { in: ['Confirmed', 'Processing', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered'] } },
+          ],
+        },
+      },
+    });
+
+    const salesMap = new Map<string, number>();
+    salesGroup.forEach((item) => {
+      if (item.productId) {
+        salesMap.set(item.productId, item._sum.quantity || 0);
+      }
+    });
+
+    // Map unitsSold & derive dynamic bestseller & newArrival status
+    let mappedProducts = products.map((p) => {
+      const unitsSold = salesMap.get(p.id) || 0;
+      const isNew = p.createdAt ? (new Date(p.createdAt).getTime() >= thirtyDaysAgo.getTime()) : !!p.newArrival;
+      // BESTSELLER badge ONLY for products with actual sales > 0
+      const isBestseller = unitsSold > 0 || p.bestseller;
+
+      return {
+        ...p,
+        unitsSold,
+        bestseller: isBestseller,
+        newArrival: isNew,
+      };
+    });
+
+    if (isBestsellerSort) {
+      mappedProducts.sort((a, b) => {
+        if (b.unitsSold !== a.unitsSold) {
+          return b.unitsSold - a.unitsSold;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
+
+    res.status(200).json({ products: mappedProducts });
   } catch (error) {
     console.error('Fetch products error:', error);
     res.status(500).json({ error: 'Failed to fetch products.' });

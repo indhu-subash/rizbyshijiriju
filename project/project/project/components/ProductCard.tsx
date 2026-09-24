@@ -6,13 +6,17 @@ import { Heart, Plus, Star } from 'lucide-react';
 import { Product } from '@/data/products';
 import { useStore } from './StoreProvider';
 
-const DEFAULT_IMAGE = 'https://images.pexels.com/photos/36823005/pexels-photo-36823005.jpeg?auto=compress&cs=tinysrgb&w=900';
+const DEFAULT_IMAGE = '/hero-jewellery.jpg';
 
 export function getValidImageUrl(url?: string): string {
   if (!url || typeof url !== 'string' || !url.trim()) {
     return DEFAULT_IMAGE;
   }
   const trimmed = url.trim();
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    console.warn('[IMAGE SAFEGUARD] Rejected Base64/Blob URL, returning default asset:', trimmed.slice(0, 40));
+    return DEFAULT_IMAGE;
+  }
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     // Correct malformed R2 URLs missing domain suffix like "https://pub-522048b577469-kw5cjma1.jpg"
     if (trimmed.includes('pub-') && !trimmed.includes('.r2.dev') && !trimmed.includes('.cloudflarestorage.com')) {

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Minus, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { getValidImageUrl } from './ProductCard';
 import { useStore } from './StoreProvider';
 
 export function CartPage() {
@@ -34,14 +35,20 @@ export function CartPage() {
         {cart.length ? (
           <>
             <div className="cart-items">
-              {cart.map(({ product, quantity, color }) => (
-                <div className="cart-item" key={`${product.id}-${color || 'default'}`}>
-                  <div className="cart-thumb">
-                    <Image src={product.images[0]} alt={product.name} fill sizes="110px" />
-                  </div>
-                  <div className="cart-item-copy">
-                    <span className="eyebrow">{product.category}</span>
-                    <h3 className="serif">{product.name}</h3>
+              {cart.map(({ product, quantity, color }) => {
+                const productSlug = product.slug || product.id || encodeURIComponent(product.name);
+                const imageUrl = getValidImageUrl(product.images?.[0]);
+
+                return (
+                  <div className="cart-item" key={`${product.id}-${color || 'default'}`}>
+                    <Link href={`/product/${productSlug}`} className="cart-thumb">
+                      <Image src={imageUrl} alt={product.name} fill sizes="110px" />
+                    </Link>
+                    <div className="cart-item-copy">
+                      <span className="eyebrow">{product.category}</span>
+                      <Link href={`/product/${productSlug}`}>
+                        <h3 className="serif hover:underline">{product.name}</h3>
+                      </Link>
                     {color && (
                       <p className="text-xs text-muted-foreground" style={{ fontSize: '0.85rem', color: '#666', margin: '2px 0' }}>
                         Colour: <b>{color}</b>
@@ -65,8 +72,9 @@ export function CartPage() {
                   </div>
                   <strong>₹{((product.price || 0) * quantity).toLocaleString('en-IN')}</strong>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
             <aside className="summary">
               <h2 className="serif">Order summary</h2>
               <div className="summary-line">
