@@ -15,7 +15,6 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       whereClause.OR = [
         { category: { contains: catStr, mode: 'insensitive' } },
         { category: { contains: singularCat, mode: 'insensitive' } },
-        { categoryRel: { name: { contains: catStr, mode: 'insensitive' } } },
         { name: { contains: catStr, mode: 'insensitive' } },
         { tags: { has: catStr.toLowerCase() } },
         { tags: { has: singularCat.toLowerCase() } },
@@ -34,9 +33,6 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       } else {
         const colConditions: any[] = [
           { collection: { contains: colStr, mode: 'insensitive' } },
-          { collectionId: colStr },
-          { collectionRel: { slug: lowerCol } },
-          { collectionRel: { name: { contains: colStr, mode: 'insensitive' } } },
           { name: { contains: colStr, mode: 'insensitive' } },
           { tags: { has: colStr.toLowerCase() } },
         ];
@@ -124,29 +120,10 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       }
     }
 
-    let products: any[] = [];
-    try {
-      products = await prisma.product.findMany({
-        where: whereClause,
-        orderBy: isBestsellerSort ? undefined : orderBy,
-        include: {
-          categoryRel: true,
-        },
-      });
-    } catch (dbErr: any) {
-      console.warn('findMany with relation include failed, executing base query fallback:', dbErr?.message || dbErr);
-      // Clean relational conditions from whereClause for safe execution
-      const safeWhere = { ...whereClause };
-      delete safeWhere.categoryRel;
-      delete safeWhere.collectionRel;
-      if (Array.isArray(safeWhere.OR)) {
-        safeWhere.OR = safeWhere.OR.filter((cond: any) => !cond.categoryRel && !cond.collectionRel);
-      }
-      products = await prisma.product.findMany({
-        where: safeWhere,
-        orderBy: isBestsellerSort ? undefined : orderBy,
-      });
-    }
+    const products = await prisma.product.findMany({
+      where: whereClause,
+      orderBy: isBestsellerSort ? undefined : orderBy,
+    });
 
     // Compute actual units sold from confirmed/paid OrderItems cleanly
     const salesMap = new Map<string, number>();
