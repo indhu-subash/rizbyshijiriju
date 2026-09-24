@@ -86,10 +86,20 @@ app.listen(PORT, async () => {
   console.log(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
 
   // Self-healing database auto-migration for PostgreSQL schema additions
+  const runSql = async (sql: string) => {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (e: any) {
+      // Ignore existing column/table warnings
+    }
+  };
+
   try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "categoryId" TEXT;`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "collectionId" TEXT;`);
-    await prisma.$executeRawUnsafe(`
+    await runSql(`ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "categoryId" TEXT;`);
+    await runSql(`ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "collectionId" TEXT;`);
+    await runSql(`ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "categoryId" TEXT;`);
+    await runSql(`ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "collectionId" TEXT;`);
+    await runSql(`
       CREATE TABLE IF NOT EXISTS "Category" (
         "id" TEXT NOT NULL,
         "name" TEXT NOT NULL,
@@ -103,7 +113,7 @@ app.listen(PORT, async () => {
         CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
       );
     `);
-    await prisma.$executeRawUnsafe(`
+    await runSql(`
       CREATE TABLE IF NOT EXISTS "Collection" (
         "id" TEXT NOT NULL,
         "name" TEXT NOT NULL,
@@ -117,9 +127,9 @@ app.listen(PORT, async () => {
         CONSTRAINT "Collection_pkey" PRIMARY KEY ("id")
       );
     `);
-    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Category_slug_key" ON "Category"("slug");`);
-    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Collection_slug_key" ON "Collection"("slug");`);
-    console.log('Database auto-migration completed successfully.');
+    await runSql(`CREATE UNIQUE INDEX IF NOT EXISTS "Category_slug_key" ON "Category"("slug");`);
+    await runSql(`CREATE UNIQUE INDEX IF NOT EXISTS "Collection_slug_key" ON "Collection"("slug");`);
+    console.log('Database auto-migration check completed.');
   } catch (dbMigrateErr) {
     console.warn('Auto-migration warning:', dbMigrateErr);
   }

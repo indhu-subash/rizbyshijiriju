@@ -120,10 +120,47 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       }
     }
 
-    const products = await prisma.product.findMany({
-      where: whereClause,
-      orderBy: isBestsellerSort ? undefined : orderBy,
-    });
+    const PRODUCT_SELECT_FIELDS = {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      price: true,
+      originalPrice: true,
+      category: true,
+      collection: true,
+      colors: true,
+      gender: true,
+      ageGroup: true,
+      images: true,
+      material: true,
+      finish: true,
+      rating: true,
+      reviews: true,
+      stock: true,
+      tags: true,
+      featured: true,
+      bestseller: true,
+      newArrival: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    };
+
+    let products: any[] = [];
+    try {
+      products = await prisma.product.findMany({
+        where: whereClause,
+        orderBy: isBestsellerSort ? undefined : orderBy,
+      });
+    } catch (findErr) {
+      console.warn('findMany default query failed, falling back to explicit select fields:', findErr);
+      products = await prisma.product.findMany({
+        where: whereClause,
+        orderBy: isBestsellerSort ? undefined : orderBy,
+        select: PRODUCT_SELECT_FIELDS,
+      });
+    }
 
     // Compute actual units sold from confirmed/paid OrderItems cleanly
     const salesMap = new Map<string, number>();
