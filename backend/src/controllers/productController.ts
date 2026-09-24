@@ -176,9 +176,9 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     }
 
     res.status(200).json({ products: mappedProducts });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Fetch products error:', error);
-    res.status(500).json({ error: 'Failed to fetch products.' });
+    res.status(500).json({ error: 'Failed to fetch products.', details: error?.message || String(error) });
   }
 }
 
