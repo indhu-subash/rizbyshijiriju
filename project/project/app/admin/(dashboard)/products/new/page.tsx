@@ -37,8 +37,9 @@ export default function NewProductPage() {
   const [finish, setFinish] = useState('Gold Plated');
   const [careInstructions, setCareInstructions] = useState('');
 
-  // Categories list from API
+  // Categories & Collections list from API
   const [dbCategories, setDbCategories] = useState<any[]>([]);
+  const [dbCollections, setDbCollections] = useState<any[]>([]);
 
   // Image Upload State
   const [images, setImages] = useState<string[]>([]);
@@ -52,6 +53,14 @@ export default function NewProductPage() {
       .then((res) => {
         if (res && res.categories) {
           setDbCategories(res.categories);
+        }
+      })
+      .catch(() => {});
+
+    api.admin.getCollections()
+      .then((res) => {
+        if (res && res.collections) {
+          setDbCollections(res.collections);
         }
       })
       .catch(() => {});
@@ -132,8 +141,7 @@ export default function NewProductPage() {
       gender,
       ageGroup,
       metal,
-      material: metal || 'Brass',
-      finish: finish || 'Gold Plated',
+      finish,
       careInstructions,
       images,
     };
@@ -162,8 +170,8 @@ export default function NewProductPage() {
       {error && <div className="error-banner mb-6">{error}</div>}
       {success && <div className="success-banner mb-6">{success}</div>}
 
-      <form onSubmit={handleSubmit} className="admin-form-card" style={{ background: '#fff', padding: '32px', borderRadius: '8px', border: '1px solid #eee' }}>
-        <div className="admin-form-grid" style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+      <form onSubmit={handleSubmit} style={{ background: '#fff', padding: '32px', borderRadius: '8px', border: '1px solid #eee' }}>
+        <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
           {/* Details Section */}
           <div style={{ display: 'grid', gap: '15px' }}>
             <h3 className="serif border-b pb-2">Product Info</h3>
@@ -313,7 +321,7 @@ export default function NewProductPage() {
           <div style={{ display: 'grid', gap: '15px' }}>
             <h3 className="serif border-b pb-2">Categorization & Craft</h3>
 
-            <div className="admin-two-col-grid" style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
+            <div style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
               <label>
                 Category Name
                 <select
@@ -348,18 +356,28 @@ export default function NewProductPage() {
               <label>
                 Collection
                 <select value={collection} onChange={(e) => setCollection(e.target.value)}>
-                  <option value="Anti-Tarnish">Anti-Tarnish</option>
-                  <option value="Traditional">Traditional</option>
-                  <option value="Bridal">Bridal</option>
-                  <option value="Men's">Men's</option>
-                  <option value="Kids">Kids</option>
-                  <option value="Hair Accessories">Hair Accessories</option>
-                  <option value="Silver Replica">Silver Replica</option>
-                  <option value="Diamond Replica">Diamond Replica</option>
-                  <option value="AD Collections">AD Collections</option>
-                  <option value="Fancy">Fancy</option>
-                  <option value="Gold Covering & Micro Plated">Gold Covering & Micro Plated</option>
-                  <option value="RIZ House of Fashion">RIZ House of Fashion</option>
+                  {dbCollections.length > 0 ? (
+                    dbCollections.map((c: any) => (
+                      <option key={c.id || c.slug} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Anti-Tarnish">Anti-Tarnish</option>
+                      <option value="Traditional">Traditional</option>
+                      <option value="Bridal">Bridal</option>
+                      <option value="Men's">Men's</option>
+                      <option value="Kids">Kids</option>
+                      <option value="Hair Accessories">Hair Accessories</option>
+                      <option value="Silver Replica">Silver Replica</option>
+                      <option value="Diamond Replica">Diamond Replica</option>
+                      <option value="AD Collections">AD Collections</option>
+                      <option value="Fancy">Fancy</option>
+                      <option value="Gold Covering & Micro Plated">Gold Covering & Micro Plated</option>
+                      <option value="RIZ House of Fashion">RIZ House of Fashion</option>
+                    </>
+                  )}
                 </select>
               </label>
 

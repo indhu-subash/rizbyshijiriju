@@ -8,13 +8,13 @@ import {
   LayoutDashboard,
   Gem,
   LayoutGrid,
+  Layers,
   ShoppingBag,
   Ticket,
   Users,
   Truck,
   ArrowLeft,
   Loader2,
-  Lock,
   Menu,
   X,
 } from 'lucide-react';
@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!loadingAuth) {
@@ -38,9 +38,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isAuthenticated, user, loadingAuth, router]);
 
-  // Auto-close mobile menu on route navigation
+  // Close mobile sidebar when route changes
   useEffect(() => {
-    setMobileMenuOpen(false);
+    setMobileOpen(false);
   }, [pathname]);
 
   if (loadingAuth || !authorized) {
@@ -58,6 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const menuItems = [
     { label: 'Overview', href: '/admin', icon: LayoutDashboard },
     { label: 'Categories', href: '/admin/categories', icon: LayoutGrid },
+    { label: 'Collections', href: '/admin/collections', icon: Layers },
     { label: 'Products', href: '/admin/products', icon: Gem },
     { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
     { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
@@ -67,68 +68,83 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="admin-container">
-      {/* Mobile Top Navigation Header (Visible < 768px) */}
+      {/* Mobile Navigation Header */}
       <header className="admin-mobile-header">
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="admin-mobile-toggle"
-          aria-label="Toggle admin navigation menu"
-        >
-          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
         <div className="admin-mobile-brand">
-          <span className="serif font-semibold text-lg">Riz Portal</span>
-          <span className="eyebrow-chip">Admin</span>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="admin-mobile-toggle"
+            aria-label="Toggle admin menu"
+          >
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+            <span className="eyebrow-chip">Admin</span>
+            <span style={{ fontSize: '15px', fontWeight: 600, fontFamily: 'var(--serif)' }}>Riz Portal</span>
+          </div>
         </div>
         <Link href="/" className="admin-mobile-home-link" title="Return to storefront">
           <ArrowLeft size={18} />
         </Link>
       </header>
 
-      {/* Mobile Overlay Backdrop */}
-      {mobileMenuOpen && (
+      {/* Mobile Dark Backdrop */}
+      {mobileOpen && (
         <div
           className="admin-mobile-backdrop"
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
-      {/* Admin Sidebar (Desktop Sticky + Mobile Drawer) */}
-      <aside className={`admin-sidebar border-r ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-        <div>
-          <div className="brand-logo mb-6 pb-4 border-b">
-            <span className="eyebrow" style={{ color: 'var(--accent)' }}>Management Console</span>
-            <h2 className="serif text-xl font-semibold mt-1">Riz Portal</h2>
+      {/* Admin Sidebar */}
+      <aside className={`admin-sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+          <div>
+            <div className="brand-logo mb-8" style={{ borderBottom: '1px solid #eee', paddingBottom: '16px' }}>
+              <span className="eyebrow" style={{ color: 'var(--accent)' }}>Management Console</span>
+              <h2 className="serif text-xl font-semibold mt-1">Riz Portal</h2>
+            </div>
+
+            <nav style={{ display: 'grid', gap: '8px' }}>
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`admin-nav-item ${isActive ? 'active' : ''}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px',
+                      borderRadius: '6px',
+                      color: isActive ? 'var(--accent)' : '#444',
+                      background: isActive ? '#f7f6f0' : 'transparent',
+                      fontWeight: isActive ? '500' : '400',
+                    }}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
 
-          <nav style={{ display: 'grid', gap: '6px' }}>
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`admin-nav-item flex items-center gap-3 p-3 rounded text-sm ${isActive ? 'active' : ''}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Icon size={18} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="mt-8 pt-4 border-t">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-sm muted hover-accent"
-          >
-            <ArrowLeft size={16} />
-            <span>Return to storefront</span>
-          </Link>
+          <div style={{ paddingTop: '24px', borderTop: '1px solid #eee' }}>
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-sm muted hover-accent"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <ArrowLeft size={16} />
+              <span>Return to storefront</span>
+            </Link>
+          </div>
         </div>
       </aside>
 

@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Gem,
   LayoutGrid,
+  Layers,
   ShoppingBag,
   Ticket,
   Users,
@@ -57,6 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const menuItems = [
     { label: 'Overview', href: '/admin', icon: LayoutDashboard },
     { label: 'Categories', href: '/admin/categories', icon: LayoutGrid },
+    { label: 'Collections', href: '/admin/collections', icon: Layers },
     { label: 'Products', href: '/admin/products', icon: Gem },
     { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
     { label: 'Coupons', href: '/admin/coupons', icon: Ticket },

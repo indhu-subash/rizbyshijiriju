@@ -32,8 +32,11 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
           { newArrival: true },
         ];
       } else {
-        const colConditions = [
+        const colConditions: any[] = [
           { collection: { contains: colStr, mode: 'insensitive' } },
+          { collectionId: colStr },
+          { collectionRel: { slug: lowerCol } },
+          { collectionRel: { name: { contains: colStr, mode: 'insensitive' } } },
           { name: { contains: colStr, mode: 'insensitive' } },
           { tags: { has: colStr.toLowerCase() } },
         ];

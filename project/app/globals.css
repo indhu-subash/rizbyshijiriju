@@ -426,7 +426,7 @@ img {
 
 .product-image {
   position: relative;
-  aspect-ratio: 1/1.17;
+  aspect-ratio: 1/1;
   background: #ede5db;
   overflow: hidden
 }
@@ -811,7 +811,25 @@ img {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  box-shadow: 0 8px 25px rgba(40, 40, 30, .15)
+  box-shadow: 0 8px 25px rgba(40, 40, 30, .15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .whatsapp {
+    right: 16px;
+    bottom: 20px;
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    justify-content: center;
+    align-items: center;
+  }
+  .whatsapp-text,
+  .whatsapp span {
+    display: none !important;
+  }
 }
 
 .page-intro {
@@ -4879,11 +4897,11 @@ img {
     gap: 12px !important;
   }
 
-  /* Inputs & Selects touch optimizations */
+  /* Inputs & Selects touch optimizations - 16px prevents iOS Safari auto-zoom */
   form input,
   form select,
   form textarea {
-    font-size: 14px !important;
+    font-size: 16px !important;
     padding: 10px 12px !important;
     width: 100% !important;
     box-sizing: border-box !important;
@@ -4894,4 +4912,4 @@ img {
     padding: 8px 12px !important;
     font-size: 13px !important;
   }
-}
+}

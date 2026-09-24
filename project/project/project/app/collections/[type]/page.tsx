@@ -100,14 +100,35 @@ export default async function Page({ params }: { params: Promise<{ type: string 
     },
   };
 
-  const config = configs[type] || configs['anti-tarnish'];
-  
-  // Fetch from the backend API, falling back to local filter on error
+  const config = configs[type];
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
+
+  let title = config?.title || type.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  let description = config?.description || 'Explore our exquisite jewellery collection.';
+  let image = config?.image || 'https://images.pexels.com/photos/29502912/pexels-photo-29502912.jpeg?auto=compress&cs=tinysrgb&w=1800';
+  let dbCollectionName = config?.dbCollectionName || type;
+
+  // Try fetching collection metadata from backend DB
+  try {
+    const colRes = await fetch(`${API_URL}/collections/${encodeURIComponent(type)}`, { cache: 'no-store' });
+    if (colRes.ok) {
+      const colData = await colRes.json();
+      if (colData && colData.collection) {
+        title = colData.collection.name;
+        dbCollectionName = colData.collection.name;
+        if (colData.collection.description) description = colData.collection.description;
+        if (colData.collection.image) image = colData.collection.image;
+      }
+    }
+  } catch (err) {
+    // Ignore error and fall back
+  }
+
+  // Fetch products for this collection from backend API
   let items: any[] | undefined = undefined;
   try {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
     const res = await fetch(
-      `${API_URL}/products?collection=${encodeURIComponent(config.dbCollectionName)}`,
+      `${API_URL}/products?collection=${encodeURIComponent(dbCollectionName)}`,
       { cache: 'no-store' }
     );
     if (res.ok) {
@@ -120,5 +141,5 @@ export default async function Page({ params }: { params: Promise<{ type: string 
     console.warn('Could not fetch from backend API for collection, using local fallback:', error);
   }
 
-  return <CollectionPage title={config.title} description={config.description} collection={config.dbCollectionName} image={config.image} items={items} />;
+  return <CollectionPage title={title} description={description} collection={dbCollectionName} image={image} items={items} />;
 }

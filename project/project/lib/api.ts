@@ -239,6 +239,20 @@ export const api = {
         return await request('/categories/seed', { method: 'POST' });
       }
     },
+    // Collections
+    getCollections: async () => {
+      try {
+        return await request('/collections/admin/all');
+      } catch (err) {
+        return await request('/collections');
+      }
+    },
+    createCollection: (body: any) => request('/collections', { method: 'POST', body: JSON.stringify(body) }),
+    updateCollection: (id: string, body: any) => request(`/collections/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    toggleCollectionActive: (id: string) => request(`/collections/${id}/toggle`, { method: 'PATCH' }),
+    deleteCollection: (id: string) => request(`/collections/${id}`, { method: 'DELETE' }),
+    seedCollections: () => request('/collections/seed', { method: 'GET' }),
+
     getCoupons: () => request('/admin/coupons'),
     createCoupon: (body: any) => request('/admin/coupons', { method: 'POST', body: JSON.stringify(body) }),
     editCoupon: (id: string, body: any) => request(`/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
