@@ -49,32 +49,32 @@ export function CartPage() {
                       <Link href={`/product/${productSlug}`}>
                         <h3 className="serif hover:underline">{product.name}</h3>
                       </Link>
-                    {color && (
-                      <p className="text-xs text-muted-foreground" style={{ fontSize: '0.85rem', color: '#666', margin: '2px 0' }}>
-                        Colour: <b>{color}</b>
-                      </p>
-                    )}
-                    <p>₹{(product.price || 0).toLocaleString('en-IN')}</p>
-                    <div className="cart-actions">
-                      <div className="quantity">
-                        <button onClick={() => updateQuantity(product.id, color, quantity - 1)}>
-                          <Minus size={13} />
-                        </button>
-                        <span>{quantity}</span>
-                        <button onClick={() => updateQuantity(product.id, color, quantity + 1)}>
-                          <Plus size={13} />
+                      {color && (
+                        <p className="text-xs text-muted-foreground" style={{ fontSize: '0.85rem', color: '#666', margin: '2px 0' }}>
+                          Colour: <b>{color}</b>
+                        </p>
+                      )}
+                      <p>₹{(product.price || 0).toLocaleString('en-IN')}</p>
+                      <div className="cart-actions">
+                        <div className="quantity">
+                          <button onClick={() => updateQuantity(product.id, color, quantity - 1)}>
+                            <Minus size={13} />
+                          </button>
+                          <span>{quantity}</span>
+                          <button onClick={() => updateQuantity(product.id, color, quantity + 1)}>
+                            <Plus size={13} />
+                          </button>
+                        </div>
+                        <button className="remove" onClick={() => removeFromCart(product.id, color)}>
+                          <Trash2 size={14} /> Remove
                         </button>
                       </div>
-                      <button className="remove" onClick={() => removeFromCart(product.id, color)}>
-                        <Trash2 size={14} /> Remove
-                      </button>
                     </div>
+                    <strong>₹{((product.price || 0) * quantity).toLocaleString('en-IN')}</strong>
                   </div>
-                  <strong>₹{((product.price || 0) * quantity).toLocaleString('en-IN')}</strong>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
             <aside className="summary">
               <h2 className="serif">Order summary</h2>
               <div className="summary-line">

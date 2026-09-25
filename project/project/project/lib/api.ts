@@ -173,6 +173,7 @@ export const api = {
     },
     updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) =>
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteOrder: (id: string) => request(`/admin/orders/${id}`, { method: 'DELETE' }),
     getProducts: (params: { category?: string; collection?: string; query?: string } = {}) => {
       const q = new URLSearchParams();
       if (params.category) q.append('category', params.category);
