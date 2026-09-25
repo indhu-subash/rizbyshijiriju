@@ -422,6 +422,22 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       });
 
       if (updateResult.count === 0) {
+        // Idempotent recovery: If order was ALREADY confirmed (e.g. by webhook or prior verify call)
+        const existingOrder = await prisma.order.findUnique({
+          where: { id: order.id },
+          include: { items: true },
+        });
+
+        if (existingOrder && (existingOrder.orderStatus === 'Confirmed' || existingOrder.paymentStatus === 'paid')) {
+          if (!existingOrder.paymentId && payId) {
+            await prisma.order.update({
+              where: { id: existingOrder.id },
+              data: { paymentId: payId, ...(rzpOrdId ? { razorpayOrderId: rzpOrdId } : {}) },
+            });
+          }
+          return existingOrder;
+        }
+
         throw new Error('Order is not in pending status and cannot be confirmed.');
       }
 
@@ -455,25 +471,35 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
         return;
       }
 
+      // Check razorpayOrderId matches order.razorpayOrderId if present
+      if (order.razorpayOrderId && order.razorpayOrderId !== razorpayOrderId) {
+        res.status(400).json({ error: 'Razorpay order ID mismatch.' });
+        return;
+      }
+
       const hmac = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET);
       hmac.update(`${razorpayOrderId}|${razorpayPaymentId}`);
       const generatedSignature = hmac.digest('hex');
 
       if (generatedSignature !== razorpaySignature) {
-        // Mark payment as failed & restore stock atomically
-        await prisma.$transaction(async (tx: any) => {
-          await tx.order.updateMany({
-            where: { id: order.id, orderStatus: 'Pending' },
-            data: { paymentStatus: 'failed', orderStatus: 'Cancelled' },
-          });
-
-          for (const item of order.items) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
+        // Mark payment as failed & restore stock atomically ONLY if order is still Pending
+        if (order.orderStatus === 'Pending') {
+          await prisma.$transaction(async (tx: any) => {
+            await tx.order.updateMany({
+              where: { id: order.id, orderStatus: 'Pending' },
+              data: { paymentStatus: 'failed', orderStatus: 'Cancelled' },
             });
-          }
-        });
+
+            for (const item of order.items) {
+              if (item.productId) {
+                await tx.product.update({
+                  where: { id: item.productId },
+                  data: { stock: { increment: item.quantity } },
+                });
+              }
+            }
+          });
+        }
 
         res.status(400).json({ error: 'Invalid signature. Payment verification failed.' });
         return;
@@ -534,25 +560,35 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
           include: { items: true },
         });
 
-        if (order && order.orderStatus === 'Pending' && order.paymentStatus !== 'paid') {
-          const updateResult = await prisma.order.updateMany({
-            where: { id: order.id, orderStatus: 'Pending' },
-            data: {
-              paymentStatus: 'paid',
-              orderStatus: 'Confirmed',
-              paymentId: razorpayPaymentId || order.paymentId,
-              razorpayOrderId: razorpayOrderId,
-            },
-          });
-
-          if (updateResult.count > 0) {
-            const updated = await prisma.order.findUnique({
-              where: { id: order.id },
-              include: { items: true },
+        if (order && order.orderStatus !== 'Cancelled' && order.paymentStatus !== 'cancelled') {
+          if (order.orderStatus === 'Pending') {
+            const updateResult = await prisma.order.updateMany({
+              where: { id: order.id, orderStatus: 'Pending' },
+              data: {
+                paymentStatus: 'paid',
+                orderStatus: 'Confirmed',
+                paymentId: razorpayPaymentId || order.paymentId,
+                razorpayOrderId: razorpayOrderId,
+              },
             });
-            if (updated) {
-              sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
-              sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
+
+            if (updateResult.count > 0) {
+              const updated = await prisma.order.findUnique({
+                where: { id: order.id },
+                include: { items: true },
+              });
+              if (updated) {
+                sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
+                sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
+              }
+            }
+          } else if (order.orderStatus === 'Confirmed' || order.paymentStatus === 'paid') {
+            // Idempotent webhook receipt for already confirmed order
+            if (!order.paymentId && razorpayPaymentId) {
+              await prisma.order.update({
+                where: { id: order.id },
+                data: { paymentId: razorpayPaymentId, razorpayOrderId: razorpayOrderId },
+              });
             }
           }
         }
