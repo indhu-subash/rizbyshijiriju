@@ -43,6 +43,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setMobileOpen(false);
   }, [pathname]);
 
+  const menuItems = [
+    { label: 'Overview', href: '/admin', icon: LayoutDashboard },
+    { label: 'Categories', href: '/admin/categories', icon: LayoutGrid },
+    { label: 'Collections', href: '/admin/collections', icon: Layers },
+    { label: 'Products', href: '/admin/products', icon: Gem },
+    { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
+    { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
+    { label: 'Shipping Rates', href: '/admin/shipping', icon: Truck },
+    { label: 'Customers', href: '/admin/customers', icon: Users },
+  ];
+
   if (loadingAuth || !authorized) {
     return (
       <div
@@ -54,17 +65,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     );
   }
-
-  const menuItems = [
-    { label: 'Overview', href: '/admin', icon: LayoutDashboard },
-    { label: 'Categories', href: '/admin/categories', icon: LayoutGrid },
-    { label: 'Collections', href: '/admin/collections', icon: Layers },
-    { label: 'Products', href: '/admin/products', icon: Gem },
-    { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
-    { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
-    { label: 'Shipping Rates', href: '/admin/shipping', icon: Truck },
-    { label: 'Customers', href: '/admin/customers', icon: Users },
-  ];
 
   return (
     <div className="admin-container">
