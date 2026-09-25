@@ -22,12 +22,17 @@ export function CollectionPage({
   collection?: string;
   items?: any[];
 }) {
-  const [fetchedItems, setFetchedItems] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState<boolean>(!initialItems || initialItems.length === 0);
+  const [fetchedItems, setFetchedItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [apiLoaded, setApiLoaded] = useState<boolean>(false);
+  const [apiError, setApiError] = useState<boolean>(false);
 
   useEffect(() => {
-    if (initialItems && initialItems.length > 0) {
+    // If initialItems from server SSR is provided (even an empty array from API)
+    if (initialItems !== undefined && initialItems !== null) {
       setFetchedItems(initialItems);
+      setApiLoaded(true);
+      setApiError(false);
       setLoading(false);
       return;
     }
@@ -46,17 +51,21 @@ export function CollectionPage({
       })
       .then((res) => {
         if (isMounted) {
-          if (res && Array.isArray(res.products) && res.products.length > 0) {
+          if (res && Array.isArray(res.products)) {
             setFetchedItems(res.products);
+            setApiLoaded(true);
+            setApiError(false);
           } else {
-            setFetchedItems(null);
+            setApiLoaded(false);
+            setApiError(true);
           }
         }
       })
       .catch((err) => {
-        console.warn('API fetch failed for CollectionPage, using fallback:', err);
+        console.warn('API fetch failed for CollectionPage, using emergency fallback:', err);
         if (isMounted) {
-          setFetchedItems(null);
+          setApiLoaded(false);
+          setApiError(true);
         }
       })
       .finally(() => {
@@ -86,10 +95,9 @@ export function CollectionPage({
     return true;
   };
 
-  const displayItems =
-    fetchedItems && fetchedItems.length > 0
-      ? fetchedItems
-      : localProducts.filter(fallbackFilter);
+  const displayItems = (apiLoaded && !apiError)
+    ? fetchedItems
+    : (apiError ? localProducts.filter(fallbackFilter) : []);
 
   return (
     <main>

@@ -133,7 +133,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
     );
     if (res.ok) {
       const data = await res.json();
-      if (data && Array.isArray(data.products) && data.products.length > 0) {
+      if (data && Array.isArray(data.products)) {
         items = data.products;
       }
     }
