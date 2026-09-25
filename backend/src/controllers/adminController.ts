@@ -401,7 +401,14 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
 export async function getAdminCoupons(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
-    res.status(200).json({ coupons });
+    const mapped = coupons.map((c) => ({
+      ...c,
+      type: c.discountType,
+      value: c.discountValue,
+      minPurchase: c.minOrderValue,
+      usageCount: c.usedCount || 0,
+    }));
+    res.status(200).json({ coupons: mapped });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch coupons.' });
   }
@@ -409,14 +416,21 @@ export async function getAdminCoupons(req: AuthenticatedRequest, res: Response):
 
 export async function createCoupon(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { code, discountType, discountValue, minOrderValue, maxDiscount, expiryDate, usageLimit } = req.body;
+    const { code, discountType, discountValue, minOrderValue, maxDiscount, expiryDate, usageLimit, type, value, minPurchase } = req.body;
 
-    if (!code || !discountType || !discountValue) {
+    const actualCode = (code || '').trim().toUpperCase();
+    const actualDiscountType = discountType || type || 'percentage';
+    const rawVal = discountValue !== undefined ? discountValue : value;
+    const actualDiscountValue = rawVal !== undefined && rawVal !== null ? parseFloat(rawVal) : NaN;
+    const rawMin = minOrderValue !== undefined ? minOrderValue : minPurchase;
+    const actualMinOrder = rawMin !== undefined && rawMin !== null ? parseFloat(rawMin) : 0;
+
+    if (!actualCode || !actualDiscountType || isNaN(actualDiscountValue)) {
       res.status(400).json({ error: 'Code, discount type, and discount value are required.' });
       return;
     }
 
-    const existing = await prisma.coupon.findUnique({ where: { code: code.toUpperCase() } });
+    const existing = await prisma.coupon.findUnique({ where: { code: actualCode } });
     if (existing) {
       res.status(400).json({ error: 'Coupon code already exists.' });
       return;
@@ -424,10 +438,10 @@ export async function createCoupon(req: AuthenticatedRequest, res: Response): Pr
 
     const coupon = await prisma.coupon.create({
       data: {
-        code: code.toUpperCase(),
-        discountType,
-        discountValue: parseFloat(discountValue),
-        minOrderValue: parseFloat(minOrderValue) || 0,
+        code: actualCode,
+        discountType: actualDiscountType,
+        discountValue: actualDiscountValue,
+        minOrderValue: actualMinOrder || 0,
         maxDiscount: maxDiscount ? parseFloat(maxDiscount) : null,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
         usageLimit: usageLimit ? parseInt(usageLimit) : null,

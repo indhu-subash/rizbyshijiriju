@@ -53,6 +53,9 @@ export default function AdminCoupons() {
 
     const payload = {
       code: code.trim().toUpperCase(),
+      discountType: type,
+      discountValue: Number(value),
+      minOrderValue: Number(minPurchase),
       type,
       value: Number(value),
       minPurchase: Number(minPurchase),
@@ -179,29 +182,36 @@ export default function AdminCoupons() {
                   </tr>
                 </thead>
                 <tbody>
-                  {coupons.map((c) => (
-                    <tr key={c.id} className="border-b" style={{ borderBottom: '1px solid #f7f6f2' }}>
-                      <td className="py-3 font-semibold serif" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Tag size={14} style={{ color: 'var(--accent)' }} />
-                        {c.code}
-                      </td>
-                      <td>
-                        {c.type === 'percentage' ? `${c.value}% Off` : `₹${c.value} Off`}
-                      </td>
-                      <td>₹{c.minPurchase}</td>
-                      <td>{c.usageCount} times</td>
-                      <td>
-                        <span className={`status-tag ${c.isActive ? 'confirmed' : 'cancelled'}`} style={{ fontSize: '10px' }}>
-                          {c.isActive ? 'Active' : 'Expired'}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(c.id)}>
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {coupons.map((c: any) => {
+                    const couponType = c.discountType || c.type;
+                    const couponVal = c.discountValue ?? c.value ?? 0;
+                    const minSpend = c.minOrderValue ?? c.minPurchase ?? 0;
+                    const usage = c.usedCount ?? c.usageCount ?? 0;
+
+                    return (
+                      <tr key={c.id} className="border-b" style={{ borderBottom: '1px solid #f7f6f2' }}>
+                        <td className="py-3 font-semibold serif" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Tag size={14} style={{ color: 'var(--accent)' }} />
+                          {c.code}
+                        </td>
+                        <td>
+                          {couponType === 'percentage' ? `${couponVal}% Off` : `₹${couponVal} Off`}
+                        </td>
+                        <td>₹{minSpend}</td>
+                        <td>{usage} times</td>
+                        <td>
+                          <span className={`status-tag ${c.isActive ? 'confirmed' : 'cancelled'}`} style={{ fontSize: '10px' }}>
+                            {c.isActive ? 'Active' : 'Expired'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(c.id)}>
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
