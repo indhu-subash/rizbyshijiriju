@@ -45,10 +45,6 @@ export function Header() {
   const [expandedSection, setExpandedSection] = useState<string | null>('COLLECTIONS');
   const { cartCount, wishlist, isAuthenticated } = useStore();
 
-  if (pathname?.startsWith('/admin')) {
-    return null;
-  }
-
   // Prevent body scrolling when mobile drawer is open
   useEffect(() => {
     if (open) {
@@ -60,6 +56,10 @@ export function Header() {
       document.body.style.overflow = '';
     };
   }, [open]);
+
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   const toggleSection = (title: string) => {
     setExpandedSection(expandedSection === title ? null : title);
