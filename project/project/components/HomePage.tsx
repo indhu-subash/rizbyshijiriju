@@ -280,6 +280,18 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* Wholesale Banner */}
+      <section className="wholesale-home-banner section container">
+        <div className="wholesale-home-card">
+          <span className="eyebrow">PARTNER WITH US</span>
+          <h2 className="serif">Wholesale with RIZ</h2>
+          <p>Interested in stocking RIZ by Shijiriju? Get in touch with us for wholesale enquiries.</p>
+          <Link href="/wholesale" className="button secondary" style={{ marginTop: '16px', display: 'inline-flex' }}>
+            Wholesale Enquiries <ArrowRight size={14} style={{ marginLeft: 6 }} />
+          </Link>
+        </div>
+      </section>
+
       <Newsletter />
     </main>
   );
