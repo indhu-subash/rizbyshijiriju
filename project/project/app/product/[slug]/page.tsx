@@ -5,10 +5,17 @@ import { api } from '@/lib/api';
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  let decodedSlug = slug;
+  try {
+    decodedSlug = decodeURIComponent(slug).trim();
+  } catch (e) {
+    decodedSlug = (slug || '').trim();
+  }
+
   let product = null;
 
   try {
-    const res = await api.products.getBySlug(slug);
+    const res = await api.products.getBySlug(decodedSlug);
     if (res && res.product) {
       product = {
         ...res.product,
@@ -17,16 +24,26 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       };
     }
   } catch (err) {
-    product = getFallbackProduct(slug);
+    // getBySlug failed
   }
 
   if (!product) {
-    product = getFallbackProduct(slug);
+    try {
+      const resById = await api.products.getById(decodedSlug);
+      if (resById && resById.product) {
+        product = {
+          ...resById.product,
+          reviewCount: resById.product.reviewCount ?? resById.product.reviews ?? 0,
+          colors: Array.isArray(resById.product.colors) ? resById.product.colors : [],
+        };
+      }
+    } catch (err2) {
+      product = getFallbackProduct(decodedSlug);
+    }
   }
+
 
   if (!product) return notFound();
 
   return <ProductDetail product={product} />;
 }
-
-

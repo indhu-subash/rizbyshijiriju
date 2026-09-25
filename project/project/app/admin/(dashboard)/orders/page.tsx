@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Search, Eye, Edit2, Loader2, X } from 'lucide-react';
+import { Search, Eye, Edit2, Trash2, Loader2, X } from 'lucide-react';
 
 type OrderItem = {
   id: string;
@@ -35,6 +35,7 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
   
   // Filters State
   const [statusFilter, setStatusFilter] = useState('');
@@ -49,6 +50,11 @@ export default function AdminOrders() {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [updating, setUpdating] = useState(false);
 
+  // Delete Order State
+  const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   useEffect(() => {
     loadOrders();
   }, [statusFilter]);
@@ -57,12 +63,19 @@ export default function AdminOrders() {
     setLoading(true);
     try {
       const res = await api.admin.getOrders(statusFilter || undefined);
-      setOrders(res.orders);
+      setOrders(res.orders || []);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch admin orders.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage('');
+    }, 4000);
   };
 
   const handleUpdateStatus = async (e: React.FormEvent) => {
@@ -76,11 +89,34 @@ export default function AdminOrders() {
         trackingNumber: trackingNumber || undefined,
       });
       setEditingOrder(null);
+      showToast(`Order ${editingOrder.orderId} updated successfully.`);
       loadOrders();
     } catch (err: any) {
       alert(err.message || 'Failed to update order status.');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingOrder || isDeleting) return;
+
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      await api.admin.deleteOrder(deletingOrder.id);
+      const deletedId = deletingOrder.orderId;
+      setDeletingOrder(null);
+      if (selectedOrder?.id === deletingOrder.id) {
+        setSelectedOrder(null);
+      }
+      showToast(`Order ${deletedId} deleted successfully.`);
+      await loadOrders();
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete order.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -95,6 +131,26 @@ export default function AdminOrders() {
 
   return (
     <div>
+      {/* Toast Banner */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            background: 'var(--brown)',
+            color: '#fff',
+            padding: '12px 20px',
+            borderRadius: '6px',
+            zIndex: 200,
+            fontSize: '13px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          }}
+        >
+          {toastMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <span className="eyebrow">Fulfillment</span>
@@ -198,6 +254,16 @@ export default function AdminOrders() {
                       >
                         <Edit2 size={14} /> Status
                       </button>
+                      <button
+                        className="text-link flex items-center gap-1"
+                        style={{ color: '#dc2626' }}
+                        onClick={() => {
+                          setDeleteError('');
+                          setDeletingOrder(o);
+                        }}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -281,6 +347,19 @@ export default function AdminOrders() {
                 <p className="serif text-xl font-bold">₹{selectedOrder.total}</p>
               </div>
             </div>
+
+            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                className="button secondary"
+                style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                onClick={() => {
+                  setDeleteError('');
+                  setDeletingOrder(selectedOrder);
+                }}
+              >
+                <Trash2 size={14} style={{ marginRight: '6px' }} /> Delete Order
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -356,6 +435,97 @@ export default function AdminOrders() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. DELETE ORDER CONFIRMATION MODAL */}
+      {deletingOrder && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 110,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              maxWidth: '460px',
+              width: '100%',
+              borderRadius: '8px',
+              padding: '24px',
+              position: 'relative',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <button
+              onClick={() => !isDeleting && setDeletingOrder(null)}
+              disabled={isDeleting}
+              style={{ position: 'absolute', right: '20px', top: '20px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <div style={{ background: '#fee2e2', color: '#dc2626', borderRadius: '50%', padding: '8px', display: 'flex' }}>
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <span className="eyebrow" style={{ color: '#dc2626' }}>Permanent Action</span>
+                <h3 className="serif text-xl font-semibold">Delete Order {deletingOrder.orderId}?</h3>
+              </div>
+            </div>
+
+            <div style={{ background: '#fcfbf9', border: '1px solid #eee', borderRadius: '6px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span className="muted">Current Status:</span>
+                <span className="font-semibold">{deletingOrder.orderStatus}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span className="muted">Customer:</span>
+                <span>{deletingOrder.shippingName}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="muted">Total Value:</span>
+                <span className="font-semibold">₹{deletingOrder.total}</span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '20px', lineHeight: '1.5' }}>
+              This permanently removes order record <strong>{deletingOrder.orderId}</strong> and all associated order items. This action cannot be undone.
+            </p>
+
+            {deleteError && (
+              <div className="error-banner mb-4" style={{ fontSize: '13px', padding: '10px 14px' }}>
+                {deleteError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => setDeletingOrder(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                style={{ background: '#dc2626', borderColor: '#dc2626', color: '#fff' }}
+              >
+                {isDeleting ? 'Deleting Order...' : 'Delete Order'}
+              </button>
+            </div>
           </div>
         </div>
       )}

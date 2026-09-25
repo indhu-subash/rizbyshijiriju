@@ -1,27 +1,63 @@
 import * as nodemailer from 'nodemailer';
 
 const STORE_NAME = 'RIZ by Shijiriju';
-const STORE_EMAIL = 'rizbyshijiriju@gmail.com';
+const STORE_EMAIL = process.env.EMAIL_FROM || process.env.MAIL_FROM || 'rizbyshijiriju@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'rizbyshijiriju@gmail.com';
 const STORE_WHATSAPP = '+91 9072308686';
 
-// Configure Nodemailer transporter with environment variables fallback
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER || process.env.EMAIL_USER || STORE_EMAIL,
-    pass: process.env.SMTP_PASS || process.env.EMAIL_PASS || '',
-  },
-});
+function getSmtpCredentials() {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || process.env.MAIL_USER || STORE_EMAIL;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.MAIL_PASS || '';
+  return { host, port, secure, user, pass };
+}
+
+export function createSmtpTransporter() {
+  const creds = getSmtpCredentials();
+  console.log(`[EMAIL] Transporter initialized: host=${creds.host}, port=${creds.port}, secure=${creds.secure}, userConfigured=${!!creds.user}, passConfigured=${!!creds.pass}`);
+  
+  return nodemailer.createTransport({
+    host: creds.host,
+    port: creds.port,
+    secure: creds.secure,
+    auth: {
+      user: creds.user,
+      pass: creds.pass,
+    },
+  });
+}
+
+export async function verifySmtpTransporter(): Promise<boolean> {
+  const creds = getSmtpCredentials();
+  if (!creds.pass) {
+    console.warn(`[EMAIL] SMTP password missing. Set SMTP_PASS or EMAIL_PASS in Railway environment variables.`);
+    return false;
+  }
+  try {
+    const transporter = createSmtpTransporter();
+    await transporter.verify();
+    console.log(`[EMAIL] SMTP Transporter connection verified successfully.`);
+    return true;
+  } catch (err: any) {
+    console.error(`[EMAIL] SMTP Transporter verification failed:`, err?.message || err);
+    return false;
+  }
+}
 
 export async function sendOrderConfirmationEmail(order: any): Promise<void> {
   try {
     const customerEmail = order.shippingEmail;
+    console.log(`[EMAIL] Processing order confirmation email for order=${order.orderId}, recipient=${customerEmail || 'NONE'}`);
+
     if (!customerEmail) {
-      console.warn(`[NotificationService] No shipping email found for order ${order.orderId}`);
+      console.warn(`[EMAIL] Warning: No recipient shipping email found for order ${order.orderId}`);
       return;
     }
+
+    const creds = getSmtpCredentials();
+    console.log(`[EMAIL] Recipient configured=true | Customer=${customerEmail} | Admin BCC=${ADMIN_EMAIL}`);
 
     const itemsListHtml = (order.items || [])
       .map(
@@ -117,21 +153,26 @@ export async function sendOrderConfirmationEmail(order: any): Promise<void> {
       </div>
     `;
 
-    // Send email to customer & store owner
-    if (process.env.SMTP_PASS || process.env.EMAIL_PASS) {
-      await transporter.sendMail({
-        from: `"${STORE_NAME}" <${STORE_EMAIL}>`,
-        to: customerEmail,
-        bcc: STORE_EMAIL, // Send copy to store admin
-        subject: `Order Confirmation #${order.orderId} — ${STORE_NAME}`,
-        html: emailHtml,
-      });
-      console.log(`[NotificationService] Confirmation email sent to ${customerEmail} for order ${order.orderId}`);
-    } else {
-      console.log(`[NotificationService Log] Email notification prepared for ${customerEmail} (Order #${order.orderId}). SMTP credentials can be set via SMTP_PASS env variable.`);
+    if (!creds.pass) {
+      console.log(`[EMAIL] Warning: SMTP password not set in environment. Email notification for order=${order.orderId} skipped. Set SMTP_PASS or EMAIL_PASS environment variable.`);
+      return;
     }
+
+    const transporter = createSmtpTransporter();
+
+    // Send email to customer & store owner copy
+    const mailInfo = await transporter.sendMail({
+      from: `"${STORE_NAME}" <${creds.user}>`,
+      to: customerEmail,
+      bcc: ADMIN_EMAIL,
+      subject: `Order Confirmation #${order.orderId} — ${STORE_NAME}`,
+      html: emailHtml,
+    });
+
+    console.log(`[EMAIL] Send succeeded order=${order.orderId} | messageId=${mailInfo.messageId || 'SENT'} | customer=${customerEmail} | bcc=${ADMIN_EMAIL}`);
   } catch (err: any) {
-    console.error(`[NotificationService Error] Failed to send email confirmation for order ${order.orderId}:`, err?.message || err);
+    // Non-blocking error logging: Email failure MUST NOT throw or reverse order confirmation
+    console.error(`[EMAIL] Send failed order=${order.orderId} error=${err?.message || err}`);
   }
 }
 
@@ -144,7 +185,6 @@ export async function sendOrderConfirmationWhatsApp(order: any): Promise<void> {
 
     console.log(`[WhatsApp Notification Log] Receiver: ${phone} | Message: ${message.replace(/\n/g, ' ')}`);
 
-    // Optional API Integration (e.g. Twilio/Interakt/UltraMsg if WEBHOOK_WHATSAPP_URL is present)
     if (process.env.WHATSAPP_API_URL && process.env.WHATSAPP_API_KEY) {
       await fetch(process.env.WHATSAPP_API_URL, {
         method: 'POST',
@@ -162,3 +202,4 @@ export async function sendOrderConfirmationWhatsApp(order: any): Promise<void> {
     console.error(`[NotificationService Error] WhatsApp alert error for order ${order.orderId}:`, err?.message || err);
   }
 }
+

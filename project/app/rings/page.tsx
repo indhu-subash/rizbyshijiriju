@@ -1,1 +1,0 @@
-import { CollectionPage } from '@/components/CollectionPage';export default function Page(){return <CollectionPage title="Rings" description="Small symbols, everyday rituals." filter={p=>p.category==='Rings'} image="https://images.pexels.com/photos/8512143/pexels-photo-8512143.jpeg?auto=compress&cs=tinysrgb&w=1800"/>}

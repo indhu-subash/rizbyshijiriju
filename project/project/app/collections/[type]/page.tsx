@@ -112,7 +112,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
     );
     if (res.ok) {
       const data = await res.json();
-      if (data && Array.isArray(data.products) && data.products.length > 0) {
+      if (data && Array.isArray(data.products)) {
         items = data.products;
       }
     }
@@ -120,5 +120,5 @@ export default async function Page({ params }: { params: Promise<{ type: string 
     console.warn('Could not fetch from backend API for collection, using local fallback:', error);
   }
 
-  return <CollectionPage title={config.title} description={config.description} filter={config.filter} image={config.image} items={items} />;
+  return <CollectionPage title={config.title} description={config.description} collection={config.dbCollectionName} image={config.image} items={items} />;
 }

@@ -118,6 +118,33 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
   }
 }
 
+export async function deleteAdminOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id || typeof id !== 'string') {
+      res.status(400).json({ error: 'Valid order ID is required.' });
+      return;
+    }
+
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) {
+      res.status(404).json({ error: 'Order not found.' });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({ where: { orderId: id } });
+      await tx.order.delete({ where: { id } });
+    });
+
+    res.status(200).json({ message: 'Order deleted successfully.', deletedOrderId: order.orderId });
+  } catch (error: any) {
+    console.error('Delete order error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to delete order.' });
+  }
+}
+
 // 3. Products CRUD
 export async function createProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -133,6 +160,7 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       gender,
       ageGroup,
       material,
+      metal,
       finish,
       stock,
       tags,
@@ -142,7 +170,10 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       images,
     } = req.body;
 
-    if (!name || !description || !price || !category || !collection || !material || !finish) {
+    const actualMaterial = material || metal || 'Brass';
+    const actualFinish = finish || 'Gold Plated';
+
+    if (!name || !description || price === undefined || price === null || !category || !collection) {
       res.status(400).json({ error: 'Required fields are missing.' });
       return;
     }
@@ -157,7 +188,10 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : [];
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : [];
     const rawImages = images ? (Array.isArray(images) ? images : [images]) : [];
-    const imagesArr = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+    const imagesArr = rawImages
+      .filter((img: any) => typeof img === 'string' && img.trim().length > 0)
+      .map((img: string) => img.trim())
+      .filter((img: string) => !img.startsWith('data:') && !img.startsWith('blob:'));
 
     let validCategoryId: string | null = null;
     if (categoryId && typeof categoryId === 'string' && categoryId.trim().length > 0) {
@@ -181,8 +215,8 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
         gender: gender || 'Women',
         ageGroup: ageGroup || 'Adult',
         images: imagesArr,
-        material,
-        finish,
+        material: actualMaterial,
+        finish: actualFinish,
         stock: parseInt(stock) || 0,
         tags: tagsArr,
         featured: !!featured,
@@ -235,7 +269,10 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     let imagesArr = product.images;
     if (images !== undefined) {
       const rawImages = Array.isArray(images) ? images : [images];
-      const validImages = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+      const validImages = rawImages
+        .filter((img: any) => typeof img === 'string' && img.trim().length > 0)
+        .map((img: string) => img.trim())
+        .filter((img: string) => !img.startsWith('data:') && !img.startsWith('blob:'));
       if (validImages.length > 0) {
         imagesArr = validImages;
       }
@@ -307,6 +344,42 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
   }
 }
 
+export async function updateProductStock(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { stock } = req.body;
+
+    const parsedStock = typeof stock === 'number' ? stock : parseInt(stock, 10);
+
+    if (isNaN(parsedStock) || !Number.isInteger(parsedStock) || parsedStock < 0) {
+      res.status(400).json({ error: 'Stock must be a non-negative integer.' });
+      return;
+    }
+
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { stock: parsedStock },
+    });
+
+    res.status(200).json({
+      message: 'Product stock updated successfully.',
+      id: updated.id,
+      stock: updated.stock,
+      product: updated,
+    });
+  } catch (error: any) {
+    console.error('Update product stock error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to update product stock.' });
+  }
+}
+
+
 export async function deleteProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
@@ -334,7 +407,14 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
 export async function getAdminCoupons(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
-    res.status(200).json({ coupons });
+    const mapped = coupons.map((c) => ({
+      ...c,
+      type: c.discountType,
+      value: c.discountValue,
+      minPurchase: c.minOrderValue,
+      usageCount: c.usedCount || 0,
+    }));
+    res.status(200).json({ coupons: mapped });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch coupons.' });
   }
@@ -342,14 +422,21 @@ export async function getAdminCoupons(req: AuthenticatedRequest, res: Response):
 
 export async function createCoupon(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { code, discountType, discountValue, minOrderValue, maxDiscount, expiryDate, usageLimit } = req.body;
+    const { code, discountType, discountValue, minOrderValue, maxDiscount, expiryDate, usageLimit, type, value, minPurchase } = req.body;
 
-    if (!code || !discountType || !discountValue) {
+    const actualCode = (code || '').trim().toUpperCase();
+    const actualDiscountType = discountType || type || 'percentage';
+    const rawVal = discountValue !== undefined ? discountValue : value;
+    const actualDiscountValue = rawVal !== undefined && rawVal !== null ? parseFloat(rawVal) : NaN;
+    const rawMin = minOrderValue !== undefined ? minOrderValue : minPurchase;
+    const actualMinOrder = rawMin !== undefined && rawMin !== null ? parseFloat(rawMin) : 0;
+
+    if (!actualCode || !actualDiscountType || isNaN(actualDiscountValue)) {
       res.status(400).json({ error: 'Code, discount type, and discount value are required.' });
       return;
     }
 
-    const existing = await prisma.coupon.findUnique({ where: { code: code.toUpperCase() } });
+    const existing = await prisma.coupon.findUnique({ where: { code: actualCode } });
     if (existing) {
       res.status(400).json({ error: 'Coupon code already exists.' });
       return;
@@ -357,10 +444,10 @@ export async function createCoupon(req: AuthenticatedRequest, res: Response): Pr
 
     const coupon = await prisma.coupon.create({
       data: {
-        code: code.toUpperCase(),
-        discountType,
-        discountValue: parseFloat(discountValue),
-        minOrderValue: parseFloat(minOrderValue) || 0,
+        code: actualCode,
+        discountType: actualDiscountType,
+        discountValue: actualDiscountValue,
+        minOrderValue: actualMinOrder || 0,
         maxDiscount: maxDiscount ? parseFloat(maxDiscount) : null,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
         usageLimit: usageLimit ? parseInt(usageLimit) : null,

@@ -53,6 +53,7 @@ export async function register(req: AuthenticatedRequest, res: Response): Promis
 
     res.status(201).json({
       message: 'Account registered successfully.',
+      token,
       user: {
         id: user.id,
         name: user.name,
@@ -128,6 +129,7 @@ export async function login(req: AuthenticatedRequest, res: Response): Promise<v
 
     res.status(200).json({
       message: 'Logged in successfully.',
+      token,
       user: {
         id: user.id,
         name: user.name,

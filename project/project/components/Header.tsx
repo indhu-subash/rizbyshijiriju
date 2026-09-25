@@ -68,7 +68,7 @@ export function Header() {
   return (
     <>
       <div className="announcement">
-        FREE SHIPPING ON ORDERS ABOVE ₹2,000 <span>·</span> EASY 7-DAY RETURNS
+        COMPLIMENTARY ANTI-TARNISH JEWELLERY CARE WITH EVERY ORDER <span>·</span> EXPRESS INSURED SHIPPING ACROSS INDIA
       </div>
       <header className="header">
         <div className="container header-inner">
@@ -224,6 +224,9 @@ export function Header() {
 
             <div className="drawer-footer">
               <p>Affordable luxury, made to live in.</p>
+              <Link href="/admin/login" onClick={() => setOpen(false)} className="admin-drawer-link" style={{ display: 'inline-block', marginTop: '8px', fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.05em' }}>
+                Admin Portal →
+              </Link>
             </div>
           </div>
         </>
