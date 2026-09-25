@@ -24,11 +24,22 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       };
     }
   } catch (err) {
-    product = getFallbackProduct(decodedSlug);
+    // getBySlug failed
   }
 
   if (!product) {
-    product = getFallbackProduct(decodedSlug);
+    try {
+      const resById = await api.products.getById(decodedSlug);
+      if (resById && resById.product) {
+        product = {
+          ...resById.product,
+          reviewCount: resById.product.reviewCount ?? resById.product.reviews ?? 0,
+          colors: Array.isArray(resById.product.colors) ? resById.product.colors : [],
+        };
+      }
+    } catch (err2) {
+      product = getFallbackProduct(decodedSlug);
+    }
   }
 
 

@@ -276,52 +276,26 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   });
   if (product) return product;
 
-  // 5. Try normalized slug match (equals & contains)
-  if (normalized) {
-    product = await prisma.product.findFirst({
-      where: { slug: { equals: normalized, mode: 'insensitive' }, ...activeCondition },
-    });
-    if (product) return product;
-
-    product = await prisma.product.findFirst({
-      where: { slug: { contains: normalized, mode: 'insensitive' }, ...activeCondition },
-    });
-    if (product) return product;
-  }
-
-  // 6. Try exact case-insensitive name match
+  // 5. Try exact case-insensitive name match
   product = await prisma.product.findFirst({
     where: { name: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
   });
   if (product) return product;
 
-  // 7. Try name match with hyphens replaced by spaces (equals & contains)
+  // 6. Try unhyphenated name match (exact case-insensitive)
   if (unhyphenated) {
     product = await prisma.product.findFirst({
       where: { name: { equals: unhyphenated, mode: 'insensitive' }, ...activeCondition },
     });
     if (product) return product;
-
-    product = await prisma.product.findFirst({
-      where: { name: { contains: unhyphenated, mode: 'insensitive' }, ...activeCondition },
-    });
-    if (product) return product;
   }
 
-  // 8. Try startsWith or contains match on name
-  product = await prisma.product.findFirst({
-    where: { name: { startsWith: decoded, mode: 'insensitive' }, ...activeCondition },
-  });
-  if (product) return product;
-
-  product = await prisma.product.findFirst({
-    where: { name: { contains: decoded, mode: 'insensitive' }, ...activeCondition },
-  });
-  if (product) return product;
-
-  // 9. If mustBeActive was true and product was still not found, try searching active=false products
-  if (mustBeActive) {
-    return findProductBySlugOrId(identifier, false);
+  // 7. Try normalized slug match (exact case-insensitive)
+  if (normalized) {
+    product = await prisma.product.findFirst({
+      where: { slug: { equals: normalized, mode: 'insensitive' }, ...activeCondition },
+    });
+    if (product) return product;
   }
 
   return null;
