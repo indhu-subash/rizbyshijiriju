@@ -14,7 +14,6 @@ export function getValidImageUrl(url?: string): string {
   }
   const trimmed = url.trim();
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
-    console.warn('[IMAGE SAFEGUARD] Rejected Base64/Blob URL, returning default asset:', trimmed.slice(0, 40));
     return DEFAULT_IMAGE;
   }
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {

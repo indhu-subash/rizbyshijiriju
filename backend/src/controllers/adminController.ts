@@ -188,7 +188,10 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : [];
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : [];
     const rawImages = images ? (Array.isArray(images) ? images : [images]) : [];
-    const imagesArr = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+    const imagesArr = rawImages
+      .filter((img: any) => typeof img === 'string' && img.trim().length > 0)
+      .map((img: string) => img.trim())
+      .filter((img: string) => !img.startsWith('data:') && !img.startsWith('blob:'));
 
     let validCategoryId: string | null = null;
     if (categoryId && typeof categoryId === 'string' && categoryId.trim().length > 0) {
@@ -266,7 +269,10 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     let imagesArr = product.images;
     if (images !== undefined) {
       const rawImages = Array.isArray(images) ? images : [images];
-      const validImages = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+      const validImages = rawImages
+        .filter((img: any) => typeof img === 'string' && img.trim().length > 0)
+        .map((img: string) => img.trim())
+        .filter((img: string) => !img.startsWith('data:') && !img.startsWith('blob:'));
       if (validImages.length > 0) {
         imagesArr = validImages;
       }
