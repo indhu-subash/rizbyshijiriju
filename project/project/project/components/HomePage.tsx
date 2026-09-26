@@ -280,6 +280,20 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* Wholesale Banner Spotlight */}
+      <section className="wholesale-home-banner container">
+        <div className="wholesale-home-banner-inner">
+          <span className="eyebrow">WHOLESALE & STOCKIST ENQUIRIES</span>
+          <h2 className="serif">Partner with RIZ by Shijiriju</h2>
+          <p>
+            Looking to offer our anti-tarnish everyday jewellery in your store or online catalogue? We welcome wholesale enquiries from retail stockists across India.
+          </p>
+          <Link href="/wholesale" className="button">
+            Wholesale Enquiries <ArrowRight size={15} />
+          </Link>
+        </div>
+      </section>
+
       <Newsletter />
     </main>
   );

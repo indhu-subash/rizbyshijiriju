@@ -4913,3 +4913,53 @@ img {
     font-size: 13px !important;
   }
 }
+
+/* Wholesale Visibility Styles */
+.wholesale-nav-link {
+  font-weight: 600 !important;
+  color: var(--brown) !important;
+  letter-spacing: 0.05em;
+  position: relative;
+}
+
+.wholesale-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--gold);
+}
+
+.wholesale-mobile-link {
+  color: var(--brown) !important;
+  font-weight: 600 !important;
+}
+
+.wholesale-home-banner {
+  margin: 60px auto;
+}
+
+.wholesale-home-banner-inner {
+  background: var(--sand);
+  border: 1px solid var(--line);
+  padding: 48px 36px;
+  text-align: center;
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.wholesale-home-banner-inner h2 {
+  font-size: 34px;
+  margin: 10px 0 14px;
+  color: var(--brown);
+}
+
+.wholesale-home-banner-inner p {
+  color: var(--muted);
+  font-size: 15px;
+  max-width: 580px;
+  margin: 0 auto 24px;
+  line-height: 1.6;
+}

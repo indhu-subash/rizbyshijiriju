@@ -72,6 +72,7 @@ export function Footer() {
               ['Returns', '/returns'],
               ['Track order', '/track-order'],
               ['Jewellery care', '/care'],
+              ['Wholesale Enquiries', '/wholesale'],
             ]}
           />
           <FooterColumn

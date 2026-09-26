@@ -136,9 +136,9 @@ const pages: Record<
     title: 'Jewellery for your store.',
     intro: 'Partner with Riz by Shijiriju for thoughtfully made jewellery your customers will love.',
     sections: [
-      ['Bulk ordering', 'Order in quantities that suit your store, with flexible minimums across our everyday and festive collections.'],
-      ['Wholesale pricing', 'Enjoy tiered wholesale pricing designed to keep your margins healthy while staying accessible to your customers.'],
-      ['Minimum order', 'Our minimum wholesale order is ₹15,000. Reach out and we will share our latest catalogue and price list.'],
+      ['Bulk ordering', 'Order in quantities that suit your store across our everyday and festive collections.'],
+      ['Direct Wholesale Enquiries', 'Reach out via WhatsApp and our team will share our latest catalogue and wholesale details.'],
+      ['Anti-Tarnish Jewellery', 'Offer your customers premium anti-tarnish everyday jewellery crafted for durability and lasting shine.'],
       ['Retailer benefits', 'Dedicated account support, early access to new drops and marketing materials to help your store tell the Riz story.'],
     ],
     extra: 'wholesale',

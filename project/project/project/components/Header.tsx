@@ -93,6 +93,7 @@ export function Header() {
             </button>
             <Link href="/new-arrivals">New Arrivals</Link>
             <Link href="/best-sellers">Bestsellers</Link>
+            <Link href="/wholesale" className="wholesale-nav-link">Wholesale</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
           </nav>
@@ -204,6 +205,9 @@ export function Header() {
               </div>
 
               <div className="drawer-divider" />
+              <Link href="/wholesale" onClick={() => setOpen(false)} className="mobile-nav-sub wholesale-mobile-link">
+                Wholesale Enquiries
+              </Link>
               <Link href="/new-arrivals" onClick={() => setOpen(false)} className="mobile-nav-sub">
                 New Arrivals
               </Link>
