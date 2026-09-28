@@ -28,8 +28,8 @@ export function CollectionPage({
   const [apiError, setApiError] = useState<boolean>(false);
 
   useEffect(() => {
-    // If initialItems from server SSR is provided (even an empty array from API)
-    if (initialItems !== undefined && initialItems !== null) {
+    // If initialItems from server SSR is provided and contains products, use immediately
+    if (Array.isArray(initialItems) && initialItems.length > 0) {
       setFetchedItems(initialItems);
       setApiLoaded(true);
       setApiError(false);

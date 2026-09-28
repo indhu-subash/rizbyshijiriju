@@ -1,6 +1,9 @@
 import { CollectionPage } from '@/components/CollectionPage';
 import { products as localProducts } from '@/data/products';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function Page({ params }: { params: Promise<{ type: string }> }) {
   const { type } = await params;
 

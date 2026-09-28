@@ -1,6 +1,9 @@
 import { CollectionPage } from '@/components/CollectionPage';
 import { products as localProducts } from '@/data/products';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function Page({ params }: { params: Promise<{ type: string }> }) {
   const { type } = await params;
 
@@ -19,28 +22,28 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       description: 'Everyday pieces with an anti-tarnish finish and an easy shine.',
       dbCollectionName: 'Anti-Tarnish',
       filter: (p) => p.collection === 'Anti-Tarnish',
-      image: 'https://images.pexels.com/photos/29502912/pexels-photo-29502912.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/anti-tarnish-collection.jpg',
     },
     'traditional': {
       title: 'Tradition, Reimagined',
       description: 'Pieces inspired by the beauty of Kerala, thoughtfully interpreted for today.',
       dbCollectionName: 'Traditional',
       filter: (p) => p.collection === 'Traditional',
-      image: 'https://images.pexels.com/photos/38344601/pexels-photo-38344601.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/traditional-collection.png',
     },
     'bridal': {
       title: 'Bridal Collection',
       description: 'For moments that deserve to last forever.',
       dbCollectionName: 'Bridal',
       filter: (p) => p.collection === 'Bridal',
-      image: 'https://images.pexels.com/photos/9901809/pexels-photo-9901809.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/bridal-collection.png',
     },
     'mens': {
       title: 'For Him',
       description: 'Refined jewellery for everyday confidence.',
       dbCollectionName: "Men's",
       filter: (p) => p.collection === "Men's" || p.gender === 'Men',
-      image: 'https://images.pexels.com/photos/8512143/pexels-photo-8512143.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/mens-collection.png',
     },
     'kids': {
       title: 'Little Treasures',
@@ -61,7 +64,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       description: 'Premium 925 silver lookalikes with intricate craftsmanship.',
       dbCollectionName: 'Silver Replica',
       filter: (p) => p.collection === 'Silver Replica',
-      image: 'https://images.pexels.com/photos/6256046/pexels-photo-6256046.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/silver-replica-collection.png',
     },
     'diamond-replica': {
       title: 'Diamond Replica',
