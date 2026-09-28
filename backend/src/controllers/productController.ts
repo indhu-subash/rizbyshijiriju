@@ -39,11 +39,32 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
           { newArrival: true },
         ];
       } else {
-        const colConditions: any[] = [
-          { collection: { contains: colStr, mode: 'insensitive' } },
-          { name: { contains: colStr, mode: 'insensitive' } },
-          { tags: { has: colStr.toLowerCase() } },
-        ];
+        const slugified = lowerCol.replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+        const unhyphenated = colStr.replace(/-/g, ' ').trim();
+
+        const targetCollection = await prisma.collection.findFirst({
+          where: {
+            OR: [
+              { id: colStr },
+              { slug: slugified },
+              { name: { equals: colStr, mode: 'insensitive' } },
+              { name: { equals: unhyphenated, mode: 'insensitive' } },
+            ],
+          },
+        });
+
+        const colConditions: any[] = [];
+
+        if (targetCollection) {
+          colConditions.push({ collectionId: targetCollection.id });
+          colConditions.push({ collection: { equals: targetCollection.name, mode: 'insensitive' } });
+        }
+
+        colConditions.push({ collection: { equals: colStr, mode: 'insensitive' } });
+        colConditions.push({ collection: { equals: unhyphenated, mode: 'insensitive' } });
+        colConditions.push({ tags: { has: colStr.toLowerCase() } });
+        colConditions.push({ tags: { has: unhyphenated.toLowerCase() } });
+
         if (whereClause.OR) {
           whereClause.AND = [{ OR: whereClause.OR }, { OR: colConditions }];
           delete whereClause.OR;

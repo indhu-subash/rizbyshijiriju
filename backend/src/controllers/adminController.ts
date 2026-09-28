@@ -226,6 +226,39 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       }
     }
 
+    const rawColId = req.body.collectionId;
+    const rawColStr = collection ? String(collection).trim() : '';
+    let validCollectionId: string | null = null;
+    let finalCollectionName: string = rawColStr;
+
+    if (rawColId && typeof rawColId === 'string' && rawColId.trim().length > 0) {
+      const colById = await prisma.collection.findUnique({ where: { id: rawColId.trim() } });
+      if (colById) {
+        validCollectionId = colById.id;
+        finalCollectionName = colById.name;
+      } else {
+        res.status(400).json({ error: 'Selected collection ID is invalid or does not exist.' });
+        return;
+      }
+    } else if (rawColStr) {
+      const slugified = rawColStr.toLowerCase().replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+      const unhyphenated = rawColStr.replace(/-/g, ' ').trim();
+      const colByName = await prisma.collection.findFirst({
+        where: {
+          OR: [
+            { id: rawColStr },
+            { slug: slugified },
+            { name: { equals: rawColStr, mode: 'insensitive' } },
+            { name: { equals: unhyphenated, mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (colByName) {
+        validCollectionId = colByName.id;
+        finalCollectionName = colByName.name;
+      }
+    }
+
     const product = await prisma.product.create({
       data: {
         name,
@@ -234,8 +267,9 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
         price: parseFloat(price),
         originalPrice: originalPrice ? parseFloat(originalPrice) : null,
         category,
-        collection,
+        collection: finalCollectionName,
         categoryId: validCategoryId,
+        collectionId: validCollectionId,
         colors: colorsArr,
         gender: gender || 'Women',
         ageGroup: ageGroup || 'Adult',
@@ -268,6 +302,7 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       category,
       collection,
       categoryId,
+      collectionId,
       colors,
       gender,
       ageGroup,
@@ -325,6 +360,48 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       }
     }
 
+    // Resolve collection & collectionId safely
+    let validCollectionId: string | null = product.collectionId;
+    let finalCollectionName: string = collection !== undefined ? String(collection).trim() : product.collection;
+
+    const candidateColId = collectionId !== undefined ? collectionId : undefined;
+    if (candidateColId !== undefined && candidateColId !== null && typeof candidateColId === 'string' && candidateColId.trim().length > 0) {
+      const colById = await prisma.collection.findUnique({ where: { id: candidateColId.trim() } });
+      if (colById) {
+        validCollectionId = colById.id;
+        finalCollectionName = colById.name;
+      } else {
+        res.status(400).json({ error: 'Selected collection ID is invalid or does not exist.' });
+        return;
+      }
+    } else if (collection !== undefined) {
+      const cleanCol = String(collection).trim();
+      if (!cleanCol) {
+        validCollectionId = null;
+        finalCollectionName = '';
+      } else {
+        const slugified = cleanCol.toLowerCase().replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+        const unhyphenated = cleanCol.replace(/-/g, ' ').trim();
+        const colByName = await prisma.collection.findFirst({
+          where: {
+            OR: [
+              { id: cleanCol },
+              { slug: slugified },
+              { name: { equals: cleanCol, mode: 'insensitive' } },
+              { name: { equals: unhyphenated, mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (colByName) {
+          validCollectionId = colByName.id;
+          finalCollectionName = colByName.name;
+        } else {
+          validCollectionId = null;
+          finalCollectionName = cleanCol;
+        }
+      }
+    }
+
     const parsedPrice = price !== undefined && !isNaN(parseFloat(price)) ? parseFloat(price) : product.price;
     
     let parsedOriginalPrice: number | null = product.originalPrice;
@@ -348,8 +425,9 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
         price: parsedPrice,
         originalPrice: parsedOriginalPrice,
         category: category ? String(category).trim() : product.category,
-        collection: collection ? String(collection).trim() : product.collection,
+        collection: finalCollectionName,
         categoryId: validCategoryId,
+        collectionId: validCollectionId,
         colors: colorsArr,
         gender: gender || product.gender,
         ageGroup: ageGroup || product.ageGroup,
