@@ -50,6 +50,8 @@ model Product {
   collection    String
   categoryId    String?
   categoryRel   Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  collectionId  String?
+  collectionRel Collection?    @relation(fields: [collectionId], references: [id], onDelete: SetNull)
   colors        String[]       @default([])
   gender        String         @default("Women") // "Women" | "Men" | "Kids" | "Unisex"
   ageGroup      String         @default("Adult") // "Adult" | "Kids"
@@ -76,6 +78,19 @@ model Category {
   name        String
   slug        String    @unique
   group       String    // "Collections" | "Replica" | "Fashion"
+  description String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Collection {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  image       String?
   description String?
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0)

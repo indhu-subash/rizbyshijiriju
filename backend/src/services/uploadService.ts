@@ -123,9 +123,16 @@ export async function uploadImage(
 
   const client = getS3Client();
 
-  const fileExt = path.extname(originalName) || '.webp';
-  const uniqueId = Math.random().toString(36).substring(2, 10);
-  const objectKey = `products/${Date.now()}-${uniqueId}${fileExt}`;
+  const fileExt = path.extname(originalName).toLowerCase() || '.webp';
+  const rawBaseName = path.basename(originalName, fileExt);
+  const sanitizedBaseName = rawBaseName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'image';
+
+  const uuid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 10);
+  const objectKey = `products/${uuid}-${sanitizedBaseName}${fileExt}`;
 
   // 2. Upload directly to Cloudflare R2 if client is configured
   if (client && config.bucketName && config.publicUrl) {

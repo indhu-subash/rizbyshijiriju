@@ -4,10 +4,13 @@ import {
   getDashboardStats,
   getAdminOrders,
   updateOrderStatus,
+  deleteAdminOrder,
   getAdminProducts,
   createProduct,
   editProduct,
+  updateProductStock,
   deleteProduct,
+
   getAdminCoupons,
   createCoupon,
   editCoupon,
@@ -30,7 +33,10 @@ import {
 import { authenticateUser, requireAdmin } from '../middleware/auth';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
+});
 
 // Apply auth & admin checks to all admin routes
 router.use(authenticateUser as any);
@@ -48,13 +54,16 @@ router.post('/categories/seed', seedCategories as any);
 // Orders
 router.get('/orders', getAdminOrders as any);
 router.put('/orders/:id', updateOrderStatus as any);
+router.delete('/orders/:id', deleteAdminOrder as any);
 
 // Products CRUD
 router.get('/products', getAdminProducts as any);
 router.post('/products', createProduct as any);
 router.post('/products/seed', seedProducts as any);
 router.put('/products/:id', editProduct as any);
+router.patch('/products/:id/stock', updateProductStock as any);
 router.delete('/products/:id', deleteProduct as any);
+
 
 // Image Upload
 router.post('/upload', upload.single('image'), adminUploadProductImage as any);

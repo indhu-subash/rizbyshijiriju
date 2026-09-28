@@ -1,0 +1,4 @@
+project/project/project/components/ProductDetail.tsx:78: trailing whitespace.
++    
+project/project/project/components/ProductDetail.tsx:80: trailing whitespace.
++    

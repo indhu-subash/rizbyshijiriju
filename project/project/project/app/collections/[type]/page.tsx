@@ -68,7 +68,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       description: 'Sparkling diamond-like stones that shine bright.',
       dbCollectionName: 'Diamond Replica',
       filter: (p) => p.collection === 'Diamond Replica',
-      image: 'https://images.pexels.com/photos/29502932/pexels-photo-29502932.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/diamond-replica-collection.jpg',
     },
     'ad-collections': {
       title: 'AD Collections',

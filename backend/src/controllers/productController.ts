@@ -11,13 +11,21 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
 
     if (category) {
       const catStr = String(category).trim();
+      const unhyphenated = catStr.replace(/-/g, ' ').trim();
       const singularCat = catStr.endsWith('s') ? catStr.slice(0, -1) : catStr;
+      const singularUnhyphenated = unhyphenated.endsWith('s') ? unhyphenated.slice(0, -1) : unhyphenated;
+
       whereClause.OR = [
         { category: { contains: catStr, mode: 'insensitive' } },
+        { category: { contains: unhyphenated, mode: 'insensitive' } },
         { category: { contains: singularCat, mode: 'insensitive' } },
+        { category: { contains: singularUnhyphenated, mode: 'insensitive' } },
         { name: { contains: catStr, mode: 'insensitive' } },
+        { name: { contains: unhyphenated, mode: 'insensitive' } },
         { tags: { has: catStr.toLowerCase() } },
+        { tags: { has: unhyphenated.toLowerCase() } },
         { tags: { has: singularCat.toLowerCase() } },
+        { tags: { has: singularUnhyphenated.toLowerCase() } },
       ];
     }
 

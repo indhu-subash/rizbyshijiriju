@@ -19,7 +19,8 @@
 }
 
 html {
-  scroll-behavior: smooth
+  scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -28,7 +29,8 @@ body {
   color: var(--brown);
   font-family: var(--sans);
   font-size: 15px;
-  line-height: 1.5
+  line-height: 1.5;
+  overflow-x: hidden;
 }
 
 a {
@@ -4912,54 +4914,203 @@ img {
     padding: 8px 12px !important;
     font-size: 13px !important;
   }
+<<<<<<< Updated upstream
+=======
 }
 
-/* Wholesale Visibility Styles */
-.wholesale-nav-link {
-  font-weight: 600 !important;
-  color: var(--brown) !important;
-  letter-spacing: 0.05em;
-  position: relative;
+/* ==================================================
+   WHOLESALE CATALOGUE STYLES
+   ================================================== */
+.wholesale-page-wrapper {
+  background: var(--paper);
 }
 
-.wholesale-nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background-color: var(--gold);
+.wholesale-hero {
+  background: var(--ivory);
+  text-align: center;
+  padding: 80px 20px 60px;
+  border-bottom: 1px solid var(--line);
 }
 
-.wholesale-mobile-link {
-  color: var(--brown) !important;
-  font-weight: 600 !important;
+.wholesale-hero h1 {
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.1;
+  margin: 12px 0 18px;
+  color: var(--brown);
+}
+
+.wholesale-hero-text {
+  max-width: 640px;
+  margin: 0 auto 28px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.primary-whatsapp-cta {
+  background: #25d366 !important;
+  color: #fff !important;
+  border: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 28px;
+  font-weight: 500;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.primary-whatsapp-cta:hover {
+  background: #20ba5a !important;
+  transform: translateY(-1px);
+}
+
+.wholesale-catalogue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.wholesale-catalogue-header h2 {
+  font-size: 32px;
+  margin-top: 6px;
+}
+
+.wholesale-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 10px 14px;
+  border-radius: 4px;
+  min-width: 260px;
+}
+
+.wholesale-search-box input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: var(--brown);
+  width: 100%;
+}
+
+.wholesale-category-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 32px;
+  scrollbar-width: thin;
+}
+
+.wholesale-cat-pill {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  padding: 8px 16px;
+  font-size: 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wholesale-cat-pill:hover,
+.wholesale-cat-pill.active {
+  background: var(--brown);
+  color: #fff;
+  border-color: var(--brown);
+}
+
+.wholesale-info-section {
+  background: var(--ivory);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 60px 0;
+  margin-top: 60px;
+}
+
+.wholesale-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 32px;
+}
+
+.wholesale-info-card {
+  padding: 24px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.wholesale-info-card h3 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.wholesale-info-card p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.wholesale-cta-section {
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.wholesale-cta-card {
+  background: var(--ivory);
+  border: 1px solid var(--line);
+  padding: 48px 24px;
+  max-width: 720px;
+  margin: 0 auto;
+  border-radius: 4px;
+}
+
+.wholesale-cta-card h2 {
+  font-size: 36px;
+  margin: 12px 0;
+}
+
+.wholesale-cta-card p {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .wholesale-home-banner {
-  margin: 60px auto;
+  padding-top: 48px;
+  padding-bottom: 48px;
+  text-align: center;
 }
 
-.wholesale-home-banner-inner {
-  background: var(--sand);
+.wholesale-home-card {
+  background: var(--ivory);
   border: 1px solid var(--line);
-  padding: 48px 36px;
-  text-align: center;
+  padding: 40px 24px;
+  border-radius: 4px;
   max-width: 840px;
   margin: 0 auto;
 }
 
-.wholesale-home-banner-inner h2 {
-  font-size: 34px;
-  margin: 10px 0 14px;
+.wholesale-home-card h2 {
+  font-size: 32px;
+  margin: 10px 0;
   color: var(--brown);
 }
 
-.wholesale-home-banner-inner p {
+.wholesale-home-card p {
   color: var(--muted);
-  font-size: 15px;
-  max-width: 580px;
-  margin: 0 auto 24px;
-  line-height: 1.6;
-}
+  font-size: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+>>>>>>> Stashed changes
+}

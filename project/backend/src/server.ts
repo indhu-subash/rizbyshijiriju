@@ -53,8 +53,8 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve local upload fallbacks in development
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
@@ -84,6 +84,55 @@ import { INITIAL_PRODUCTS } from './config/initialProducts';
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
+
+  // Self-healing database auto-migration for PostgreSQL schema additions
+  const runSql = async (sql: string) => {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (e: any) {
+      // Ignore existing column/table warnings
+    }
+  };
+
+  try {
+    await runSql(`ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "categoryId" TEXT;`);
+    await runSql(`ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "collectionId" TEXT;`);
+    await runSql(`ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "categoryId" TEXT;`);
+    await runSql(`ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "collectionId" TEXT;`);
+    await runSql(`
+      CREATE TABLE IF NOT EXISTS "Category" (
+        "id" TEXT NOT NULL,
+        "name" TEXT NOT NULL,
+        "slug" TEXT NOT NULL,
+        "description" TEXT,
+        "image" TEXT,
+        "isActive" BOOLEAN NOT NULL DEFAULT true,
+        "sortOrder" INTEGER NOT NULL DEFAULT 0,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    await runSql(`
+      CREATE TABLE IF NOT EXISTS "Collection" (
+        "id" TEXT NOT NULL,
+        "name" TEXT NOT NULL,
+        "slug" TEXT NOT NULL,
+        "description" TEXT,
+        "image" TEXT,
+        "isActive" BOOLEAN NOT NULL DEFAULT true,
+        "sortOrder" INTEGER NOT NULL DEFAULT 0,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Collection_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    await runSql(`CREATE UNIQUE INDEX IF NOT EXISTS "Category_slug_key" ON "Category"("slug");`);
+    await runSql(`CREATE UNIQUE INDEX IF NOT EXISTS "Collection_slug_key" ON "Collection"("slug");`);
+    console.log('Database auto-migration check completed.');
+  } catch (dbMigrateErr) {
+    console.warn('Auto-migration warning:', dbMigrateErr);
+  }
 
   // Auto-seed default products if database is empty on server startup
   try {

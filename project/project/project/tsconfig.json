@@ -31,6 +31,9 @@
   ],
 "exclude": [
   "node_modules",
-  "backend"
+  "backend",
+  "project",
+  "project/backend",
+  "**/backend"
 ]
 }

@@ -38,7 +38,7 @@ const featuredCollections = [
     'Diamond Replica Polish',
     'High Polish AD Diamond brilliance.',
     '/collections/diamond-replica',
-    'https://images.pexels.com/photos/10907855/pexels-photo-10907855.jpeg?auto=compress&cs=tinysrgb&w=900',
+    '/diamond-replica-collection.jpg',
   ],
   [
     'AD Artistry Collection',

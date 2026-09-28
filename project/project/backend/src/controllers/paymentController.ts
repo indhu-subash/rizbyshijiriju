@@ -4,6 +4,7 @@ import Razorpay from 'razorpay';
 import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { calculateShipping, isIndiaCountry } from '../services/shippingService';
+import { sendOrderConfirmationEmail, sendOrderConfirmationWhatsApp } from '../services/notificationService';
 
 const PAYMENT_MODE = process.env.PAYMENT_MODE || 'mock';
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
@@ -295,6 +296,58 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
   }
 }
 
+export async function cancelOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      res.status(400).json({ error: 'Order ID is required.' });
+      return;
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      res.status(404).json({ error: 'Order not found.' });
+      return;
+    }
+
+    // Only cancel if payment is still pending/unpaid
+    if (order.paymentStatus === 'pending' || order.orderStatus === 'Pending') {
+      await prisma.$transaction(async (tx: any) => {
+        // Mark order as cancelled
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: 'cancelled',
+            orderStatus: 'Cancelled',
+          },
+        });
+
+        // Restore product stock
+        for (const item of order.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+      });
+
+      console.log(`[Order Cancelled] Order #${order.orderId} marked as Cancelled and inventory restored.`);
+      res.status(200).json({ message: 'Order cancelled successfully and stock restored.', orderId: order.orderId });
+      return;
+    }
+
+    res.status(200).json({ message: 'Order is already processed.', orderId: order.orderId });
+  } catch (error: any) {
+    console.error('Cancel order error:', error);
+    res.status(500).json({ error: 'Failed to cancel order.' });
+  }
+}
+
 export async function verifyPayment(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
@@ -306,6 +359,7 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
 
     const order = await prisma.order.findUnique({
       where: { orderId },
+      include: { items: true },
     });
 
     if (!order) {
@@ -313,17 +367,29 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    // 1. Verify Mock Payment
-    if (order.paymentMethod !== 'cod' && PAYMENT_MODE === 'mock') {
-      await prisma.order.update({
+    // Helper to confirm order and trigger Email + WhatsApp notifications
+    const confirmAndNotifyOrder = async (payId: string, rzpOrdId?: string) => {
+      const updatedOrder = await prisma.order.update({
         where: { id: order.id },
         data: {
           paymentStatus: 'paid',
           orderStatus: 'Confirmed',
-          paymentId: `MOCK_PAY_${Date.now()}`,
+          paymentId: payId,
+          ...(rzpOrdId ? { razorpayOrderId: rzpOrdId } : {}),
         },
+        include: { items: true },
       });
 
+      // Async dispatch notifications
+      sendOrderConfirmationEmail(updatedOrder).catch((e) => console.error('Email error:', e));
+      sendOrderConfirmationWhatsApp(updatedOrder).catch((e) => console.error('WhatsApp error:', e));
+
+      return updatedOrder;
+    };
+
+    // 1. Verify Mock Payment
+    if (order.paymentMethod !== 'cod' && PAYMENT_MODE === 'mock') {
+      await confirmAndNotifyOrder(`MOCK_PAY_${Date.now()}`);
       res.status(200).json({
         message: 'Mock payment verified successfully.',
         orderId: order.orderId,
@@ -343,25 +409,26 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       const generatedSignature = hmac.digest('hex');
 
       if (generatedSignature !== razorpaySignature) {
-        // Mark payment as failed
-        await prisma.order.update({
-          where: { id: order.id },
-          data: { paymentStatus: 'failed' },
+        // Mark payment as failed & restore stock
+        await prisma.$transaction(async (tx: any) => {
+          await tx.order.update({
+            where: { id: order.id },
+            data: { paymentStatus: 'failed', orderStatus: 'Cancelled' },
+          });
+
+          for (const item of order.items) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
         });
 
         res.status(400).json({ error: 'Invalid signature. Payment verification failed.' });
         return;
       }
 
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          paymentStatus: 'paid',
-          orderStatus: 'Confirmed',
-          paymentId: razorpayPaymentId,
-          razorpayOrderId: razorpayOrderId,
-        },
-      });
+      await confirmAndNotifyOrder(razorpayPaymentId, razorpayOrderId);
 
       res.status(200).json({
         message: 'Razorpay payment verified successfully.',
@@ -413,10 +480,11 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
               { orderId: paymentEntity?.notes?.orderId || orderEntity?.receipt || '' },
             ],
           },
+          include: { items: true },
         });
 
         if (order && order.paymentStatus !== 'paid') {
-          await prisma.order.update({
+          const updated = await prisma.order.update({
             where: { id: order.id },
             data: {
               paymentStatus: 'paid',
@@ -424,7 +492,11 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
               paymentId: razorpayPaymentId || order.paymentId,
               razorpayOrderId: razorpayOrderId,
             },
+            include: { items: true },
           });
+
+          sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
+          sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
         }
       }
     }
@@ -435,3 +507,4 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
     res.status(500).json({ error: 'Webhook processing failed.' });
   }
 }
+

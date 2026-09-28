@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Plus, Edit, Trash2, Search, RefreshCw, X, Tag } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-type Category = {
+interface Category {
   id: string;
   name: string;
   slug: string;
@@ -15,31 +15,23 @@ type Category = {
   _count?: {
     products: number;
   };
-};
+}
 
-const GROUPS = ['Collections', 'Replica', 'Fashion'];
-
-export default function AdminCategories() {
+export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [seeding, setSeeding] = useState(false);
-
-  // Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [groupFilter, setGroupFilter] = useState('');
-
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [success, setSuccess] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Form State
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [group, setGroup] = useState('Collections');
   const [description, setDescription] = useState('');
   const [sortOrder, setSortOrder] = useState('0');
   const [isActive, setIsActive] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -50,7 +42,9 @@ export default function AdminCategories() {
     setError('');
     try {
       const res = await api.admin.getCategories();
-      setCategories(res.categories || []);
+      if (res && res.categories) {
+        setCategories(res.categories);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load categories.');
     } finally {
@@ -58,319 +52,339 @@ export default function AdminCategories() {
     }
   };
 
-  const handleSeedDefaults = async () => {
-    setSeeding(true);
+  const handleSeed = async () => {
+    setActionLoading(true);
+    setError('');
+    setSuccess('');
     try {
       const res = await api.admin.seedCategories();
-      alert(res.message || 'Default categories seeded successfully.');
-      loadCategories();
+      setSuccess(res.message || 'Approved categories seeded successfully.');
+      await loadCategories();
     } catch (err: any) {
-      alert(err.message || 'Failed to seed categories.');
+      setError(err.message || 'Failed to seed categories.');
     } finally {
-      setSeeding(false);
+      setActionLoading(false);
     }
   };
 
-  const openCreateModal = () => {
-    setEditingCategory(null);
-    setName('');
-    setGroup('Collections');
-    setDescription('');
-    setSortOrder('0');
-    setIsActive(true);
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (cat: Category) => {
-    setEditingCategory(cat);
+  const handleEditClick = (cat: Category) => {
+    setEditingId(cat.id);
     setName(cat.name);
     setGroup(cat.group);
     setDescription(cat.description || '');
     setSortOrder(String(cat.sortOrder || 0));
     setIsActive(cat.isActive);
-    setIsModalOpen(true);
+    setShowForm(true);
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setName('');
+    setGroup('Collections');
+    setDescription('');
+    setSortOrder('0');
+    setIsActive(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    setActionLoading(true);
+    setError('');
+    setSuccess('');
 
     const payload = {
       name,
       group,
-      description: description || undefined,
-      sortOrder: parseInt(sortOrder) || 0,
+      description,
+      sortOrder: Number(sortOrder),
       isActive,
     };
 
     try {
-      if (editingCategory) {
-        await api.admin.editCategory(editingCategory.id, payload);
+      if (editingId) {
+        await api.admin.editCategory(editingId, payload);
+        setSuccess(`Category "${name}" updated successfully.`);
       } else {
         await api.admin.createCategory(payload);
+        setSuccess(`Category "${name}" created successfully.`);
       }
-      setIsModalOpen(false);
-      loadCategories();
+      handleCancelForm();
+      await loadCategories();
     } catch (err: any) {
-      alert(err.message || 'Failed to save category.');
+      setError(err.message || 'Failed to save category.');
     } finally {
-      setSubmitting(false);
+      setActionLoading(false);
     }
   };
 
-  const handleDelete = async (cat: Category) => {
-    if (!confirm(`Are you sure you want to delete category "${cat.name}"?`)) return;
+  const handleDelete = async (id: string, catName: string) => {
+    if (!confirm(`Are you sure you want to delete category "${catName}"?`)) return;
+
+    setActionLoading(true);
+    setError('');
+    setSuccess('');
 
     try {
-      await api.admin.deleteCategory(cat.id);
-      loadCategories();
+      await api.admin.deleteCategory(id);
+      setSuccess(`Category "${catName}" deleted successfully.`);
+      await loadCategories();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete category.');
+      setError(err.message || 'Failed to delete category.');
+    } finally {
+      setActionLoading(false);
     }
   };
-
-  const filteredCategories = categories.filter((cat) => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = cat.name.toLowerCase().includes(q) || (cat.description || '').toLowerCase().includes(q);
-    const matchesGroup = !groupFilter || cat.group === groupFilter;
-    return matchesSearch && matchesGroup;
-  });
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="flex justify-between items-center mb-8" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <span className="eyebrow" style={{ color: 'var(--accent, #a9895b)' }}>Catalog</span>
-          <h1 className="serif text-3xl font-semibold" style={{ fontSize: '28px', margin: '4px 0 0' }}>Manage Categories</h1>
+          <span className="eyebrow">Taxonomy Hierarchy</span>
+          <h1 className="serif text-3xl font-semibold" style={{ margin: '4px 0 0' }}>
+            Category Management
+          </h1>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
-            onClick={handleSeedDefaults}
-            disabled={seeding}
-            className="button secondary flex items-center gap-2"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            className="button secondary"
+            onClick={handleSeed}
+            disabled={actionLoading}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            <RefreshCw size={16} className={seeding ? 'animate-spin' : ''} />
-            {seeding ? 'Seeding...' : 'Seed Defaults'}
+            <RefreshCw size={14} className={actionLoading ? 'animate-spin' : ''} /> Seed Standard Categories
           </button>
-          <button onClick={openCreateModal} className="button flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={16} /> Add Category
-          </button>
+          {!showForm && (
+            <button
+              className="button"
+              onClick={() => setShowForm(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Plus size={16} /> Add Category
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div
-        className="filters-bar border p-4 rounded mb-6"
-        style={{
-          background: '#fff',
-          display: 'grid',
-          gap: '15px',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          alignItems: 'center',
-          borderRadius: '8px',
-          border: '1px solid #e9e5df',
-        }}
-      >
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            placeholder="Search categories..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ paddingLeft: '35px', width: '100%' }}
-          />
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '15px', color: '#888' }} />
+      {error && (
+        <div
+          style={{
+            background: '#fdf2f2',
+            border: '1px solid #f8b4b4',
+            color: '#9b1c1c',
+            padding: '12px 16px',
+            borderRadius: '6px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <AlertCircle size={18} />
+          <span>{error}</span>
         </div>
+      )}
 
-        <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} style={{ width: '100%' }}>
-          <option value="">All Groups</option>
-          {GROUPS.map((g) => (
-            <option key={g} value={g}>
-              {g}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {error && <div className="error-banner mb-6">{error}</div>}
-
-      {/* Table */}
-      {loading ? (
-        <p className="muted text-center py-10" style={{ textAlign: 'center', padding: '40px 0' }}>
-          Loading categories...
-        </p>
-      ) : filteredCategories.length === 0 ? (
-        <div className="text-center py-12 border rounded bg-white" style={{ textAlign: 'center', padding: '48px', background: '#fff', borderRadius: '8px', border: '1px solid #e9e5df' }}>
-          <Tag size={36} className="muted mb-3" style={{ margin: '0 auto 12px', color: '#aaa' }} />
-          <p className="muted mb-4">No categories found.</p>
-          <button onClick={handleSeedDefaults} className="button secondary">
-            Seed Initial Store Categories
-          </button>
+      {success && (
+        <div
+          style={{
+            background: '#f3faf7',
+            border: '1px solid #a3e6cd',
+            color: '#0e6245',
+            padding: '12px 16px',
+            borderRadius: '6px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <CheckCircle2 size={18} />
+          <span>{success}</span>
         </div>
-      ) : (
-        <div className="table-responsive border rounded bg-white" style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e9e5df', overflowX: 'auto' }}>
-          <table className="w-full text-sm text-left" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+      )}
+
+      {/* Form Drawer / Box */}
+      {showForm && (
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            background: '#fff',
+            padding: '24px',
+            borderRadius: '8px',
+            border: '1px solid var(--gold)',
+            marginBottom: '28px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+          }}
+        >
+          <h3 className="serif text-xl font-semibold mb-4 border-b pb-2">
+            {editingId ? 'Edit Category' : 'Create New Category'}
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+              Category Name *
+              <input
+                required
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Anti-Tarnish"
+                style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+              Group Taxonomy *
+              <select
+                value={group}
+                onChange={(e) => setGroup(e.target.value)}
+                style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '4px' }}
+              >
+                <option value="Collections">Collections</option>
+                <option value="Replica">Replica</option>
+                <option value="Fashion">Fashion</option>
+              </select>
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+              Sort Order
+              <input
+                type="number"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                placeholder="0"
+                style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '4px' }}
+              />
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginTop: '24px' }}>
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                style={{ accentColor: 'var(--sage)' }}
+              />
+              Active & Visible
+            </label>
+          </div>
+
+          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+            <label>Description</label>
+            <textarea
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief description for editorial cards..."
+              style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+            <button className="button" type="submit" disabled={actionLoading}>
+              {actionLoading ? 'Saving...' : editingId ? 'Update Category' : 'Save Category'}
+            </button>
+            <button className="button secondary" type="button" onClick={handleCancelForm}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Category Table */}
+      <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #eee', overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: '60px 0', textAlign: 'center' }}>
+            <Loader2 size={28} className="animate-spin mx-auto" style={{ color: 'var(--gold)' }} />
+            <p className="muted" style={{ marginTop: '12px' }}>
+              Loading category hierarchy...
+            </p>
+          </div>
+        ) : categories.length === 0 ? (
+          <div style={{ padding: '60px', textAlign: 'center' }}>
+            <p className="muted">No categories exist yet.</p>
+            <button className="button" onClick={handleSeed} style={{ marginTop: '16px' }}>
+              Seed Standard Approved Categories
+            </button>
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
             <thead>
-              <tr className="border-b" style={{ borderBottom: '1px solid #eee' }}>
-                <th style={{ padding: '16px' }}>Category Name</th>
-                <th>Group</th>
-                <th>Slug</th>
-                <th>Sort Order</th>
-                <th>Linked Products</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right', paddingRight: '16px' }}>Actions</th>
+              <tr style={{ background: '#f9f8f5', borderBottom: '1px solid #eee', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--gold)' }}>
+                <th style={{ padding: '14px 20px' }}>Group</th>
+                <th style={{ padding: '14px 20px' }}>Category Name</th>
+                <th style={{ padding: '14px 20px' }}>Slug</th>
+                <th style={{ padding: '14px 20px' }}>Linked Products</th>
+                <th style={{ padding: '14px 20px' }}>Status</th>
+                <th style={{ padding: '14px 20px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredCategories.map((cat) => (
-                <tr key={cat.id} className="border-b hover:bg-gray-50" style={{ borderBottom: '1px solid #f7f6f2' }}>
-                  <td style={{ padding: '16px' }} className="serif font-semibold">
-                    <div>
-                      <span>{cat.name}</span>
-                      {cat.description && <p className="text-xs muted" style={{ margin: '2px 0 0', fontWeight: 'normal', color: '#666' }}>{cat.description}</p>}
-                    </div>
-                  </td>
-                  <td>
+              {categories.map((cat) => (
+                <tr key={cat.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '14px 20px', fontWeight: '500', color: 'var(--sage)' }}>{cat.group}</td>
+                  <td style={{ padding: '14px 20px', fontWeight: '600' }}>{cat.name}</td>
+                  <td style={{ padding: '14px 20px', color: '#666', fontSize: '13px' }}>{cat.slug}</td>
+                  <td style={{ padding: '14px 20px' }}>
                     <span
                       style={{
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        background: cat.group === 'Collections' ? '#eef2fc' : cat.group === 'Replica' ? '#f0f3e8' : '#fbfaf7',
-                        color: cat.group === 'Collections' ? '#3b5998' : cat.group === 'Replica' ? '#4b5320' : '#888',
+                        background: '#f4f3ef',
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
                         fontWeight: '600',
-                        fontSize: '11px',
                       }}
                     >
-                      {cat.group}
+                      {cat._count?.products || 0} product(s)
                     </span>
                   </td>
-                  <td style={{ fontFamily: 'monospace', color: '#666' }}>{cat.slug}</td>
-                  <td>{cat.sortOrder}</td>
-                  <td className="font-semibold">{cat._count?.products || 0}</td>
-                  <td>
-                    <span className={`status-tag ${cat.isActive ? 'confirmed' : 'cancelled'}`} style={{ fontSize: '10px' }}>
+                  <td style={{ padding: '14px 20px' }}>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        background: cat.isActive ? '#e6f4ea' : '#fce8e6',
+                        color: cat.isActive ? '#137333' : '#c5221f',
+                      }}
+                    >
                       {cat.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'right', paddingRight: '16px' }}>
-                    <div className="flex justify-end gap-3" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                      <button className="text-link flex items-center gap-1" onClick={() => openEditModal(cat)}>
-                        <Edit size={14} /> Edit
-                      </button>
-                      <button className="text-red-500 hover:text-red-700 flex items-center gap-1" style={{ color: '#d32f2f' }} onClick={() => handleDelete(cat)}>
-                        <Trash2 size={14} /> Delete
-                      </button>
-                    </div>
+                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                    <button
+                      onClick={() => handleEditClick(cat)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--brown)',
+                        cursor: 'pointer',
+                        marginRight: '12px',
+                      }}
+                      title="Edit Category"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(cat.id, cat.name)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#d9534f',
+                        cursor: 'pointer',
+                      }}
+                      title="Delete Category"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* CREATE / EDIT CATEGORY MODAL */}
-      {isModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            zIndex: 100,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              maxWidth: '500px',
-              width: '100%',
-              borderRadius: '8px',
-              padding: '28px',
-              position: 'relative',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-            }}
-          >
-            <button
-              onClick={() => setIsModalOpen(false)}
-              style={{ position: 'absolute', right: '20px', top: '20px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-            >
-              <X size={20} />
-            </button>
-
-            <span className="eyebrow mb-1 block">{editingCategory ? 'Edit Category' : 'Create Category'}</span>
-            <h3 className="serif text-xl font-semibold mb-6">{editingCategory ? editingCategory.name : 'New Category'}</h3>
-
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.9rem', fontWeight: '500' }}>
-                Category Name
-                <input
-                  required
-                  type="text"
-                  placeholder="e.g. AD Collections"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </label>
-
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.9rem', fontWeight: '500' }}>
-                Group
-                <select value={group} onChange={(e) => setGroup(e.target.value)}>
-                  {GROUPS.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.9rem', fontWeight: '500' }}>
-                Description
-                <textarea
-                  placeholder="Short category summary"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                />
-              </label>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.9rem', fontWeight: '500' }}>
-                  Sort Order
-                  <input
-                    type="number"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value)}
-                  />
-                </label>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', fontWeight: '500', marginTop: '24px' }}>
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                  />
-                  <span>Active Category</span>
-                </label>
-              </div>
-
-              <div className="flex gap-3 mt-4" style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                <button className="button" type="submit" disabled={submitting} style={{ flex: 1 }}>
-                  {submitting ? 'Saving...' : editingCategory ? 'Update Category' : 'Create Category'}
-                </button>
-                <button className="button secondary" type="button" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

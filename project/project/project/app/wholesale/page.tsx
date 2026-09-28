@@ -1,1 +1,5 @@
-import { ContentPage } from '@/components/ContentPage';export default function Page(){return <ContentPage type="wholesale"/>}
+import { WholesalePage } from '@/components/WholesalePage';
+
+export default function Page() {
+  return <WholesalePage />;
+}

@@ -8,11 +8,31 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     const whereClause: any = { isActive: true };
 
     if (category) {
-      whereClause.category = String(category);
+      const catStr = String(category).trim();
+      const singularCat = catStr.endsWith('s') ? catStr.slice(0, -1) : catStr;
+      whereClause.OR = [
+        { category: { contains: catStr, mode: 'insensitive' } },
+        { category: { contains: singularCat, mode: 'insensitive' } },
+        { categoryRel: { name: { contains: catStr, mode: 'insensitive' } } },
+        { name: { contains: catStr, mode: 'insensitive' } },
+        { tags: { has: catStr.toLowerCase() } },
+        { tags: { has: singularCat.toLowerCase() } },
+      ];
     }
 
     if (collection) {
-      whereClause.collection = String(collection);
+      const colStr = String(collection).trim();
+      const colConditions = [
+        { collection: { contains: colStr, mode: 'insensitive' } },
+        { name: { contains: colStr, mode: 'insensitive' } },
+        { tags: { has: colStr.toLowerCase() } },
+      ];
+      if (whereClause.OR) {
+        whereClause.AND = [{ OR: whereClause.OR }, { OR: colConditions }];
+        delete whereClause.OR;
+      } else {
+        whereClause.OR = colConditions;
+      }
     }
 
     // Color filter parameter support (single 'color' or 'colors' array / comma-separated)

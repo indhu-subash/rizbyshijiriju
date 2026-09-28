@@ -145,6 +145,31 @@ export async function deleteAdminOrder(req: AuthenticatedRequest, res: Response)
   }
 }
 
+async function safeCleanupUnreferencedR2Images(removedUrls: string[]): Promise<void> {
+  const publicUrlPrefix = process.env.R2_PUBLIC_URL || 'https://pub-522048b574af4e7aa4d991056322b29a.r2.dev';
+
+  for (const url of removedUrls) {
+    if (!url || typeof url !== 'string' || !url.startsWith(publicUrlPrefix)) {
+      continue;
+    }
+    try {
+      const referencingProduct = await prisma.product.findFirst({
+        where: {
+          images: { has: url },
+        },
+      });
+
+      if (!referencingProduct) {
+        await deleteImage(url);
+      } else {
+        console.log(`[R2 SAFE DELETION SKIPPED] Image URL ${url} is still referenced by product ${referencingProduct.id}`);
+      }
+    } catch (err: any) {
+      console.error(`[R2 SAFE DELETION ERROR] Failed to clean up removed image ${url}:`, err);
+    }
+  }
+}
+
 // 3. Products CRUD
 export async function createProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -311,6 +336,9 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     const itemMaterial = material || req.body.metal || product.material || 'Silver';
     const itemFinish = finish || product.finish || 'Polished';
 
+    const oldImages = product.images || [];
+    const removedImages = oldImages.filter((img) => !imagesArr.includes(img));
+
     const updated = await prisma.product.update({
       where: { id },
       data: {
@@ -336,6 +364,12 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
         isActive: isActive !== undefined ? !!isActive : product.isActive,
       },
     });
+
+    if (removedImages.length > 0) {
+      safeCleanupUnreferencedR2Images(removedImages).catch((err) =>
+        console.error('Background R2 image cleanup error:', err)
+      );
+    }
 
     res.status(200).json({ message: 'Product updated successfully.', product: updated });
   } catch (error: any) {
@@ -395,6 +429,12 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
       where: { id },
       data: { isActive: false },
     });
+
+    if (product.images && product.images.length > 0) {
+      safeCleanupUnreferencedR2Images(product.images).catch((err) =>
+        console.error('Background R2 image cleanup error on product delete:', err)
+      );
+    }
 
     res.status(200).json({ message: 'Product deactivated successfully.' });
   } catch (error) {

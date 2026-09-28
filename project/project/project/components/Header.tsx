@@ -93,7 +93,7 @@ export function Header() {
             </button>
             <Link href="/new-arrivals">New Arrivals</Link>
             <Link href="/best-sellers">Bestsellers</Link>
-            <Link href="/wholesale" className="wholesale-nav-link">Wholesale</Link>
+            <Link href="/wholesale">Wholesale</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
           </nav>
@@ -205,14 +205,14 @@ export function Header() {
               </div>
 
               <div className="drawer-divider" />
-              <Link href="/wholesale" onClick={() => setOpen(false)} className="mobile-nav-sub wholesale-mobile-link">
-                Wholesale Enquiries
-              </Link>
               <Link href="/new-arrivals" onClick={() => setOpen(false)} className="mobile-nav-sub">
                 New Arrivals
               </Link>
               <Link href="/best-sellers" onClick={() => setOpen(false)} className="mobile-nav-sub">
                 Bestsellers
+              </Link>
+              <Link href="/wholesale" onClick={() => setOpen(false)} className="mobile-nav-sub">
+                Wholesale
               </Link>
               <Link href="/about" onClick={() => setOpen(false)} className="mobile-nav-sub">
                 Our Story
@@ -224,6 +224,9 @@ export function Header() {
 
             <div className="drawer-footer">
               <p>Affordable luxury, made to live in.</p>
+              <Link href="/admin/login" onClick={() => setOpen(false)} className="admin-drawer-link" style={{ display: 'inline-block', marginTop: '8px', fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.05em' }}>
+                Admin Portal →
+              </Link>
             </div>
           </div>
         </>
