@@ -154,7 +154,9 @@ export function ProductDetail({ product }: { product: Product }) {
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 
-<<<<<<< Updated upstream
+  const rawImages = Array.isArray(product.images) && product.images.length > 0 ? product.images : [];
+  const activeImgSrc = getValidImageUrl(rawImages[activeImage] || rawImages[0]);
+
   // Helper function for color swatch hex codes
   const getColorHex = (colorName: string) => {
     const lower = colorName.toLowerCase();
@@ -189,39 +191,6 @@ export function ProductDetail({ product }: { product: Product }) {
           <span className="sep">/</span>
           <span className="current">{product.name}</span>
         </nav>
-=======
-  const rawImages = Array.isArray(product.images) && product.images.length > 0 ? product.images : [];
-  const activeImgSrc = getValidImageUrl(rawImages[activeImage] || rawImages[0]);
-
-  return (
-    <main>
-      <div className="product-detail container">
-        {/* Gallery */}
-        <div className="gallery">
-          <div className="gallery-main" style={{ position: 'relative' }}>
-            <Image
-              src={activeImgSrc}
-              alt={product.name}
-              fill
-              priority
-              sizes="(max-width: 640px) 100vw, 55vw"
-            />
-          </div>
-          {rawImages.length > 1 && (
-            <div className="thumbs">
-              {rawImages.map((image, i) => (
-                <button
-                  key={image + i}
-                  className={activeImage === i ? 'active' : ''}
-                  onClick={() => setActiveImage(i)}
-                >
-                  <Image src={getValidImageUrl(image)} alt={`${product.name} view ${i + 1}`} fill sizes="90px" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
->>>>>>> Stashed changes
 
         {/* Product Hero Section */}
         <div className="pdp-grid">

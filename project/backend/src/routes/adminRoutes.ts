@@ -6,6 +6,7 @@ import {
   updateOrderStatus,
   deleteAdminOrder,
   getAdminProducts,
+  getAdminProductById,
   createProduct,
   editProduct,
   updateProductStock,
@@ -58,6 +59,7 @@ router.delete('/orders/:id', deleteAdminOrder as any);
 
 // Products CRUD
 router.get('/products', getAdminProducts as any);
+router.get('/products/:id', getAdminProductById as any);
 router.post('/products', createProduct as any);
 router.post('/products/seed', seedProducts as any);
 router.put('/products/:id', editProduct as any);

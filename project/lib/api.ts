@@ -171,6 +171,7 @@ export const api = {
     updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) =>
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
+    getProductById: (id: string) => request(`/admin/products/${encodeURIComponent(id)}`),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     updateProductStock: (id: string, stock: number) =>
       request(`/admin/products/${id}/stock`, {

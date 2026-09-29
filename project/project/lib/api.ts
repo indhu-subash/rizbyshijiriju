@@ -206,6 +206,7 @@ export const api = {
       const str = q.toString();
       return request(`/admin/products${str ? `?${str}` : ''}`);
     },
+    getProductById: (id: string) => request(`/admin/products/${encodeURIComponent(id)}`),
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
     seedProducts: () => request('/admin/products/seed', { method: 'POST' }),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

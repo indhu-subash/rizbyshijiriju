@@ -22,6 +22,7 @@ export default function NewProductPage() {
 
   // Form Fields
   const [name, setName] = useState('');
+  const [productCode, setProductCode] = useState('');
   const [slug, setSlug] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
@@ -130,6 +131,7 @@ export default function NewProductPage() {
 
     const payload = {
       name,
+      productCode: productCode ? productCode.trim().toUpperCase() : undefined,
       slug,
       price: Number(price),
       description,
@@ -184,6 +186,17 @@ export default function NewProductPage() {
                 placeholder="e.g. Traditional Mango Necklace"
                 value={name}
                 onChange={handleNameChange}
+              />
+            </label>
+
+            <label>
+              Product Code / SKU <small style={{ color: '#888', fontWeight: 'normal' }}>(Optional, e.g. RIZ-NK-014)</small>
+              <input
+                type="text"
+                placeholder="e.g. RIZ-NK-014"
+                value={productCode}
+                onChange={(e) => setProductCode(e.target.value.toUpperCase())}
+                style={{ fontFamily: 'monospace', letterSpacing: '0.5px' }}
               />
             </label>
 

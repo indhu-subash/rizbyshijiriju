@@ -182,6 +182,20 @@ export const api = {
       const str = q.toString();
       return request(`/admin/products${str ? `?${str}` : ''}`);
     },
+    getProductById: async (id: string) => {
+      try {
+        return await request(`/admin/products/${encodeURIComponent(id)}`);
+      } catch (err: any) {
+        try {
+          return await request(`/products/${encodeURIComponent(id)}`);
+        } catch (err2) {
+          const res = await request('/admin/products');
+          const found = res?.products?.find((p: any) => p.id === id || p.slug === id);
+          if (found) return { product: found };
+          throw err2;
+        }
+      }
+    },
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
     seedProducts: () => request('/admin/products/seed', { method: 'POST' }),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

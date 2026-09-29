@@ -109,6 +109,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
       subtotal += product.price * item.quantity;
       checkoutItems.push({
         productId: product.id,
+        productCode: (product as any).productCode || null,
         name: product.name,
         price: product.price,
         quantity: item.quantity,
@@ -258,6 +259,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
           items: {
             create: checkoutItems.map((item) => ({
               productId: item.productId,
+              productCode: item.productCode || null,
               name: item.name,
               price: item.price,
               quantity: item.quantity,

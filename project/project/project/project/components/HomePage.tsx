@@ -44,7 +44,7 @@ const featuredCollections = [
     'AD Collections',
     'Intricate American Diamond artistry.',
     '/collections/ad-collections',
-    'https://images.unsplash.com/photo-1598560917505-59a3ad559071?auto=format&fit=crop&w=1200&q=80',
+    '/ad-collection.jpg',
   ],
   [
     "Men's Collection",
@@ -56,13 +56,13 @@ const featuredCollections = [
     'Kids Collection',
     'Delicate treasures for little celebrations.',
     '/collections/kids',
-    'https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?auto=format&fit=crop&w=1200&q=80',
+    '/kids-collection.jpg',
   ],
   [
     'RIZ House of Fashion',
     'Exclusive signature house creations.',
     '/collections/riz-house-of-fashion',
-    'https://images.pexels.com/photos/29502932/pexels-photo-29502932.jpeg?auto=compress&cs=tinysrgb&w=900',
+    '/riz-house-of-fashion.jpg',
   ],
 ];
 

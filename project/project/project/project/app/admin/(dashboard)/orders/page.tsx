@@ -7,6 +7,7 @@ import { Search, Eye, Edit2, Trash2, Loader2, X } from 'lucide-react';
 type OrderItem = {
   id: string;
   name: string;
+  productCode?: string | null;
   price: number;
   quantity: number;
   image: string;
@@ -329,9 +330,28 @@ export default function AdminOrders() {
               <span className="eyebrow">Items Summary</span>
               {selectedOrder.items.map((item) => (
                 <div key={item.id} className="flex justify-between items-center py-2 border-b" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>
-                    {item.name} <small className="muted">× {item.quantity}</small>
-                  </span>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 500 }}>
+                      {item.name} <small className="muted">× {item.quantity}</small>
+                    </p>
+                    {item.productCode && (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          color: '#555',
+                          background: '#f4f4f5',
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          border: '1px solid #e4e4e7',
+                          marginTop: '2px',
+                          display: 'inline-block',
+                        }}
+                      >
+                        SKU: {item.productCode}
+                      </span>
+                    )}
+                  </div>
                   <span className="font-semibold">₹{item.price * item.quantity}</span>
                 </div>
               ))}

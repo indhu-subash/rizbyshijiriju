@@ -90,15 +90,9 @@ export async function uploadImage(
   mimeType: string
 ): Promise<string> {
   // 1. Image Validation (MIME type & Size Limit)
-<<<<<<< Updated upstream
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
   if (fileBuffer.length > MAX_FILE_SIZE) {
     throw new Error(`File size exceeds maximum allowed limit of 50 MB. Received ${(fileBuffer.length / (1024 * 1024)).toFixed(2)} MB.`);
-=======
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-  if (fileBuffer.length > MAX_FILE_SIZE) {
-    throw new Error(`File size exceeds maximum allowed limit of 10 MB. Received ${(fileBuffer.length / (1024 * 1024)).toFixed(2)} MB.`);
->>>>>>> Stashed changes
   }
 
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
@@ -189,14 +183,13 @@ export async function uploadImage(
       publicUrl: config.publicUrl,
     });
     throw new Error(
-      `R2 Configuration Error: Cloudflare R2 credentials (${
-        !config.accountId
-          ? 'Account ID'
-          : !config.accessKeyId
+      `R2 Configuration Error: Cloudflare R2 credentials (${!config.accountId
+        ? 'Account ID'
+        : !config.accessKeyId
           ? 'Access Key'
           : !config.secretAccessKey
-          ? 'Secret Key'
-          : 'Config'
+            ? 'Secret Key'
+            : 'Config'
       }) are missing or incomplete on Railway.`
     );
   }
@@ -205,7 +198,7 @@ export async function uploadImage(
   const fileNameOnly = path.basename(objectKey);
   const filePath = path.join(localUploadsDir, fileNameOnly);
   await fs.promises.writeFile(filePath, fileBuffer);
-  
+
   const port = process.env.PORT || 5000;
   return `http://localhost:${port}/uploads/${fileNameOnly}`;
 }

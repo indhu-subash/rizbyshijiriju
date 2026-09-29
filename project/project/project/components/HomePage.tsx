@@ -41,10 +41,28 @@ const featuredCollections = [
     '/diamond-replica-collection.jpg',
   ],
   [
-    'AD Artistry Collection',
-    'Intricate American Diamond design.',
+    'AD Collections',
+    'Intricate American Diamond artistry.',
     '/collections/ad-collections',
-    'https://images.unsplash.com/photo-1598560917505-59a3ad559071?auto=format&fit=crop&w=900',
+    '/ad-collection.jpg',
+  ],
+  [
+    "Men's Collection",
+    'Quietly bold. Effortlessly refined.',
+    '/collections/mens',
+    '/mens-collection.png',
+  ],
+  [
+    'Kids Collection',
+    'Delicate treasures for little celebrations.',
+    '/collections/kids',
+    '/kids-collection.jpg',
+  ],
+  [
+    'RIZ House of Fashion',
+    'Exclusive signature house creations.',
+    '/collections/riz-house-of-fashion',
+    '/riz-house-of-fashion.jpg',
   ],
 ];
 
@@ -296,7 +314,6 @@ export function HomePage() {
         </div>
       </section>
 
-<<<<<<< HEAD
       {/* Wholesale Banner Spotlight */}
       <section className="wholesale-home-banner container">
         <div className="wholesale-home-banner-inner">
@@ -307,16 +324,6 @@ export function HomePage() {
           </p>
           <Link href="/wholesale" className="button">
             Wholesale Enquiries <ArrowRight size={15} />
-=======
-      {/* Wholesale Banner */}
-      <section className="wholesale-home-banner section container">
-        <div className="wholesale-home-card">
-          <span className="eyebrow">PARTNER WITH US</span>
-          <h2 className="serif">Wholesale with RIZ</h2>
-          <p>Interested in stocking RIZ by Shijiriju? Get in touch with us for wholesale enquiries.</p>
-          <Link href="/wholesale" className="button secondary" style={{ marginTop: '16px', display: 'inline-flex' }}>
-            Wholesale Enquiries <ArrowRight size={14} style={{ marginLeft: 6 }} />
->>>>>>> f6cb2ea (add diamond replica cover page background)
           </Link>
         </div>
       </section>

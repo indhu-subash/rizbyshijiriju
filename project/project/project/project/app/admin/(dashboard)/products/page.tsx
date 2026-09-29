@@ -8,10 +8,12 @@ import { Plus, Edit, Trash2, Search, Filter, Sparkles } from 'lucide-react';
 type Product = {
   id: string;
   name: string;
+  productCode?: string | null;
   category: string;
   collection: string;
   price: number;
   stock: number;
+  unitsSold?: number;
   images: string[];
   isActive: boolean;
 };
@@ -155,6 +157,7 @@ export default function AdminProducts() {
     const q = query.toLowerCase();
     return (
       p.name.toLowerCase().includes(q) ||
+      (p.productCode && p.productCode.toLowerCase().includes(q)) ||
       p.category.toLowerCase().includes(q) ||
       p.collection.toLowerCase().includes(q)
     );
@@ -212,7 +215,7 @@ export default function AdminProducts() {
         <div style={{ position: 'relative' }}>
           <input
             type="text"
-            placeholder="Search products..."
+            placeholder="Search by name, SKU/code..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             style={{ paddingLeft: '35px' }}
@@ -281,11 +284,13 @@ export default function AdminProducts() {
             <thead>
               <tr className="border-b" style={{ borderBottom: '1px solid #eee' }}>
                 <th style={{ padding: '16px' }}>Image</th>
+                <th>Product Code</th>
                 <th>Name</th>
                 <th>Category</th>
                 <th>Collection</th>
                 <th>Price</th>
                 <th style={{ width: '190px' }}>Live Stock</th>
+                <th>Total Sold</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right', paddingRight: '16px' }}>Actions</th>
               </tr>
@@ -309,6 +314,27 @@ export default function AdminProducts() {
                           borderRadius: '4px',
                         }}
                       />
+                    )}
+                  </td>
+                  <td>
+                    {p.productCode ? (
+                      <span
+                        style={{
+                          fontFamily: 'monospace',
+                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          background: '#f4f4f5',
+                          color: '#27272a',
+                          padding: '3px 7px',
+                          borderRadius: '4px',
+                          border: '1px solid #e4e4e7',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        {p.productCode}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#aaa' }}>—</span>
                     )}
                   </td>
                   <td className="serif font-semibold">{p.name}</td>
@@ -391,6 +417,11 @@ export default function AdminProducts() {
                         ) : null}
                       </div>
                     </div>
+                  </td>
+                  <td>
+                    <span style={{ fontWeight: 600, color: (p.unitsSold ?? 0) > 0 ? '#16a34a' : '#71717a' }}>
+                      {p.unitsSold ?? 0}
+                    </span>
                   </td>
                   <td>
                     <span className={`status-tag ${p.isActive ? 'confirmed' : 'cancelled'}`} style={{ fontSize: '10px' }}>

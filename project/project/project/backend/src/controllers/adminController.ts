@@ -123,6 +123,7 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
   try {
     const {
       name,
+      productCode,
       description,
       price,
       originalPrice,
@@ -151,6 +152,20 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
+    const normalizedCode = productCode && typeof productCode === 'string' && productCode.trim().length > 0
+      ? productCode.trim().toUpperCase()
+      : null;
+
+    if (normalizedCode) {
+      const existingCode = await prisma.product.findFirst({
+        where: { productCode: { equals: normalizedCode, mode: 'insensitive' } },
+      });
+      if (existingCode) {
+        res.status(400).json({ error: 'A product with this Product Code already exists.' });
+        return;
+      }
+    }
+
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const existing = await prisma.product.findUnique({ where: { slug } });
     if (existing) {
@@ -174,6 +189,7 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
     const product = await prisma.product.create({
       data: {
         name,
+        productCode: normalizedCode,
         slug,
         description,
         price: parseFloat(price),
@@ -196,7 +212,11 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
     });
 
     res.status(201).json({ message: 'Product created successfully.', product });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2002' && (error.meta?.target?.includes('productCode') || error.message?.includes('productCode'))) {
+      res.status(400).json({ error: 'A product with this Product Code already exists.' });
+      return;
+    }
     console.error('Create product error:', error);
     res.status(500).json({ error: 'Failed to create product.' });
   }
@@ -207,6 +227,7 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     const { id } = req.params;
     const {
       name,
+      productCode,
       description,
       price,
       originalPrice,
@@ -231,6 +252,27 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     if (!product) {
       res.status(404).json({ error: 'Product not found.' });
       return;
+    }
+
+    let productCodeValue = product.productCode;
+    if (productCode !== undefined) {
+      const normalizedCode = productCode && typeof productCode === 'string' && productCode.trim().length > 0
+        ? productCode.trim().toUpperCase()
+        : null;
+
+      if (normalizedCode) {
+        const existingCode = await prisma.product.findFirst({
+          where: {
+            productCode: { equals: normalizedCode, mode: 'insensitive' },
+            id: { not: id },
+          },
+        });
+        if (existingCode) {
+          res.status(400).json({ error: 'A product with this Product Code already exists.' });
+          return;
+        }
+      }
+      productCodeValue = normalizedCode;
     }
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : product.tags;
@@ -282,6 +324,7 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       where: { id },
       data: {
         name: name ? String(name).trim() : product.name,
+        productCode: productCodeValue,
         slug,
         description: description ? String(description).trim() : product.description,
         price: parsedPrice,
@@ -306,6 +349,10 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
 
     res.status(200).json({ message: 'Product updated successfully.', product: updated });
   } catch (error: any) {
+    if (error?.code === 'P2002' && (error.meta?.target?.includes('productCode') || error.message?.includes('productCode'))) {
+      res.status(400).json({ error: 'A product with this Product Code already exists.' });
+      return;
+    }
     console.error('Edit product error:', error);
     res.status(500).json({ error: error?.message || 'Failed to update product.' });
   }
@@ -586,9 +633,10 @@ export async function getAdminProducts(req: AuthenticatedRequest, res: Response)
     if (category) where.category = String(category);
     if (collection) where.collection = String(collection);
     if (query) {
-      const q = String(query);
+      const q = String(query).trim();
       where.OR = [
         { name: { contains: q, mode: 'insensitive' } },
+        { productCode: { contains: q, mode: 'insensitive' } },
         { category: { contains: q, mode: 'insensitive' } },
         { collection: { contains: q, mode: 'insensitive' } },
       ];
@@ -602,7 +650,38 @@ export async function getAdminProducts(req: AuthenticatedRequest, res: Response)
       },
     });
 
-    res.status(200).json({ products });
+    const salesMap = new Map<string, number>();
+    try {
+      const orderItems = await prisma.orderItem.findMany({
+        where: {
+          productId: { not: null },
+          order: {
+            orderStatus: { notIn: ['Cancelled', 'cancelled', 'FAILED', 'failed'] },
+            paymentStatus: { notIn: ['failed', 'cancelled'] },
+          },
+        },
+        select: {
+          productId: true,
+          quantity: true,
+        },
+      });
+
+      orderItems.forEach((item) => {
+        if (item.productId) {
+          const current = salesMap.get(item.productId) || 0;
+          salesMap.set(item.productId, current + (item.quantity || 1));
+        }
+      });
+    } catch (err) {
+      console.warn('Could not compute sales for admin products:', err);
+    }
+
+    const mappedProducts = products.map((p) => ({
+      ...p,
+      unitsSold: salesMap.get(p.id) || 0,
+    }));
+
+    res.status(200).json({ products: mappedProducts });
   } catch (error) {
     console.error('Fetch admin products error:', error);
     res.status(500).json({ error: 'Failed to fetch admin products.' });

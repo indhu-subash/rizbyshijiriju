@@ -69,7 +69,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
     const fetchProduct = async () => {
       try {
-        const res = await api.products.getById(id);
+        const res = await api.admin.getProductById(id);
         const p = res.product;
         setName(p.name);
         setSlug(p.slug);

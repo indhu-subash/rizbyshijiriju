@@ -50,7 +50,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       description: 'Sweet, delicate pieces made for little celebrations.',
       dbCollectionName: 'Kids',
       filter: (p) => p.collection === 'Kids' || p.ageGroup === 'Kids',
-      image: 'https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?auto=format&fit=crop&w=1800&q=80',
+      image: '/kids-collection.jpg',
     },
     'hair-accessories': {
       title: 'Hair Accessories',
@@ -78,7 +78,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       description: 'Exquisite American Diamond jewellery for all occasions.',
       dbCollectionName: 'AD Collections',
       filter: (p) => p.collection === 'AD Collections',
-      image: 'https://images.unsplash.com/photo-1598560917505-59a3ad559071?auto=format&fit=crop&w=1800&q=80',
+      image: '/ad-collection.jpg',
     },
     'fancy': {
       title: 'Fancy Jewellery',
@@ -99,7 +99,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       description: 'Our signature luxury and high-fashion edits.',
       dbCollectionName: 'RIZ House of Fashion',
       filter: (p) => p.collection === 'RIZ House of Fashion',
-      image: 'https://images.pexels.com/photos/10907855/pexels-photo-10907855.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/riz-house-of-fashion.jpg',
     },
   };
 

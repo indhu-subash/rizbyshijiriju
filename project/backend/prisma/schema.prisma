@@ -42,6 +42,7 @@ model Address {
 model Product {
   id            String         @id @default(uuid())
   name          String
+  productCode   String?        @unique
   slug          String         @unique
   description   String
   price         Float
@@ -154,6 +155,7 @@ model OrderItem {
   quantity  Int
   image     String
   color     String?
+  productCode String?
 }
 
 model WishlistItem {

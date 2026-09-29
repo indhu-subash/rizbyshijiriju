@@ -23,6 +23,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   // Form Fields
   const [name, setName] = useState('');
+  const [productCode, setProductCode] = useState('');
   const [slug, setSlug] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
@@ -69,9 +70,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
     const fetchProduct = async () => {
       try {
-        const res = await api.products.getById(id);
+        const res = await api.admin.getProductById(id);
         const p = res.product;
         setName(p.name);
+        setProductCode(p.productCode || '');
         setSlug(p.slug);
         setPrice(String(p.price));
         setDescription(p.description);
@@ -159,6 +161,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
     const payload = {
       name,
+      productCode: productCode ? productCode.trim().toUpperCase() : undefined,
       slug,
       price: Number(price),
       description,
@@ -216,6 +219,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 type="text"
                 value={name}
                 onChange={handleNameChange}
+              />
+            </label>
+
+            <label>
+              Product Code / SKU <small style={{ color: '#888', fontWeight: 'normal' }}>(Optional, e.g. RIZ-NK-014)</small>
+              <input
+                type="text"
+                placeholder="e.g. RIZ-NK-014"
+                value={productCode}
+                onChange={(e) => setProductCode(e.target.value.toUpperCase())}
+                style={{ fontFamily: 'monospace', letterSpacing: '0.5px' }}
               />
             </label>
 
