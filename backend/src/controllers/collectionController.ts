@@ -22,6 +22,7 @@ export const INITIAL_COLLECTIONS = [
   { name: 'Fancy', sortOrder: 17, description: 'Trendy fashion jewellery.' },
   { name: 'Gold Covering & Micro Plated', sortOrder: 18, description: 'Micro plated gold finish jewellery.' },
   { name: 'RIZ House of Fashion', sortOrder: 19, description: 'Exclusive house designs and couture edits.' },
+  { name: 'Watches', sortOrder: 20, description: 'Luxury and everyday watches collection.' },
 ];
 
 export function generateSlug(name: string): string {
@@ -38,25 +39,22 @@ export function generateSlug(name: string): string {
  * Ensure default collections exist in DB
  */
 export async function ensureDefaultCollections(): Promise<void> {
-  const count = await prisma.collection.count();
-  if (count === 0) {
-    for (const col of INITIAL_COLLECTIONS) {
-      const slug = generateSlug(col.name);
-      const existing = await prisma.collection.findFirst({
-        where: { OR: [{ slug }, { name: { equals: col.name, mode: 'insensitive' } }] },
-      });
+  for (const col of INITIAL_COLLECTIONS) {
+    const slug = generateSlug(col.name);
+    const existing = await prisma.collection.findFirst({
+      where: { OR: [{ slug }, { name: { equals: col.name, mode: 'insensitive' } }] },
+    });
 
-      if (!existing) {
-        await prisma.collection.create({
-          data: {
-            name: col.name,
-            slug,
-            description: col.description,
-            sortOrder: col.sortOrder,
-            isActive: true,
-          },
-        });
-      }
+    if (!existing) {
+      await prisma.collection.create({
+        data: {
+          name: col.name,
+          slug,
+          description: col.description,
+          sortOrder: col.sortOrder,
+          isActive: true,
+        },
+      });
     }
   }
 }

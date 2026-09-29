@@ -29,6 +29,7 @@ const collections = [
   "Men's",
   'Kids',
   'Hair Accessories',
+  'Watches',
   'Silver Replica',
   'Diamond Replica',
   'AD Collections',

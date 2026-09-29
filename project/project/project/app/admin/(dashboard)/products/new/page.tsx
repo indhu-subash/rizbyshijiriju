@@ -22,6 +22,7 @@ export default function NewProductPage() {
 
   // Form Fields
   const [name, setName] = useState('');
+  const [productCode, setProductCode] = useState('');
   const [slug, setSlug] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
@@ -122,6 +123,12 @@ export default function NewProductPage() {
     setSaving(true);
     setError('');
 
+    if (!productCode || !productCode.trim()) {
+      setError('Product Code is required.');
+      setSaving(false);
+      return;
+    }
+
     if (images.length === 0) {
       setError('Please upload at least one image.');
       setSaving(false);
@@ -130,6 +137,7 @@ export default function NewProductPage() {
 
     const payload = {
       name,
+      productCode: productCode.trim().toUpperCase(),
       slug,
       price: Number(price),
       description,
@@ -184,6 +192,18 @@ export default function NewProductPage() {
                 placeholder="e.g. Traditional Mango Necklace"
                 value={name}
                 onChange={handleNameChange}
+              />
+            </label>
+
+            <label>
+              Product Code / SKU *
+              <input
+                required
+                type="text"
+                placeholder="RIZ-ER-001"
+                value={productCode}
+                onChange={(e) => setProductCode(e.target.value.toUpperCase())}
+                style={{ fontFamily: 'monospace', letterSpacing: '0.5px' }}
               />
             </label>
 
@@ -370,6 +390,7 @@ export default function NewProductPage() {
                       <option value="Men's">Men's</option>
                       <option value="Kids">Kids</option>
                       <option value="Hair Accessories">Hair Accessories</option>
+                      <option value="Watches">Watches</option>
                       <option value="Silver Replica">Silver Replica</option>
                       <option value="Diamond Replica">Diamond Replica</option>
                       <option value="AD Collections">AD Collections</option>

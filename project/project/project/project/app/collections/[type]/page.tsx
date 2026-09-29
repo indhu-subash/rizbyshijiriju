@@ -101,6 +101,13 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       filter: (p) => p.collection === 'RIZ House of Fashion',
       image: '/riz-house-of-fashion.jpg',
     },
+    'watches': {
+      title: 'Watches Collection',
+      description: 'Luxury and everyday watches collection.',
+      dbCollectionName: 'Watches',
+      filter: (p) => p.collection === 'Watches',
+      image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=1800&q=80',
+    },
   };
 
   const config = configs[type];

@@ -7,6 +7,7 @@ import { Search, Eye, Edit2, Trash2, Loader2, X } from 'lucide-react';
 type OrderItem = {
   id: string;
   name: string;
+  productCode?: string | null;
   price: number;
   quantity: number;
   image: string;
@@ -328,11 +329,24 @@ export default function AdminOrders() {
             <div className="border-t pt-4 mb-4">
               <span className="eyebrow">Items Summary</span>
               {selectedOrder.items.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-2 border-b" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>
-                    {item.name} <small className="muted">× {item.quantity}</small>
-                  </span>
-                  <span className="font-semibold">₹{item.price * item.quantity}</span>
+                <div key={item.id} className="py-3 border-b" style={{ borderBottom: '1px solid #f4f4f5' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}>
+                        Product Name: {item.name}
+                      </p>
+                      <p style={{ margin: '2px 0', fontSize: '12px', color: '#555', fontFamily: 'monospace' }}>
+                        Product Code: {item.productCode || '—'}
+                      </p>
+                      <p style={{ margin: '2px 0', fontSize: '12px', color: '#666' }}>
+                        Quantity: {item.quantity} | Unit Price: ₹{item.price}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span className="text-xs muted" style={{ display: 'block' }}>Item Total</span>
+                      <span className="font-semibold" style={{ fontSize: '14px' }}>₹{item.price * item.quantity}</span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

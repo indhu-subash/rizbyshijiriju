@@ -114,11 +114,9 @@ function TrackFormContent() {
                   <li key={idx} style={{ fontSize: '0.875rem', padding: '4px 0', display: 'flex', justifyContent: 'space-between' }}>
                     <span>
                       <b>{it.name}</b> <small>× {it.quantity}</small>
-                      {it.productCode && (
-                        <span style={{ display: 'block', fontSize: '0.78rem', color: '#555', fontFamily: 'monospace' }}>
-                          SKU: <b>{it.productCode}</b>
-                        </span>
-                      )}
+                      <span style={{ display: 'block', fontSize: '0.78rem', color: '#555', fontFamily: 'monospace' }}>
+                        Product Code: <b>{it.productCode || '—'}</b>
+                      </span>
                       {it.color && (
                         <span style={{ display: 'block', fontSize: '0.8rem', color: '#666' }}>
                           Colour: <b>{it.color}</b>

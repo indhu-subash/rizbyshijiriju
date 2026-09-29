@@ -52,6 +52,7 @@ export async function trackOrder(req: Request, res: Response): Promise<void> {
         items: {
           select: {
             name: true,
+            productCode: true,
             quantity: true,
             color: true,
           },

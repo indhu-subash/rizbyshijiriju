@@ -123,6 +123,12 @@ export default function NewProductPage() {
     setSaving(true);
     setError('');
 
+    if (!productCode || !productCode.trim()) {
+      setError('Product Code is required.');
+      setSaving(false);
+      return;
+    }
+
     if (images.length === 0) {
       setError('Please upload at least one image.');
       setSaving(false);
@@ -131,7 +137,7 @@ export default function NewProductPage() {
 
     const payload = {
       name,
-      productCode: productCode ? productCode.trim().toUpperCase() : undefined,
+      productCode: productCode.trim().toUpperCase(),
       slug,
       price: Number(price),
       description,
@@ -190,10 +196,11 @@ export default function NewProductPage() {
             </label>
 
             <label>
-              Product Code / SKU <small style={{ color: '#888', fontWeight: 'normal' }}>(Optional, e.g. RIZ-NK-014)</small>
+              Product Code / SKU *
               <input
+                required
                 type="text"
-                placeholder="e.g. RIZ-NK-014"
+                placeholder="RIZ-ER-001"
                 value={productCode}
                 onChange={(e) => setProductCode(e.target.value.toUpperCase())}
                 style={{ fontFamily: 'monospace', letterSpacing: '0.5px' }}
@@ -383,6 +390,7 @@ export default function NewProductPage() {
                       <option value="Men's">Men's</option>
                       <option value="Kids">Kids</option>
                       <option value="Hair Accessories">Hair Accessories</option>
+                      <option value="Watches">Watches</option>
                       <option value="Silver Replica">Silver Replica</option>
                       <option value="Diamond Replica">Diamond Replica</option>
                       <option value="AD Collections">AD Collections</option>

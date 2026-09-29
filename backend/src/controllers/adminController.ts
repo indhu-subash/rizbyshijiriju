@@ -204,9 +204,12 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    const normalizedCode = productCode && typeof productCode === 'string' && productCode.trim().length > 0
-      ? productCode.trim().toUpperCase()
-      : null;
+    if (!productCode || typeof productCode !== 'string' || !productCode.trim()) {
+      res.status(400).json({ error: 'Product Code is required.' });
+      return;
+    }
+
+    const normalizedCode = productCode.trim().toUpperCase();
 
     if (normalizedCode) {
       const existingCode = await prisma.product.findFirst({

@@ -23,6 +23,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   // Form Fields
   const [name, setName] = useState('');
+  const [productCode, setProductCode] = useState('');
   const [slug, setSlug] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
@@ -72,6 +73,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         const res = await api.admin.getProductById(id);
         const p = res.product;
         setName(p.name);
+        setProductCode(p.productCode || '');
         setSlug(p.slug);
         setPrice(String(p.price));
         setDescription(p.description);
@@ -159,6 +161,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
     const payload = {
       name,
+      productCode: productCode ? productCode.trim().toUpperCase() : undefined,
       slug,
       price: Number(price),
       description,
@@ -216,6 +219,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 type="text"
                 value={name}
                 onChange={handleNameChange}
+              />
+            </label>
+
+            <label>
+              Product Code / SKU
+              <input
+                type="text"
+                placeholder="RIZ-ER-001"
+                value={productCode}
+                onChange={(e) => setProductCode(e.target.value.toUpperCase())}
+                style={{ fontFamily: 'monospace', letterSpacing: '0.5px' }}
               />
             </label>
 
@@ -399,6 +413,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                       <option value="Men's">Men's</option>
                       <option value="Kids">Kids</option>
                       <option value="Hair Accessories">Hair Accessories</option>
+                      <option value="Watches">Watches</option>
                       <option value="Silver Replica">Silver Replica</option>
                       <option value="Diamond Replica">Diamond Replica</option>
                       <option value="AD Collections">AD Collections</option>

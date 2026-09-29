@@ -18,6 +18,7 @@ const columns = [
       ["Men's", '/collections/mens'],
       ['Kids', '/collections/kids'],
       ['Hair Accessories', '/collections/hair-accessories'],
+      ['Watches', '/collections/watches'],
     ],
   },
   {
