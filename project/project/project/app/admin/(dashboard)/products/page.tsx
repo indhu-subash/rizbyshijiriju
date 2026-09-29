@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { Plus, Edit, Trash2, Search, Filter, Sparkles } from 'lucide-react';
+import { Plus, Edit, Trash2, RotateCcw, Search, Filter, Sparkles } from 'lucide-react';
 
 type Product = {
   id: string;
@@ -20,6 +20,7 @@ export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   
   // Search & Filter State
   const [query, setQuery] = useState('');
@@ -146,7 +147,19 @@ export default function AdminProducts() {
       await api.admin.deleteProduct(id);
       loadProducts();
     } catch (err: any) {
-      alert(err.message || 'Failed to deactivate product.');
+      setError(err.message || 'Failed to deactivate product.');
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    if (!confirm('Reactivate this product?\nThis will make the product visible/available on the storefront again.')) return;
+    try {
+      await api.admin.editProduct(id, { isActive: true });
+      setSuccessMessage('Product reactivated successfully.');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      loadProducts();
+    } catch (err: any) {
+      setError(err.message || 'Failed to reactivate product.');
     }
   };
 
@@ -254,6 +267,7 @@ export default function AdminProducts() {
 
       {error && <div className="error-banner mb-6">{error}</div>}
       {seedMessage && <div className="success-banner mb-6">{seedMessage}</div>}
+      {successMessage && <div className="success-banner mb-6">{successMessage}</div>}
 
       {/* Table */}
       {loading ? (
@@ -402,9 +416,21 @@ export default function AdminProducts() {
                       <Link href={`/admin/products/edit/${p.id}`} className="text-link flex items-center gap-1">
                         <Edit size={14} /> Edit
                       </Link>
-                      {p.isActive && (
-                        <button className="text-red-500 hover:text-red-700 flex items-center gap-1" onClick={() => handleDeactivate(p.id)}>
+                      {p.isActive ? (
+                        <button
+                          className="text-red-500 hover:text-red-700 flex items-center gap-1"
+                          style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                          onClick={() => handleDeactivate(p.id)}
+                        >
                           <Trash2 size={14} /> Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          className="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium"
+                          style={{ color: '#16a34a', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                          onClick={() => handleReactivate(p.id)}
+                        >
+                          <RotateCcw size={14} /> Reactivate
                         </button>
                       )}
                     </div>
