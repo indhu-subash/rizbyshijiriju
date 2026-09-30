@@ -1,11 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Star } from 'lucide-react';
 import { categoriesList, products } from '@/data/products';
 import { ProductGrid } from './ProductCard';
 import { Newsletter } from './Newsletter';
+import { api } from '@/lib/api';
 
 const heroImage = '/hero-jewellery.jpg';
 
@@ -64,10 +66,49 @@ const featuredCollections = [
     '/collections/riz-house-of-fashion',
     '/riz-house-of-fashion.jpg',
   ],
+  [
+    'Watches Collection',
+    'Luxury and everyday watches collection.',
+    '/collections/watches',
+    'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=1800&q=80',
+  ],
 ];
 
 export function HomePage() {
-  const antiTarnishItems = products.filter((p) => p.collection === 'Anti-Tarnish').slice(0, 4);
+  const [antiTarnishItems, setAntiTarnishItems] = useState<any[]>([]);
+  const [antiTarnishLoaded, setAntiTarnishLoaded] = useState<boolean>(false);
+  const [antiTarnishError, setAntiTarnishError] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.products
+      .list({ collection: 'Anti-Tarnish' })
+      .then((res) => {
+        if (isMounted) {
+          if (res && Array.isArray(res.products)) {
+            setAntiTarnishItems(res.products.slice(0, 4));
+            setAntiTarnishLoaded(true);
+            setAntiTarnishError(false);
+          } else {
+            setAntiTarnishLoaded(false);
+            setAntiTarnishError(true);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setAntiTarnishLoaded(false);
+          setAntiTarnishError(true);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const displayedAntiTarnish = antiTarnishLoaded && !antiTarnishError
+    ? antiTarnishItems
+    : (antiTarnishError ? products.filter((p) => p.collection === 'Anti-Tarnish').slice(0, 4) : []);
   const newArrivals = products.filter((p) => p.newArrival).slice(0, 4);
   const bestsellers = products.filter((p) => p.bestseller).slice(0, 4);
 
@@ -148,7 +189,7 @@ export function HomePage() {
             </Link>
           </div>
           <p className="section-lede">Water-resistant, anti-tarnish jewellery built for continuous daily wear.</p>
-          <ProductGrid items={antiTarnishItems} />
+          <ProductGrid items={displayedAntiTarnish} />
         </div>
       </section>
 
