@@ -66,7 +66,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     // 1. Calculate authoritative totals on the server
     let subtotal = 0;
     const checkoutItems: any[] = [];
-    const productUpdates: { id: string; newStock: number }[] = [];
+    const productUpdates: { id: string; sizeId?: string | null; size?: string | null; quantity: number }[] = [];
 
     // Load products from DB and verify stock in a single flow
     for (const item of items) {
@@ -83,14 +83,46 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         return;
       }
 
-      if (product.stock === 0) {
-        res.status(400).json({ error: `Product ${product.name} is out of stock.` });
-        return;
-      }
+      // Check if product has size variants
+      const hasSizes = Array.isArray(product.sizes) && product.sizes.length > 0;
+      const isSizedType = product.productType === 'bangle' || product.productType === 'ring';
 
-      if (product.stock < item.quantity) {
-        res.status(400).json({ error: `Insufficient stock for ${product.name}. Only ${product.stock} items left.` });
-        return;
+      let selectedSizeRecord: any = null;
+
+      if (hasSizes || isSizedType) {
+        if (!item.size || typeof item.size !== 'string' || !item.size.trim()) {
+          res.status(400).json({ error: `Please select a size for ${product.name}.` });
+          return;
+        }
+        const itemSizeTrimmed = String(item.size).trim();
+        selectedSizeRecord = (product.sizes || []).find((s: any) => String(s.size).trim() === itemSizeTrimmed);
+
+        if (!selectedSizeRecord) {
+          res.status(400).json({ error: `Invalid size '${item.size}' for ${product.name}.` });
+          return;
+        }
+
+        if (selectedSizeRecord.stock === 0) {
+          res.status(400).json({ error: `Size ${item.size} of ${product.name} is out of stock.` });
+          return;
+        }
+
+        if (selectedSizeRecord.stock < item.quantity) {
+          res.status(400).json({
+            error: `Insufficient stock for size ${item.size} of ${product.name}. Only ${selectedSizeRecord.stock} items left.`,
+          });
+          return;
+        }
+      } else {
+        if (product.stock === 0) {
+          res.status(400).json({ error: `Product ${product.name} is out of stock.` });
+          return;
+        }
+
+        if (product.stock < item.quantity) {
+          res.status(400).json({ error: `Insufficient stock for ${product.name}. Only ${product.stock} items left.` });
+          return;
+        }
       }
 
       // Validate colour selection against product.colors array (case-insensitive)
@@ -105,7 +137,6 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         }
       }
 
-
       subtotal += product.price * item.quantity;
       checkoutItems.push({
         productId: product.id,
@@ -114,12 +145,15 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         price: product.price,
         quantity: item.quantity,
         color: item.color || null,
+        size: item.size ? String(item.size).trim() : null,
         image: product.images[0] || '',
       });
 
       productUpdates.push({
         id: product.id,
-        newStock: product.stock - item.quantity,
+        sizeId: selectedSizeRecord ? selectedSizeRecord.id : null,
+        size: item.size ? String(item.size).trim() : null,
+        quantity: item.quantity,
       });
     }
 
@@ -212,19 +246,45 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
 
     // 4. Database Transaction: Decrement stock, create order, and increment coupon usage
     const result = await prisma.$transaction(async (tx: any) => {
-      // Re-verify stock inside the transaction for concurrency safety
+      // Re-verify and deduct stock inside transaction
       for (const update of productUpdates) {
-        const prod = await tx.product.findUnique({
-          where: { id: update.id },
-        });
-        if (!prod || prod.stock < (items.find((it) => it.productId === update.id)?.quantity || 0)) {
-          throw new Error('Stock changed during transaction. Please try again.');
-        }
+        if (update.sizeId && update.size) {
+          // Size-wise product: atomically decrement ProductSize stock
+          const updateSizeRes = await tx.productSize.updateMany({
+            where: {
+              id: update.sizeId,
+              stock: { gte: update.quantity },
+            },
+            data: {
+              stock: { decrement: update.quantity },
+            },
+          });
 
-        await tx.product.update({
-          where: { id: update.id },
-          data: { stock: update.newStock },
-        });
+          if (updateSizeRes.count === 0) {
+            throw new Error(`Size stock changed during transaction for item. Please try again.`);
+          }
+
+          // Decrement total Product stock as well
+          await tx.product.update({
+            where: { id: update.id },
+            data: { stock: { decrement: update.quantity } },
+          });
+        } else {
+          // Regular product
+          const updateProdRes = await tx.product.updateMany({
+            where: {
+              id: update.id,
+              stock: { gte: update.quantity },
+            },
+            data: {
+              stock: { decrement: update.quantity },
+            },
+          });
+
+          if (updateProdRes.count === 0) {
+            throw new Error(`Stock changed during transaction for product. Please try again.`);
+          }
+        }
       }
 
       // Increment coupon usage
@@ -264,6 +324,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
               price: item.price,
               quantity: item.quantity,
               color: item.color,
+              size: item.size || null,
               image: item.image,
             })),
           },
@@ -364,10 +425,18 @@ export async function cancelOrder(req: AuthenticatedRequest, res: Response): Pro
 
         // Restore product stock
         for (const item of order.items) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
-          });
+          if (item.productId) {
+            if (item.size) {
+              await tx.productSize.updateMany({
+                where: { productId: item.productId, size: item.size },
+                data: { stock: { increment: item.quantity } },
+              });
+            }
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
         }
       });
 
@@ -494,6 +563,12 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
 
             for (const item of order.items) {
               if (item.productId) {
+                if (item.size) {
+                  await tx.productSize.updateMany({
+                    where: { productId: item.productId, size: item.size },
+                    data: { stock: { increment: item.quantity } },
+                  });
+                }
                 await tx.product.update({
                   where: { id: item.productId },
                   data: { stock: { increment: item.quantity } },
@@ -652,6 +727,12 @@ export async function cancelPayment(req: AuthenticatedRequest, res: Response): P
         // Restore stock for each item in the order
         for (const item of order.items) {
           if (item.productId) {
+            if (item.size) {
+              await tx.productSize.updateMany({
+                where: { productId: item.productId, size: item.size },
+                data: { stock: { increment: item.quantity } },
+              });
+            }
             await tx.product.update({
               where: { id: item.productId },
               data: {

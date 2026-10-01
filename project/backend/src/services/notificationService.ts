@@ -1,4 +1,4 @@
-import * as nodemailer from 'nodemailer';
+const nodemailer = require('nodemailer');
 
 const STORE_NAME = 'RIZ by Shijiriju';
 const STORE_EMAIL = process.env.EMAIL_FROM || process.env.MAIL_FROM || 'rizbyshijiriju@gmail.com';

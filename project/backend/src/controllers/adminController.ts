@@ -146,6 +146,56 @@ export async function deleteAdminOrder(req: AuthenticatedRequest, res: Response)
   }
 }
 
+// Size constants
+const BANGLE_SIZES = ['2.2', '2.4', '2.6', '2.8', '2.10'];
+const RING_SIZES = ['6', '7', '8', '9', '16', '17', '18'];
+
+function validateProductTypeAndSizes(productType?: string, sizes?: any[]): { valid: boolean; error?: string; cleanType: string; cleanSizes: { size: string; stock: number }[]; calculatedStock: number } {
+  const cleanType = (productType || 'regular').toLowerCase().trim();
+  if (!['regular', 'bangle', 'ring'].includes(cleanType)) {
+    return { valid: false, error: 'Invalid productType. Allowed values: regular, bangle, ring', cleanType, cleanSizes: [], calculatedStock: 0 };
+  }
+
+  if (cleanType === 'regular') {
+    return { valid: true, cleanType, cleanSizes: [], calculatedStock: 0 };
+  }
+
+  if (!sizes || !Array.isArray(sizes)) {
+    return { valid: false, error: `Product of type '${cleanType}' requires a sizes array.`, cleanType, cleanSizes: [], calculatedStock: 0 };
+  }
+
+  const allowedSizes = cleanType === 'bangle' ? BANGLE_SIZES : RING_SIZES;
+  const seenSizes = new Set<string>();
+  const cleanSizes: { size: string; stock: number }[] = [];
+  let calculatedStock = 0;
+
+  for (const s of sizes) {
+    if (!s || typeof s !== 'object') {
+      return { valid: false, error: 'Invalid size variant format.', cleanType, cleanSizes: [], calculatedStock: 0 };
+    }
+    const sizeStr = String(s.size || '').trim();
+    const sizeStock = parseInt(s.stock, 10);
+
+    if (!allowedSizes.includes(sizeStr)) {
+      return { valid: false, error: `Invalid size '${sizeStr}' for ${cleanType}. Allowed sizes: ${allowedSizes.join(', ')}`, cleanType, cleanSizes: [], calculatedStock: 0 };
+    }
+
+    if (seenSizes.has(sizeStr)) {
+      return { valid: false, error: `Duplicate size '${sizeStr}' is not allowed.`, cleanType, cleanSizes: [], calculatedStock: 0 };
+    }
+    seenSizes.add(sizeStr);
+
+    if (isNaN(sizeStock) || sizeStock < 0) {
+      return { valid: false, error: `Stock for size '${sizeStr}' must be a non-negative integer.`, cleanType, cleanSizes: [], calculatedStock: 0 };
+    }
+
+    cleanSizes.push({ size: sizeStr, stock: sizeStock });
+    calculatedStock += sizeStock;
+  }
+
+  return { valid: true, cleanType, cleanSizes, calculatedStock };
+}
+
 // 3. Products CRUD
 export async function createProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -159,6 +209,8 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       collection,
       categoryId,
       colors,
+      productType,
+      sizes,
       gender,
       ageGroup,
       material,
@@ -177,6 +229,12 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
 
     if (!name || !description || price === undefined || price === null || !category || !collection) {
       res.status(400).json({ error: 'Required fields are missing.' });
+      return;
+    }
+
+    const validation = validateProductTypeAndSizes(productType, sizes);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
@@ -217,29 +275,47 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       }
     }
 
-    const product = await prisma.product.create({
-      data: {
-        name,
-        productCode: normalizedCode,
-        slug,
-        description,
-        price: parseFloat(price),
-        originalPrice: originalPrice ? parseFloat(originalPrice) : null,
-        category,
-        collection,
-        categoryId: validCategoryId,
-        colors: colorsArr,
-        gender: gender || 'Women',
-        ageGroup: ageGroup || 'Adult',
-        images: imagesArr,
-        material: actualMaterial,
-        finish: actualFinish,
-        stock: parseInt(stock) || 0,
-        tags: tagsArr,
-        featured: !!featured,
-        bestseller: !!bestseller,
-        newArrival: !!newArrival,
-      },
+    const finalStock = validation.cleanType === 'regular'
+      ? (parseInt(stock) || 0)
+      : validation.calculatedStock;
+
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          name,
+          productCode: normalizedCode,
+          slug,
+          description,
+          price: parseFloat(price),
+          originalPrice: originalPrice ? parseFloat(originalPrice) : null,
+          category,
+          collection,
+          categoryId: validCategoryId,
+          colors: colorsArr,
+          productType: validation.cleanType,
+          gender: gender || 'Women',
+          ageGroup: ageGroup || 'Adult',
+          images: imagesArr,
+          material: actualMaterial,
+          finish: actualFinish,
+          stock: finalStock,
+          tags: tagsArr,
+          featured: !!featured,
+          bestseller: !!bestseller,
+          newArrival: !!newArrival,
+          sizes: validation.cleanSizes.length > 0 ? {
+            create: validation.cleanSizes.map((s) => ({
+              size: s.size,
+              stock: s.stock,
+            })),
+          } : undefined,
+        },
+        include: {
+          sizes: true,
+        },
+      });
+
+      return created;
     });
 
     res.status(201).json({ message: 'Product created successfully.', product });
@@ -266,6 +342,8 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       collection,
       categoryId,
       colors,
+      productType,
+      sizes,
       gender,
       ageGroup,
       material,
@@ -354,31 +432,91 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     const itemMaterial = material || req.body.metal || product.material || 'Silver';
     const itemFinish = finish || product.finish || 'Polished';
 
-    const updated = await prisma.product.update({
-      where: { id },
-      data: {
-        name: name ? String(name).trim() : product.name,
-        productCode: productCodeValue,
-        slug,
-        description: description ? String(description).trim() : product.description,
-        price: parsedPrice,
-        originalPrice: parsedOriginalPrice,
-        category: category ? String(category).trim() : product.category,
-        collection: collection ? String(collection).trim() : product.collection,
-        categoryId: validCategoryId,
-        colors: colorsArr,
-        gender: gender || product.gender,
-        ageGroup: ageGroup || product.ageGroup,
-        images: imagesArr,
-        material: itemMaterial,
-        finish: itemFinish,
-        stock: parsedStock,
-        tags: tagsArr,
-        featured: featured !== undefined ? !!featured : product.featured,
-        bestseller: bestseller !== undefined ? !!bestseller : product.bestseller,
-        newArrival: newArrival !== undefined ? !!newArrival : product.newArrival,
-        isActive: isActive !== undefined ? !!isActive : product.isActive,
-      },
+    const targetType = (productType !== undefined ? productType : (product.productType || 'regular')).toLowerCase().trim();
+    let finalStock = parsedStock;
+    let cleanSizes: { size: string; stock: number }[] | null = null;
+
+    if (sizes !== undefined || productType !== undefined) {
+      const validation = validateProductTypeAndSizes(targetType, sizes !== undefined ? sizes : []);
+      if (!validation.valid && targetType !== 'regular') {
+        res.status(400).json({ error: validation.error });
+        return;
+      }
+      if (targetType !== 'regular') {
+        cleanSizes = validation.cleanSizes;
+        finalStock = validation.calculatedStock;
+      } else {
+        cleanSizes = [];
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (cleanSizes !== null) {
+        if (targetType === 'regular') {
+          await tx.productSize.deleteMany({ where: { productId: id } });
+        } else {
+          // Remove sizes not in cleanSizes
+          const keepSizes = cleanSizes.map((s) => s.size);
+          await tx.productSize.deleteMany({
+            where: {
+              productId: id,
+              size: { notIn: keepSizes },
+            },
+          });
+          // Upsert kept sizes
+          for (const s of cleanSizes) {
+            await tx.productSize.upsert({
+              where: {
+                productId_size: {
+                  productId: id,
+                  size: s.size,
+                },
+              },
+              create: {
+                productId: id,
+                size: s.size,
+                stock: s.stock,
+              },
+              update: {
+                stock: s.stock,
+              },
+            });
+          }
+        }
+      }
+
+      const prod = await tx.product.update({
+        where: { id },
+        data: {
+          name: name ? String(name).trim() : product.name,
+          productCode: productCodeValue,
+          slug,
+          description: description ? String(description).trim() : product.description,
+          price: parsedPrice,
+          originalPrice: parsedOriginalPrice,
+          category: category ? String(category).trim() : product.category,
+          collection: collection ? String(collection).trim() : product.collection,
+          categoryId: validCategoryId,
+          colors: colorsArr,
+          productType: targetType,
+          gender: gender || product.gender,
+          ageGroup: ageGroup || product.ageGroup,
+          images: imagesArr,
+          material: itemMaterial,
+          finish: itemFinish,
+          stock: finalStock,
+          tags: tagsArr,
+          featured: featured !== undefined ? !!featured : product.featured,
+          bestseller: bestseller !== undefined ? !!bestseller : product.bestseller,
+          newArrival: newArrival !== undefined ? !!newArrival : product.newArrival,
+          isActive: isActive !== undefined ? !!isActive : product.isActive,
+        },
+        include: {
+          sizes: true,
+        },
+      });
+
+      return prod;
     });
 
     res.status(200).json({ message: 'Product updated successfully.', product: updated });
@@ -395,31 +533,63 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
 export async function updateProductStock(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { stock } = req.body;
+    const { stock, size, sizes } = req.body;
 
-    const parsedStock = typeof stock === 'number' ? stock : parseInt(stock, 10);
-
-    if (isNaN(parsedStock) || !Number.isInteger(parsedStock) || parsedStock < 0) {
-      res.status(400).json({ error: 'Stock must be a non-negative integer.' });
-      return;
-    }
-
-    const product = await prisma.product.findUnique({ where: { id } });
+    const product = await prisma.product.findUnique({ where: { id }, include: { sizes: true } });
     if (!product) {
       res.status(404).json({ error: 'Product not found.' });
       return;
     }
 
-    const updated = await prisma.product.update({
-      where: { id },
-      data: { stock: parsedStock },
-    });
+    if (size && typeof size === 'string') {
+      const parsedSizeStock = parseInt(stock, 10);
+      if (isNaN(parsedSizeStock) || parsedSizeStock < 0) {
+        res.status(400).json({ error: 'Stock must be a non-negative integer.' });
+        return;
+      }
+      await prisma.$transaction(async (tx) => {
+        await tx.productSize.upsert({
+          where: { productId_size: { productId: id, size } },
+          create: { productId: id, size, stock: parsedSizeStock },
+          update: { stock: parsedSizeStock },
+        });
+        const allSizes = await tx.productSize.findMany({ where: { productId: id } });
+        const total = allSizes.reduce((acc, s) => acc + s.stock, 0);
+        await tx.product.update({ where: { id }, data: { stock: total } });
+      });
+    } else if (sizes && Array.isArray(sizes)) {
+      await prisma.$transaction(async (tx) => {
+        let total = 0;
+        for (const s of sizes) {
+          const sStock = parseInt(s.stock, 10) || 0;
+          total += sStock;
+          await tx.productSize.upsert({
+            where: { productId_size: { productId: id, size: String(s.size) } },
+            create: { productId: id, size: String(s.size), stock: sStock },
+            update: { stock: sStock },
+          });
+        }
+        await tx.product.update({ where: { id }, data: { stock: total } });
+      });
+    } else {
+      const parsedStock = typeof stock === 'number' ? stock : parseInt(stock, 10);
+      if (isNaN(parsedStock) || !Number.isInteger(parsedStock) || parsedStock < 0) {
+        res.status(400).json({ error: 'Stock must be a non-negative integer.' });
+        return;
+      }
+      await prisma.product.update({
+        where: { id },
+        data: { stock: parsedStock },
+      });
+    }
+
+    const updatedProduct = await prisma.product.findUnique({ where: { id }, include: { sizes: true } });
 
     res.status(200).json({
       message: 'Product stock updated successfully.',
-      id: updated.id,
-      stock: updated.stock,
-      product: updated,
+      id: updatedProduct?.id,
+      stock: updatedProduct?.stock,
+      product: updatedProduct,
     });
   } catch (error: any) {
     console.error('Update product stock error:', error);
@@ -731,6 +901,7 @@ export async function getAdminProducts(req: AuthenticatedRequest, res: Response)
       orderBy: { createdAt: 'desc' },
       include: {
         categoryRel: true,
+        sizes: true,
       },
     });
 

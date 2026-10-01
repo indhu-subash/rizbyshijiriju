@@ -29,6 +29,11 @@ export default function NewProductPage() {
   const [stock, setStock] = useState('10');
   const [category, setCategory] = useState('Earrings');
   const [categoryId, setCategoryId] = useState('');
+  const [productType, setProductType] = useState<'regular' | 'bangle' | 'ring'>('regular');
+  const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
+    '2.2': 0, '2.4': 0, '2.6': 0, '2.8': 0, '2.10': 0,
+    '6': 0, '7': 0, '8': 0, '9': 0, '16': 0, '17': 0, '18': 0,
+  });
   const [collection, setCollection] = useState('Anti-Tarnish');
   const [colors, setColors] = useState<string[]>(['Gold']);
   const [customColorInput, setCustomColorInput] = useState('');
@@ -135,13 +140,28 @@ export default function NewProductPage() {
       return;
     }
 
+    const activeSizeKeys = productType === 'bangle'
+      ? ['2.2', '2.4', '2.6', '2.8', '2.10']
+      : productType === 'ring'
+      ? ['6', '7', '8', '9', '16', '17', '18']
+      : [];
+
+    const sizes = activeSizeKeys.map((sz) => ({
+      size: sz,
+      stock: Number(sizeStocks[sz] || 0),
+    }));
+
     const payload = {
       name,
       productCode: productCode.trim().toUpperCase(),
       slug,
       price: Number(price),
       description,
-      stock: Number(stock),
+      stock: productType !== 'regular'
+        ? sizes.reduce((acc, curr) => acc + curr.stock, 0)
+        : Number(stock),
+      productType,
+      sizes: productType !== 'regular' ? sizes : [],
       category,
       categoryId: categoryId || undefined,
       collection,
@@ -231,15 +251,65 @@ export default function NewProductPage() {
             </label>
 
             <label>
-              Stock Quantity *
-              <input
-                required
-                type="number"
-                min="0"
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-              />
+              Product Inventory Type
+              <select
+                value={productType}
+                onChange={(e) => setProductType(e.target.value as 'regular' | 'bangle' | 'ring')}
+              >
+                <option value="regular">Regular Product (No Sizes)</option>
+                <option value="bangle">Bangles (Sizes 2.2, 2.4, 2.6, 2.8, 2.10)</option>
+                <option value="ring">Rings (Sizes 6, 7, 8, 9, 16, 17, 18)</option>
+              </select>
             </label>
+
+            {productType !== 'regular' ? (
+              <div className="size-stock-box" style={{ background: '#faf9f6', padding: '16px', borderRadius: '8px', border: '1px solid #ede5db' }}>
+                <span className="serif font-semibold" style={{ display: 'block', marginBottom: '8px', fontSize: '0.95rem' }}>
+                  Size-Wise Stock Quantities ({productType.toUpperCase()})
+                </span>
+                <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '12px' }}>
+                  Set stock for each size string individually. Total stock will be automatically calculated.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px' }}>
+                  {(productType === 'bangle'
+                    ? ['2.2', '2.4', '2.6', '2.8', '2.10']
+                    : ['6', '7', '8', '9', '16', '17', '18']
+                  ).map((sz) => (
+                    <div key={sz} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Size {sz}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={sizeStocks[sz] ?? 0}
+                        onChange={(e) => {
+                          const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                          const nextSizeStocks = { ...sizeStocks, [sz]: val };
+                          setSizeStocks(nextSizeStocks);
+                          const activeSizes = productType === 'bangle' ? ['2.2', '2.4', '2.6', '2.8', '2.10'] : ['6', '7', '8', '9', '16', '17', '18'];
+                          const total = activeSizes.reduce((acc, curr) => acc + (nextSizeStocks[curr] || 0), 0);
+                          setStock(String(total));
+                        }}
+                        style={{ padding: '6px', fontSize: '0.85rem' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: '10px', fontSize: '0.85rem', fontWeight: 600, color: '#334c3d' }}>
+                  Calculated Total Stock: {stock} units
+                </div>
+              </div>
+            ) : (
+              <label>
+                Stock Quantity *
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                />
+              </label>
+            )}
 
             <label>
               Description *

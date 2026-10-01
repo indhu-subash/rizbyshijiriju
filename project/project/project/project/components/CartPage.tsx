@@ -35,12 +35,12 @@ export function CartPage() {
         {cart.length ? (
           <>
             <div className="cart-items">
-              {cart.map(({ product, quantity, color }) => {
+              {cart.map(({ product, quantity, color, size }) => {
                 const productSlug = product.slug || product.id || encodeURIComponent(product.name);
                 const imageUrl = getValidImageUrl(product.images?.[0]);
 
                 return (
-                  <div className="cart-item" key={`${product.id}-${color || 'default'}`}>
+                  <div className="cart-item" key={`${product.id}-${color || 'default'}-${size || 'default'}`}>
                     <Link href={`/product/${productSlug}`} className="cart-thumb">
                       <Image src={imageUrl} alt={product.name} fill sizes="110px" />
                     </Link>
@@ -49,23 +49,30 @@ export function CartPage() {
                       <Link href={`/product/${productSlug}`}>
                         <h3 className="serif hover:underline">{product.name}</h3>
                       </Link>
-                      {color && (
-                        <p className="text-xs text-muted-foreground" style={{ fontSize: '0.85rem', color: '#666', margin: '2px 0' }}>
-                          Colour: <b>{color}</b>
-                        </p>
-                      )}
+                      <div className="cart-item-variants" style={{ display: 'flex', gap: '12px', marginTop: '2px', marginBottom: '4px' }}>
+                        {color && (
+                          <p className="text-xs text-muted-foreground" style={{ fontSize: '0.85rem', color: '#666', margin: 0 }}>
+                            Colour: <b>{color}</b>
+                          </p>
+                        )}
+                        {size && (
+                          <p className="text-xs text-muted-foreground" style={{ fontSize: '0.85rem', color: '#666', margin: 0 }}>
+                            Size: <b>{size}</b>
+                          </p>
+                        )}
+                      </div>
                       <p>₹{(product.price || 0).toLocaleString('en-IN')}</p>
                       <div className="cart-actions">
                         <div className="quantity">
-                          <button onClick={() => updateQuantity(product.id, color, quantity - 1)}>
+                          <button onClick={() => updateQuantity(product.id, color, size, quantity - 1)}>
                             <Minus size={13} />
                           </button>
                           <span>{quantity}</span>
-                          <button onClick={() => updateQuantity(product.id, color, quantity + 1)}>
+                          <button onClick={() => updateQuantity(product.id, color, size, quantity + 1)}>
                             <Plus size={13} />
                           </button>
                         </div>
-                        <button className="remove" onClick={() => removeFromCart(product.id, color)}>
+                        <button className="remove" onClick={() => removeFromCart(product.id, color, size)}>
                           <Trash2 size={14} /> Remove
                         </button>
                       </div>

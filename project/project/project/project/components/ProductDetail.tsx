@@ -54,6 +54,16 @@ export function ProductDetail({ product }: { product: Product }) {
   });
   const [colorError, setColorError] = useState('');
 
+  // Size management
+  const productSizes = Array.isArray(product.sizes) ? product.sizes : [];
+  const isSizedProduct = product.productType === 'bangle' || product.productType === 'ring' || productSizes.length > 0;
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [sizeError, setSizeError] = useState('');
+
+  const activeSizeStock = isSizedProduct
+    ? (selectedSize ? (productSizes.find((s) => s.size === selectedSize)?.stock ?? 0) : 0)
+    : product.stock;
+
   // Save to Recently Viewed
   useEffect(() => {
     try {
@@ -68,15 +78,29 @@ export function ProductDetail({ product }: { product: Product }) {
   }, [product.id]);
 
   function add(): boolean {
-    if (product.stock <= 0) return false;
+    if (isSizedProduct) {
+      if (!selectedSize) {
+        setSizeError('Please select a size before adding to cart.');
+        return false;
+      }
+      if (activeSizeStock <= 0) {
+        setSizeError('Selected size is currently out of stock.');
+        return false;
+      }
+    } else if (product.stock <= 0) {
+      return false;
+    }
+
     if (hasColors && !selectedColor) {
       setColorError('Please select an available colour before adding to cart.');
       return false;
     }
+
     setColorError('');
+    setSizeError('');
     setIsAdding(true);
 
-    addToCart(product, qty, selectedColor || undefined);
+    addToCart(product, qty, selectedColor || undefined, selectedSize || undefined);
 
     setTimeout(() => {
       setIsAdding(false);
@@ -88,7 +112,8 @@ export function ProductDetail({ product }: { product: Product }) {
   }
 
   function handleBuyNow() {
-    if (product.stock <= 0) return;
+    if (isSizedProduct && activeSizeStock <= 0 && selectedSize) return;
+    if (!isSizedProduct && product.stock <= 0) return;
     const added = add();
     if (added) {
       router.push('/checkout');
@@ -345,6 +370,66 @@ export function ProductDetail({ product }: { product: Product }) {
               </div>
             )}
 
+            {/* Size Selector Section */}
+            {isSizedProduct && (
+              <div className="pdp-size-section" style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}>
+                <div className="pdp-size-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span className="pdp-label" style={{ fontWeight: 600, fontSize: '0.85rem', letterSpacing: '0.05em', color: '#374151' }}>
+                    SELECT SIZE {product.productType === 'bangle' ? '(BANGLE)' : product.productType === 'ring' ? '(RING)' : ''}
+                  </span>
+                  <span className="pdp-selected-size" style={{ fontSize: '0.85rem' }}>
+                    {selectedSize ? <strong style={{ color: '#111827' }}>Size {selectedSize}</strong> : <em style={{ color: '#d32f2f' }}>Select size</em>}
+                  </span>
+                </div>
+
+                <div className="pdp-size-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {(product.productType === 'bangle'
+                    ? ['2.2', '2.4', '2.6', '2.8', '2.10']
+                    : product.productType === 'ring'
+                    ? ['6', '7', '8', '9', '16', '17', '18']
+                    : productSizes.map((s) => s.size)
+                  ).map((szStr) => {
+                    const sRec = productSizes.find((s) => s.size === szStr);
+                    const sStock = sRec ? sRec.stock : 0;
+                    const isAvailable = sStock > 0;
+                    const isSelected = selectedSize === szStr;
+
+                    return (
+                      <button
+                        key={szStr}
+                        type="button"
+                        className={`pdp-size-btn ${isSelected ? 'active' : ''} ${!isAvailable ? 'out-of-stock' : ''}`}
+                        onClick={() => {
+                          if (isAvailable) {
+                            setSelectedSize(szStr);
+                            setSizeError('');
+                          }
+                        }}
+                        style={{
+                          padding: '0.45rem 0.9rem',
+                          borderRadius: '6px',
+                          border: isSelected ? '2px solid #111827' : '1px solid #d1d5db',
+                          backgroundColor: isSelected ? '#111827' : isAvailable ? '#ffffff' : '#f3f4f6',
+                          color: isSelected ? '#ffffff' : isAvailable ? '#111827' : '#9ca3af',
+                          fontWeight: isSelected ? 600 : 500,
+                          fontSize: '0.875rem',
+                          cursor: isAvailable ? 'pointer' : 'not-allowed',
+                          textDecoration: !isAvailable ? 'line-through' : 'none',
+                          transition: 'all 0.15s ease',
+                          position: 'relative',
+                        }}
+                        title={isAvailable ? `Size ${szStr} (${sStock} in stock)` : `Size ${szStr} (Out of Stock)`}
+                      >
+                        {szStr}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {sizeError && <p className="pdp-error-msg" style={{ color: '#d32f2f', fontSize: '0.8rem', marginTop: '0.4rem' }}>{sizeError}</p>}
+              </div>
+            )}
+
             {/* Quantity & Stock Availability */}
             <div className="pdp-stock-qty-row">
               <div className="pdp-qty-wrap">
@@ -353,7 +438,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   <button
                     type="button"
                     onClick={() => setQty(Math.max(1, qty - 1))}
-                    disabled={product.stock <= 0 || qty <= 1}
+                    disabled={(isSizedProduct ? activeSizeStock : product.stock) <= 0 || qty <= 1}
                     aria-label="Decrease quantity"
                   >
                     <Minus size={14} />
@@ -361,8 +446,8 @@ export function ProductDetail({ product }: { product: Product }) {
                   <span>{qty}</span>
                   <button
                     type="button"
-                    onClick={() => setQty(Math.min(product.stock || 1, qty + 1))}
-                    disabled={product.stock <= 0 || qty >= product.stock}
+                    onClick={() => setQty(Math.min((isSizedProduct ? activeSizeStock : product.stock) || 1, qty + 1))}
+                    disabled={(isSizedProduct ? activeSizeStock : product.stock) <= 0 || qty >= (isSizedProduct ? activeSizeStock : product.stock)}
                     aria-label="Increase quantity"
                   >
                     <Plus size={14} />
@@ -370,21 +455,39 @@ export function ProductDetail({ product }: { product: Product }) {
                 </div>
               </div>
 
-              <div className="pdp-stock-status">{stockBadge}</div>
+              <div className="pdp-stock-status">
+                {isSizedProduct && !selectedSize ? (
+                  <span className="pdp-stock-badge select-size">
+                    <span className="dot" style={{ backgroundColor: '#f59e0b' }} /> Please select size
+                  </span>
+                ) : (isSizedProduct ? activeSizeStock : product.stock) > 5 ? (
+                  <span className="pdp-stock-badge in-stock">
+                    <span className="dot" /> In Stock — Ready to ship
+                  </span>
+                ) : (isSizedProduct ? activeSizeStock : product.stock) > 0 ? (
+                  <span className="pdp-stock-badge low-stock">
+                    <span className="dot" /> Low Stock (Only {isSizedProduct ? activeSizeStock : product.stock} left)
+                  </span>
+                ) : (
+                  <span className="pdp-stock-badge out-of-stock">
+                    <span className="dot" /> Sold Out
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Action Buttons */}
             <div className="pdp-actions">
               <button
                 className={`button pdp-btn-add ${addedSuccess ? 'added' : ''}`}
-                disabled={product.stock <= 0 || isAdding}
+                disabled={(isSizedProduct ? activeSizeStock : product.stock) <= 0 || isAdding}
                 onClick={add}
               >
                 {isAdding
                   ? 'ADDING TO BAG...'
                   : addedSuccess
                   ? '✓ ADDED TO BAG'
-                  : product.stock > 0
+                  : (isSizedProduct ? activeSizeStock : product.stock) > 0
                   ? 'ADD TO BAG'
                   : 'OUT OF STOCK'}
               </button>

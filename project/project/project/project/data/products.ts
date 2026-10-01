@@ -1,6 +1,41 @@
 export type Category = 'Earrings' | 'Nose Pins' | 'Second Studs' | 'Rings' | 'Necklaces' | 'Bracelets' | 'Chains' | 'Anklets' | 'Jewellery Sets' | "Men's Jewellery" | 'Kids Jewellery';
 export type Collection = 'Anti-Tarnish' | 'Traditional' | 'Everyday' | 'Minimal' | 'Festive' | 'Bridal' | "Men's" | 'Kids' | 'New Arrivals' | 'Best Sellers';
-export type Product = { id:string; name:string; slug:string; price:number; originalPrice?:number; category:Category; collection:Collection; gender:'Women'|'Men'|'Kids'|'Unisex'; ageGroup:'Adult'|'Kids'; images:string[]; description:string; material:string; finish:string; rating:number; reviews:number; reviewCount:number; stock:number; tags:string[]; colors?:string[]; featured?:boolean; bestseller?:boolean; bestSeller?:boolean; newArrival?:boolean };
+
+export type ProductSize = {
+  id?: string;
+  productId?: string;
+  size: string;
+  stock: number;
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  productCode?: string | null;
+  slug: string;
+  price: number;
+  originalPrice?: number;
+  category: Category;
+  collection: Collection;
+  productType?: 'regular' | 'bangle' | 'ring' | string;
+  sizes?: ProductSize[];
+  gender: 'Women' | 'Men' | 'Kids' | 'Unisex';
+  ageGroup: 'Adult' | 'Kids';
+  images: string[];
+  description: string;
+  material: string;
+  finish: string;
+  rating: number;
+  reviews: number;
+  reviewCount: number;
+  stock: number;
+  tags: string[];
+  colors?: string[];
+  featured?: boolean;
+  bestseller?: boolean;
+  bestSeller?: boolean;
+  newArrival?: boolean;
+};
 const img = [
  'https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=900',
  'https://images.pexels.com/photos/36823005/pexels-photo-36823005.jpeg?auto=compress&cs=tinysrgb&w=900',

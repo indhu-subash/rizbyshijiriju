@@ -8,6 +8,7 @@ export type CartItem = {
   product: Product;
   quantity: number;
   color?: string;
+  size?: string;
 };
 
 export type User = {
@@ -29,9 +30,9 @@ export type ToastNotification = {
 export type Store = {
   cart: CartItem[];
   wishlist: string[];
-  addToCart: (p: Product, quantity?: number, color?: string) => void;
-  removeFromCart: (id: string, color?: string) => void;
-  updateQuantity: (id: string, color: string | undefined, n: number) => void;
+  addToCart: (p: Product, quantity?: number, color?: string, size?: string) => void;
+  removeFromCart: (id: string, color?: string, size?: string) => void;
+  updateQuantity: (id: string, color: string | undefined, size: string | undefined, n: number) => void;
   toggleWishlist: (id: string, product?: Product) => void;
   clearCart: () => void;
   cartCount: number;
@@ -85,6 +86,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             product: item.product,
             quantity: typeof item.quantity === 'number' ? item.quantity : 1,
             color: item.color || undefined,
+            size: item.size || undefined,
           }))
         : [];
       setCart(parsedCart);
@@ -187,31 +189,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return {
       cart,
       wishlist,
-      addToCart: (product: Product, quantity: number = 1, color?: string) => {
+      addToCart: (product: Product, quantity: number = 1, color?: string, size?: string) => {
         setCart((items) => {
           const targetColor = color || undefined;
+          const targetSize = size || undefined;
           const index = items.findIndex(
-            (item) => item.product.id === product.id && (item.color || undefined) === targetColor
+            (item) =>
+              item.product.id === product.id &&
+              (item.color || undefined) === targetColor &&
+              (item.size || undefined) === targetSize
           );
           if (index !== -1) {
             return items.map((item, i) =>
               i === index ? { ...item, quantity: item.quantity + quantity } : item
             );
           }
-          return [...items, { product, quantity, color: targetColor }];
+          return [...items, { product, quantity, color: targetColor, size: targetSize }];
         });
         showToast('Item added to cart', 'cart', product.name, product.images?.[0]);
       },
-      removeFromCart: (id: string, color?: string) =>
+      removeFromCart: (id: string, color?: string, size?: string) =>
         setCart((items) =>
           items.filter(
-            (item) => !(item.product.id === id && (item.color || undefined) === (color || undefined))
+            (item) =>
+              !(
+                item.product.id === id &&
+                (item.color || undefined) === (color || undefined) &&
+                (item.size || undefined) === (size || undefined)
+              )
           )
         ),
-      updateQuantity: (id: string, color: string | undefined, n: number) =>
+      updateQuantity: (id: string, color: string | undefined, size: string | undefined, n: number) =>
         setCart((items) =>
           items.map((item) =>
-            item.product.id === id && (item.color || undefined) === (color || undefined)
+            item.product.id === id &&
+            (item.color || undefined) === (color || undefined) &&
+            (item.size || undefined) === (size || undefined)
               ? { ...item, quantity: Math.max(1, n) }
               : item
           )

@@ -152,13 +152,18 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       products = await prisma.product.findMany({
         where: whereClause,
         orderBy: isBestsellerSort ? undefined : orderBy,
+        include: {
+          sizes: true,
+        },
       });
     } catch (findErr) {
       console.warn('findMany default query failed, falling back to explicit select fields:', findErr);
       products = await prisma.product.findMany({
         where: whereClause,
         orderBy: isBestsellerSort ? undefined : orderBy,
-        select: PRODUCT_SELECT_FIELDS,
+        include: {
+          sizes: true,
+        },
       });
     }
 
@@ -255,30 +260,35 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   // 1. Try exact ID match (whether UUID or custom string ID)
   let product = await prisma.product.findFirst({
     where: { id: decoded, ...activeCondition },
+    include: { sizes: true },
   });
   if (product) return product;
 
   // 2. Try case-insensitive ID match
   product = await prisma.product.findFirst({
     where: { id: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
+    include: { sizes: true },
   });
   if (product) return product;
 
   // 3. Try exact slug match
   product = await prisma.product.findFirst({
     where: { slug: decoded, ...activeCondition },
+    include: { sizes: true },
   });
   if (product) return product;
 
   // 4. Try case-insensitive slug match
   product = await prisma.product.findFirst({
     where: { slug: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
+    include: { sizes: true },
   });
   if (product) return product;
 
   // 5. Try exact case-insensitive name match
   product = await prisma.product.findFirst({
     where: { name: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
+    include: { sizes: true },
   });
   if (product) return product;
 
@@ -286,6 +296,7 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   if (unhyphenated) {
     product = await prisma.product.findFirst({
       where: { name: { equals: unhyphenated, mode: 'insensitive' }, ...activeCondition },
+      include: { sizes: true },
     });
     if (product) return product;
   }
@@ -294,6 +305,7 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   if (normalized) {
     product = await prisma.product.findFirst({
       where: { slug: { equals: normalized, mode: 'insensitive' }, ...activeCondition },
+      include: { sizes: true },
     });
     if (product) return product;
   }
