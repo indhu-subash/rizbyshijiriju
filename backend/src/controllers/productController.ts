@@ -201,6 +201,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
           productId: { not: null },
           order: {
             orderStatus: { notIn: ['Cancelled', 'cancelled', 'FAILED', 'failed'] },
+            paymentStatus: { in: ['paid', 'Paid', 'PAID', 'SUCCESS', 'success', 'COMPLETED', 'completed'] },
           },
         },
         select: {
@@ -224,7 +225,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       const unitsSold = salesMap.get(p.id) || 0;
       const isNew = p.createdAt ? (new Date(p.createdAt).getTime() >= thirtyDaysAgo.getTime()) : !!p.newArrival;
       // BESTSELLER badge ONLY for products with actual sales > 0
-      const isBestseller = unitsSold > 0 || p.bestseller;
+      const isBestseller = unitsSold > 0;
 
       return {
         ...p,
@@ -235,6 +236,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     });
 
     if (isBestsellerSort) {
+      mappedProducts = mappedProducts.filter((p) => p.unitsSold > 0);
       mappedProducts.sort((a, b) => {
         if (b.unitsSold !== a.unitsSold) {
           return b.unitsSold - a.unitsSold;

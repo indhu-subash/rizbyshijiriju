@@ -75,6 +75,10 @@ const featuredCollections = [
 ];
 
 export function HomePage() {
+  const [bestsellerItems, setBestsellerItems] = useState<any[]>([]);
+  const [bestsellerLoaded, setBestsellerLoaded] = useState<boolean>(false);
+  const [bestsellerError, setBestsellerError] = useState<boolean>(false);
+
   const [antiTarnishItems, setAntiTarnishItems] = useState<any[]>([]);
   const [antiTarnishLoaded, setAntiTarnishLoaded] = useState<boolean>(false);
   const [antiTarnishError, setAntiTarnishError] = useState<boolean>(false);
@@ -89,6 +93,28 @@ export function HomePage() {
 
   useEffect(() => {
     let isMounted = true;
+
+    api.products
+      .list({ sort: 'Bestseller' })
+      .then((res) => {
+        if (isMounted) {
+          if (res && Array.isArray(res.products)) {
+            const qualifying = res.products.filter((p: any) => (p.unitsSold || 0) > 0).slice(0, 4);
+            setBestsellerItems(qualifying);
+            setBestsellerLoaded(true);
+            setBestsellerError(false);
+          } else {
+            setBestsellerLoaded(true);
+            setBestsellerError(true);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setBestsellerLoaded(true);
+          setBestsellerError(true);
+        }
+      });
     api.products
       .list({ collection: 'Anti-Tarnish' })
       .then((res) => {
@@ -255,7 +281,9 @@ export function HomePage() {
     ? newArrivalsItems
     : products.filter((p) => Boolean(p.newArrival)).slice(0, 4);
 
-  const bestsellers = products.filter((p) => p.bestseller).slice(0, 4);
+  const bestsellers = bestsellerLoaded && bestsellerItems.length > 0
+    ? bestsellerItems
+    : [];
 
   const displayedCategories = categoriesLoaded && dynamicCategories.length > 0
     ? dynamicCategories
@@ -403,20 +431,22 @@ export function HomePage() {
       </section>
 
       {/* Bestsellers Section */}
-      <section className="section section-tinted">
-        <div className="container">
-          <div className="section-head">
-            <div>
-              <span className="eyebrow">MOST LOVED PIECES</span>
-              <h2>Bestsellers</h2>
+      {bestsellerLoaded && bestsellerItems.length > 0 && (
+        <section className="section section-tinted">
+          <div className="container">
+            <div className="section-head">
+              <div>
+                <span className="eyebrow">MOST LOVED PIECES</span>
+                <h2>Bestsellers</h2>
+              </div>
+              <Link className="text-link" href="/best-sellers">
+                Shop Bestsellers <ArrowRight size={15} />
+              </Link>
             </div>
-            <Link className="text-link" href="/best-sellers">
-              Shop Bestsellers <ArrowRight size={15} />
-            </Link>
+            <ProductGrid items={bestsellers} />
           </div>
-          <ProductGrid items={bestsellers} />
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Shop By Product Category */}
       <section className="section container">
