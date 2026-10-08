@@ -40,14 +40,17 @@ export function CollectionPage({
     let isMounted = true;
     setLoading(true);
 
-    const targetCategory = category || (title.toLowerCase() !== 'new arrivals' && title.toLowerCase() !== 'best sellers' && !collection ? title : undefined);
-    const targetCollection = collection || (title.toLowerCase() === 'new arrivals' ? 'New Arrivals' : title.toLowerCase() === 'best sellers' ? 'Best Sellers' : undefined);
+    const isNewArrivalsCollection = (collection && collection.toLowerCase().includes('new arrival')) || title.toLowerCase().includes('new arrival');
+    const isBestsellersCollection = (collection && collection.toLowerCase().includes('best seller')) || title.toLowerCase().includes('best seller');
+
+    const targetCategory = category || (!isNewArrivalsCollection && !isBestsellersCollection && !collection ? title : undefined);
+    const targetCollection = collection || (isNewArrivalsCollection ? 'New Arrivals' : isBestsellersCollection ? 'Best Sellers' : undefined);
 
     api.products
       .list({
         category: targetCategory,
         collection: targetCollection,
-        sort: targetCollection === 'New Arrivals' ? 'Newest' : targetCollection === 'Best Sellers' ? 'Best Selling' : undefined,
+        sort: isNewArrivalsCollection ? 'Newest' : isBestsellersCollection ? 'Best Selling' : undefined,
       })
       .then((res) => {
         if (isMounted) {
@@ -77,6 +80,7 @@ export function CollectionPage({
     };
   }, [initialItems, title, category, collection]);
 
+  const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const fallbackFilter = (p: typeof localProducts[number]) => {
     if (category) {
       const c = category.toLowerCase().trim();
@@ -88,7 +92,9 @@ export function CollectionPage({
       const col = collection.toLowerCase().trim();
       const pCol = (p.collection || '').toLowerCase();
       const pName = (p.name || '').toLowerCase();
-      if (col.includes('new')) return Boolean(p.newArrival);
+      if (col.includes('new')) {
+        return p.createdAt ? (new Date(p.createdAt).getTime() >= thirtyDaysAgoMs) : Boolean(p.newArrival);
+      }
       if (col.includes('best')) return Boolean(p.bestseller);
       return pCol.includes(col) || pName.includes(col);
     }

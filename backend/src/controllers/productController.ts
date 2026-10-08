@@ -133,20 +133,22 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       }
     }
 
-    let orderBy: any = [{ featured: 'desc' }, { createdAt: 'desc' }];
+    let orderBy: any = [{ featured: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
     const isBestsellerSort = sort && (String(sort).toLowerCase().includes('best') || String(sort).toLowerCase().includes('bestseller'));
 
     if (sort) {
       const sortVal = String(sort);
       if (sortVal === 'Price Low to High') {
-        orderBy = [{ price: 'asc' }, { createdAt: 'desc' }];
+        orderBy = [{ price: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }];
       } else if (sortVal === 'Price High to Low') {
-        orderBy = [{ price: 'desc' }, { createdAt: 'desc' }];
+        orderBy = [{ price: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
       } else if (sortVal === 'Newest') {
-        orderBy = [{ createdAt: 'desc' }];
+        orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
       } else if (!isBestsellerSort) {
-        orderBy = [{ featured: 'desc' }, { createdAt: 'desc' }];
+        orderBy = [{ featured: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
       }
+    } else if (collection && (String(collection).toLowerCase().includes('new arrival') || String(collection).toLowerCase().includes('new-arrival'))) {
+      orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
     }
 
     const PRODUCT_SELECT_FIELDS = {

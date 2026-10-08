@@ -1,78 +1,286 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Star, ShieldCheck, Sparkles, Truck, RefreshCw } from 'lucide-react';
+import { ArrowRight, Star } from 'lucide-react';
 import { categoriesList, products } from '@/data/products';
-import { ProductGrid } from './ProductCard';
+import { ProductGrid, getValidImageUrl } from './ProductCard';
 import { Newsletter } from './Newsletter';
+import { api } from '@/lib/api';
 
-const heroImage = '/hero-banner.png';
+const heroImage = '/hero-jewellery.jpg';
 
 const featuredCollections = [
   [
-    'Anti-Tarnish Collection',
-    'Made for everyday shine, water-resistant & durable.',
+    'Anti-Tarnish',
+    'Made for everyday shine & durability.',
     '/collections/anti-tarnish',
-    'https://images.pexels.com/photos/29502912/pexels-photo-29502912.jpeg?auto=compress&cs=tinysrgb&w=900',
+    '/anti-tarnish-collection.jpg',
   ],
   [
-    'Traditional Kerala Heritage',
-    'Timeless Kerala-inspired royal elegance.',
+    'Traditional',
+    'Timeless Kerala-inspired elegance.',
     '/collections/traditional',
-    'https://images.pexels.com/photos/38344601/pexels-photo-38344601.jpeg?auto=compress&cs=tinysrgb&w=900',
+    '/traditional-collection.png',
   ],
   [
-    'Bridal & Celebration',
-    'For grand moments that deserve to last forever.',
+    'Bridal',
+    'For moments that deserve to last forever.',
     '/collections/bridal',
-    'https://images.pexels.com/photos/9901809/pexels-photo-9901809.jpeg?auto=compress&cs=tinysrgb&w=900',
+    '/bridal-collection.png',
   ],
   [
-    'Silver Replica Statement',
-    'High-grade silver finish statement craft.',
+    'Silver Replica',
+    'High-grade silver finish statement pieces.',
     '/collections/silver-replica',
-    'https://images.pexels.com/photos/6256046/pexels-photo-6256046.jpeg?auto=compress&cs=tinysrgb&w=900',
+    '/silver-replica-collection.png',
   ],
   [
-    'Diamond Replica Polish',
-    'High Polish AD Diamond brilliance.',
+    'Diamond Replica',
+    'High polish diamond replica brilliance.',
     '/collections/diamond-replica',
     '/diamond-replica-collection.jpg',
   ],
   [
-    'AD Artistry Collection',
-    'Intricate American Diamond design.',
+    'AD Collections',
+    'Intricate American Diamond artistry.',
     '/collections/ad-collections',
-    'https://images.pexels.com/photos/30200528/pexels-photo-30200528.jpeg?auto=compress&cs=tinysrgb&w=900',
+    '/ad-collection.jpg',
+  ],
+  [
+    "Men's Collection",
+    'Quietly bold. Effortlessly refined.',
+    '/collections/mens',
+    '/mens-collection.png',
+  ],
+  [
+    'Kids Collection',
+    'Delicate treasures for little celebrations.',
+    '/collections/kids',
+    '/kids-collection.jpg',
+  ],
+  [
+    'RIZ House of Fashion',
+    'Exclusive signature house creations.',
+    '/collections/riz-house-of-fashion',
+    '/riz-house-of-fashion.jpg',
+  ],
+  [
+    'Watches Collection',
+    'Luxury and everyday watches collection.',
+    '/collections/watches',
+    '/watches-collection.png',
   ],
 ];
 
 export function HomePage() {
-  const antiTarnishItems = products.filter((p) => p.collection === 'Anti-Tarnish').slice(0, 4);
-  const newArrivals = products.filter((p) => p.newArrival).slice(0, 4);
+  const [antiTarnishItems, setAntiTarnishItems] = useState<any[]>([]);
+  const [antiTarnishLoaded, setAntiTarnishLoaded] = useState<boolean>(false);
+  const [antiTarnishError, setAntiTarnishError] = useState<boolean>(false);
+
+  const [newArrivalsItems, setNewArrivalsItems] = useState<any[]>([]);
+  const [newArrivalsLoaded, setNewArrivalsLoaded] = useState<boolean>(false);
+  const [newArrivalsError, setNewArrivalsError] = useState<boolean>(false);
+
+  const [dynamicCategories, setDynamicCategories] = useState<{ name: string; image: string; href: string }[]>([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState<boolean>(false);
+  const [categoriesError, setCategoriesError] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.products
+      .list({ collection: 'Anti-Tarnish' })
+      .then((res) => {
+        if (isMounted) {
+          if (res && Array.isArray(res.products)) {
+            setAntiTarnishItems(res.products.slice(0, 4));
+            setAntiTarnishLoaded(true);
+            setAntiTarnishError(false);
+          } else {
+            setAntiTarnishLoaded(false);
+            setAntiTarnishError(true);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setAntiTarnishLoaded(false);
+          setAntiTarnishError(true);
+        }
+      });
+
+    api.products
+      .list({ collection: 'New Arrivals', sort: 'Newest' })
+      .then((res) => {
+        if (isMounted) {
+          if (res && Array.isArray(res.products)) {
+            setNewArrivalsItems(res.products.slice(0, 4));
+            setNewArrivalsLoaded(true);
+            setNewArrivalsError(false);
+          } else {
+            setNewArrivalsLoaded(false);
+            setNewArrivalsError(true);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setNewArrivalsLoaded(false);
+          setNewArrivalsError(true);
+        }
+      });
+
+    api.products
+      .list()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res && Array.isArray(res.products) && res.products.length > 0) {
+          const catMap = new Map<string, { originalName: string; products: any[] }>();
+
+          res.products.forEach((p: any) => {
+            if (p.isActive === false) return;
+            const catRaw = (p.category || '').trim();
+            if (!catRaw) return;
+
+            const normalizedKey = catRaw.toLowerCase();
+            if (!catMap.has(normalizedKey)) {
+              catMap.set(normalizedKey, { originalName: catRaw, products: [] });
+            }
+            catMap.get(normalizedKey)!.products.push(p);
+          });
+
+          const preferredOrder = [
+            'earrings',
+            'nose pins',
+            'second studs',
+            'rings',
+            'necklaces',
+            'bracelets',
+            'bangles',
+            'pendants',
+            'jewellery sets',
+            'watches',
+            'diamond replica',
+            'silver replica',
+            "men's jewellery",
+            'kids jewellery',
+          ];
+
+          const categoryEntries = Array.from(catMap.entries());
+
+          categoryEntries.sort(([keyA], [keyB]) => {
+            const indexA = preferredOrder.indexOf(keyA);
+            const indexB = preferredOrder.indexOf(keyB);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return keyA.localeCompare(keyB);
+          });
+
+          const derivedCards: { name: string; image: string; href: string }[] = [];
+
+          for (const [key, { originalName, products: catProds }] of categoryEntries) {
+            catProds.sort((a, b) => {
+              if (!!b.featured !== !!a.featured) return b.featured ? 1 : -1;
+              const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              if (timeB !== timeA) return timeB - timeA;
+              return String(b.id || '').localeCompare(String(a.id || ''));
+            });
+
+            let selectedImage: string | undefined = undefined;
+            for (const p of catProds) {
+              const rawImg = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : undefined;
+              const validUrl = getValidImageUrl(rawImg);
+              if (validUrl && validUrl !== '/hero-jewellery.jpg') {
+                selectedImage = validUrl;
+                break;
+              }
+            }
+
+            if (!selectedImage && catProds.length > 0) {
+              const rawImg = catProds[0].images?.[0];
+              selectedImage = getValidImageUrl(rawImg);
+            }
+
+            if (selectedImage) {
+              let href = `/shop?category=${encodeURIComponent(originalName)}`;
+              if (key === "men's jewellery" || key === "men's") {
+                href = '/collections/mens';
+              } else if (key === 'kids jewellery' || key === 'kids') {
+                href = '/collections/kids';
+              }
+
+              derivedCards.push({
+                name: originalName,
+                image: selectedImage,
+                href,
+              });
+            }
+          }
+
+          if (derivedCards.length > 0) {
+            setDynamicCategories(derivedCards);
+            setCategoriesLoaded(true);
+            setCategoriesError(false);
+          } else {
+            setCategoriesLoaded(false);
+            setCategoriesError(true);
+          }
+        } else {
+          if (isMounted) {
+            setCategoriesLoaded(false);
+            setCategoriesError(true);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setCategoriesLoaded(false);
+          setCategoriesError(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const displayedAntiTarnish = antiTarnishLoaded && antiTarnishItems.length > 0
+    ? antiTarnishItems
+    : products.filter((p) => p.collection === 'Anti-Tarnish').slice(0, 4);
+
+  const newArrivals = newArrivalsLoaded && newArrivalsItems.length > 0
+    ? newArrivalsItems
+    : products.filter((p) => Boolean(p.newArrival)).slice(0, 4);
+
   const bestsellers = products.filter((p) => p.bestseller).slice(0, 4);
 
+  const displayedCategories = categoriesLoaded && dynamicCategories.length > 0
+    ? dynamicCategories
+    : categoriesList;
+
   return (
-    <main className="homepage-root">
-      {/* Standard Clean Editorial Hero Section */}
+    <main>
+      {/* Editorial Hero Section */}
       <section className="hero-editorial">
         <div className="container hero-editorial-inner">
           <div className="hero-editorial-copy">
-            <span className="eyebrow">TIMELESS JEWELLERY • MODERN WOMEN</span>
+            <span className="eyebrow">KERALA HERITAGE · ANTI-TARNISH CRAFT</span>
             <h1 className="serif">
-              Elegance<br />
-              in Every <i>Detail</i>
+              Jewellery that keeps<br />
+              <i>its glow, day after day.</i>
             </h1>
             <p>
-              Beautifully crafted, anti-tarnish jewellery for your everyday and every special moment.
+              Thoughtfully crafted jewellery inspired by Kerala's timeless elegance — designed to become an enduring part of your daily style story.
             </p>
             <div className="hero-actions">
               <Link className="button" href="/shop">
                 Shop Now <ArrowRight size={15} />
               </Link>
-              <Link className="button secondary" href="/collections/anti-tarnish">
-                Explore Collections
+              <Link className="button secondary" href="/about">
+                Our Story
               </Link>
             </div>
             <div className="hero-signoff">
@@ -82,7 +290,7 @@ export function HomePage() {
           <div className="hero-editorial-image">
             <Image
               src={heroImage}
-              alt="Elegance in Every Detail - RIZ BY SHIJIRIJU"
+              alt="RIZ BY SHIJIRIJU Editorial Jewellery Showcase"
               fill
               priority
               sizes="(max-width:640px) 100vw, 50vw"
@@ -91,37 +299,29 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Brand Value Pillars Bar */}
-      <section className="pillars-bar">
-        <div className="container pillars-grid">
-          <div className="pillar-item">
-            <ShieldCheck size={20} className="pillar-icon" />
-            <div>
-              <strong>Anti-Tarnish Guaranteed</strong>
-              <small>Water-resistant & everyday durable</small>
-            </div>
+      {/* Featured Collections Grid */}
+      <section className="section container">
+        <div className="section-head">
+          <div>
+            <span className="eyebrow">FIND YOUR KIND OF GLOW</span>
+            <h2>Explore Our Collections</h2>
           </div>
-          <div className="pillar-item">
-            <Sparkles size={20} className="pillar-icon" />
-            <div>
-              <strong>Kerala Craftsmanship</strong>
-              <small>Heritage motifs reimagined for today</small>
-            </div>
-          </div>
-          <div className="pillar-item">
-            <Truck size={20} className="pillar-icon" />
-            <div>
-              <strong>Free Shipping over ₹2,000</strong>
-              <small>Fast insured delivery across India</small>
-            </div>
-          </div>
-          <div className="pillar-item">
-            <RefreshCw size={20} className="pillar-icon" />
-            <div>
-              <strong>Easy 7-Day Returns</strong>
-              <small>Hassle-free guarantee & support</small>
-            </div>
-          </div>
+          <p>Curated lines for everyday wear, wedding celebrations, and distinct statement looks.</p>
+        </div>
+        <div className="collection-editorial-grid">
+          {featuredCollections.map(([title, description, href, image], i) => (
+            <Link href={href} className={`collection-editorial-card card-${i}`} key={title}>
+              <Image src={image} alt={title} fill sizes="(max-width:640px) 50vw, 25vw" />
+              <div className="collection-card-shade" />
+              <div className="collection-card-copy">
+                <span>{title}</span>
+                <small>{description}</small>
+                <b>
+                  Explore Collection <ArrowRight size={13} />
+                </b>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -138,33 +338,7 @@ export function HomePage() {
             </Link>
           </div>
           <p className="section-lede">Water-resistant, anti-tarnish jewellery built for continuous daily wear.</p>
-          <ProductGrid items={antiTarnishItems} />
-        </div>
-      </section>
-
-      {/* Featured Collections Grid */}
-      <section className="section container">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">FIND YOUR KIND OF GLOW</span>
-            <h2>Explore Our Collections</h2>
-          </div>
-          <p>Curated lines for everyday wear, wedding celebrations, and distinct statement looks.</p>
-        </div>
-        <div className="collection-editorial-grid">
-          {featuredCollections.map(([title, description, href, image], i) => (
-            <Link href={href} className={`collection-editorial-card card-${i}`} key={title}>
-              <Image src={image} alt={title} fill sizes="(max-width:640px) 100vw, (max-width:1024px) 50vw, 33vw" />
-              <div className="collection-card-shade" />
-              <div className="collection-card-copy">
-                <span>{title}</span>
-                <small>{description}</small>
-                <b>
-                  Explore Collection <ArrowRight size={13} />
-                </b>
-              </div>
-            </Link>
-          ))}
+          <ProductGrid items={displayedAntiTarnish} />
         </div>
       </section>
 
@@ -172,7 +346,7 @@ export function HomePage() {
       <section className="split-feature container">
         <div className="split-feature-image">
           <Image
-            src="https://images.pexels.com/photos/38344601/pexels-photo-38344601.jpeg?auto=compress&cs=tinysrgb&w=1100"
+            src="/traditional-collection.png"
             alt="Traditional Kerala Jewellery Artistry"
             fill
             sizes="50vw"
@@ -182,7 +356,7 @@ export function HomePage() {
           <span className="eyebrow">TRADITIONAL HERITAGE</span>
           <h2 className="serif">
             Kerala Craft,<br />
-            <i className="serif-italic-accent">Reimagined.</i>
+            <i>Reimagined.</i>
           </h2>
           <p>Pieces inspired by Kerala’s rich cultural legacy, gracefully reimagined for the modern connoisseur.</p>
           <Link href="/collections/traditional" className="button">
@@ -198,7 +372,7 @@ export function HomePage() {
             <span className="eyebrow">NEW SEASON RELEASE</span>
             <h2>New Arrivals</h2>
           </div>
-          <Link className="text-link" href="/new-arrivals">
+          <Link className="text-link" href="/collections/new-arrivals">
             View All <ArrowRight size={15} />
           </Link>
         </div>
@@ -212,7 +386,7 @@ export function HomePage() {
             <span className="eyebrow">FOR HIM</span>
             <h2 className="serif">
               Quietly Bold.<br />
-              <i className="serif-italic-accent">Effortlessly Refined.</i>
+              <i>Effortlessly Refined.</i>
             </h2>
             <p>Sleek rings, minimalist chains, and polished bracelets designed for effortless daily confidence.</p>
             <Link href="/collections/mens" className="button light">
@@ -220,8 +394,8 @@ export function HomePage() {
             </Link>
           </div>
           <Image
-            src="/mens-banner.png"
-            alt="Men's Jewellery Collection - Quietly Bold. Effortlessly Refined."
+            src="https://images.pexels.com/photos/8512143/pexels-photo-8512143.jpeg?auto=compress&cs=tinysrgb&w=1200"
+            alt="Men's Jewellery Collection"
             fill
             sizes="50vw"
           />
@@ -253,7 +427,7 @@ export function HomePage() {
           </div>
         </div>
         <div className="grid category-grid">
-          {categoriesList.slice(0, 6).map((cat) => (
+          {displayedCategories.slice(0, 6).map((cat) => (
             <Link href={cat.href} className="category-card" key={cat.name}>
               <div className="category-image">
                 <Image src={cat.image} alt={cat.name} fill sizes="(max-width:640px) 50vw, 16vw" />
@@ -296,14 +470,16 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Wholesale Banner */}
-      <section className="wholesale-home-banner section container">
-        <div className="wholesale-home-card">
-          <span className="eyebrow">PARTNER WITH US</span>
-          <h2 className="serif">Wholesale with RIZ</h2>
-          <p>Interested in stocking RIZ by Shijiriju? Get in touch with us for wholesale enquiries.</p>
-          <Link href="/wholesale" className="button secondary" style={{ marginTop: '16px', display: 'inline-flex' }}>
-            Wholesale Enquiries <ArrowRight size={14} style={{ marginLeft: 6 }} />
+      {/* Wholesale Banner Spotlight */}
+      <section className="wholesale-home-banner container">
+        <div className="wholesale-home-banner-inner">
+          <span className="eyebrow">WHOLESALE & STOCKIST ENQUIRIES</span>
+          <h2 className="serif">Partner with RIZ by Shijiriju</h2>
+          <p>
+            Looking to offer our anti-tarnish everyday jewellery in your store or online catalogue? We welcome wholesale enquiries from retail stockists across India.
+          </p>
+          <Link href="/wholesale" className="button">
+            Wholesale Enquiries <ArrowRight size={15} />
           </Link>
         </div>
       </section>

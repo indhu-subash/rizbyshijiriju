@@ -18,8 +18,12 @@ export function setStoredToken(token: string | null): void {
   try {
     if (token) {
       localStorage.setItem(AUTH_TOKEN_KEY, token);
+      document.cookie = `${AUTH_TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
     } else {
       localStorage.removeItem(AUTH_TOKEN_KEY);
+      document.cookie = `${AUTH_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      document.cookie = `token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     }
   } catch (e) {
     // Ignore storage errors
@@ -27,7 +31,9 @@ export function setStoredToken(token: string | null): void {
 }
 
 async function request(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_URL}${endpoint}`;
+  const cleanBase = API_URL.replace(/\/+$/, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${cleanBase}${cleanEndpoint}`;
 
   // Ensure cookies are sent and received
   options.credentials = 'include';

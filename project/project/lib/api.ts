@@ -18,32 +18,12 @@ export function setStoredToken(token: string | null): void {
   try {
     if (token) {
       localStorage.setItem(AUTH_TOKEN_KEY, token);
+      document.cookie = `${AUTH_TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
     } else {
       localStorage.removeItem(AUTH_TOKEN_KEY);
-    }
-  } catch (e) {
-    // Ignore storage errors
-  }
-}
-
-export const AUTH_TOKEN_KEY = 'riz_auth_token';
-
-function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
-  } catch (e) {
-    return null;
-  }
-}
-
-export function setStoredToken(token: string | null): void {
-  if (typeof window === 'undefined') return;
-  try {
-    if (token) {
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
-    } else {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
+      document.cookie = `${AUTH_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      document.cookie = `token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     }
   } catch (e) {
     // Ignore storage errors
@@ -51,7 +31,9 @@ export function setStoredToken(token: string | null): void {
 }
 
 async function request(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_URL}${endpoint}`;
+  const cleanBase = API_URL.replace(/\/+$/, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${cleanBase}${cleanEndpoint}`;
 
   // Ensure cookies are sent and received
   options.credentials = 'include';
@@ -206,7 +188,20 @@ export const api = {
       const str = q.toString();
       return request(`/admin/products${str ? `?${str}` : ''}`);
     },
-    getProductById: (id: string) => request(`/admin/products/${encodeURIComponent(id)}`),
+    getProductById: async (id: string) => {
+      try {
+        return await request(`/admin/products/${encodeURIComponent(id)}`);
+      } catch (err: any) {
+        try {
+          return await request(`/products/${encodeURIComponent(id)}`);
+        } catch (err2) {
+          const res = await request('/admin/products');
+          const found = res?.products?.find((p: any) => p.id === id || p.slug === id);
+          if (found) return { product: found };
+          throw err2;
+        }
+      }
+    },
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
     seedProducts: () => request('/admin/products/seed', { method: 'POST' }),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

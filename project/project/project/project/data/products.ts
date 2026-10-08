@@ -35,6 +35,7 @@ export type Product = {
   bestseller?: boolean;
   bestSeller?: boolean;
   newArrival?: boolean;
+  createdAt?: string;
 };
 const img = [
  'https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=900',

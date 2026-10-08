@@ -17,6 +17,13 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       image: string;
     }
   > = {
+    'new-arrivals': {
+      title: 'New Arrivals',
+      description: 'Fresh pieces for the chapters you’re stepping into.',
+      dbCollectionName: 'New Arrivals',
+      filter: (p) => p.newArrival || (p.createdAt && new Date(p.createdAt).getTime() >= Date.now() - 30 * 24 * 60 * 60 * 1000),
+      image: 'https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=1800',
+    },
     'anti-tarnish': {
       title: 'Anti-Tarnish Collection',
       description: 'Everyday pieces with an anti-tarnish finish and an easy shine.',
@@ -138,7 +145,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
   let items: any[] | undefined = undefined;
   try {
     const res = await fetch(
-      `${API_URL}/products?collection=${encodeURIComponent(dbCollectionName)}`,
+      `${API_URL}/products?collection=${encodeURIComponent(dbCollectionName)}${dbCollectionName.toLowerCase().includes('new arrival') ? '&sort=Newest' : ''}`,
       { cache: 'no-store' }
     );
     if (res.ok) {

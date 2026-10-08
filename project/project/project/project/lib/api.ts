@@ -31,7 +31,9 @@ export function setStoredToken(token: string | null): void {
 }
 
 async function request(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_URL}${endpoint}`;
+  const cleanBase = API_URL.replace(/\/+$/, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${cleanBase}${cleanEndpoint}`;
 
   // Ensure cookies are sent and received
   options.credentials = 'include';

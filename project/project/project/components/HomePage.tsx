@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Star } from 'lucide-react';
 import { categoriesList, products } from '@/data/products';
-import { ProductGrid } from './ProductCard';
+import { ProductGrid, getValidImageUrl } from './ProductCard';
 import { Newsletter } from './Newsletter';
 import { api } from '@/lib/api';
 
@@ -70,7 +70,7 @@ const featuredCollections = [
     'Watches Collection',
     'Luxury and everyday watches collection.',
     '/collections/watches',
-    'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=1800&q=80',
+    '/watches-collection.png',
   ],
 ];
 
@@ -78,6 +78,14 @@ export function HomePage() {
   const [antiTarnishItems, setAntiTarnishItems] = useState<any[]>([]);
   const [antiTarnishLoaded, setAntiTarnishLoaded] = useState<boolean>(false);
   const [antiTarnishError, setAntiTarnishError] = useState<boolean>(false);
+
+  const [newArrivalsItems, setNewArrivalsItems] = useState<any[]>([]);
+  const [newArrivalsLoaded, setNewArrivalsLoaded] = useState<boolean>(false);
+  const [newArrivalsError, setNewArrivalsError] = useState<boolean>(false);
+
+  const [dynamicCategories, setDynamicCategories] = useState<{ name: string; image: string; href: string }[]>([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState<boolean>(false);
+  const [categoriesError, setCategoriesError] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -101,16 +109,157 @@ export function HomePage() {
           setAntiTarnishError(true);
         }
       });
+
+    api.products
+      .list({ collection: 'New Arrivals', sort: 'Newest' })
+      .then((res) => {
+        if (isMounted) {
+          if (res && Array.isArray(res.products)) {
+            setNewArrivalsItems(res.products.slice(0, 4));
+            setNewArrivalsLoaded(true);
+            setNewArrivalsError(false);
+          } else {
+            setNewArrivalsLoaded(false);
+            setNewArrivalsError(true);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setNewArrivalsLoaded(false);
+          setNewArrivalsError(true);
+        }
+      });
+
+    api.products
+      .list()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res && Array.isArray(res.products) && res.products.length > 0) {
+          const catMap = new Map<string, { originalName: string; products: any[] }>();
+
+          res.products.forEach((p: any) => {
+            if (p.isActive === false) return;
+            const catRaw = (p.category || '').trim();
+            if (!catRaw) return;
+
+            const normalizedKey = catRaw.toLowerCase();
+            if (!catMap.has(normalizedKey)) {
+              catMap.set(normalizedKey, { originalName: catRaw, products: [] });
+            }
+            catMap.get(normalizedKey)!.products.push(p);
+          });
+
+          const preferredOrder = [
+            'earrings',
+            'nose pins',
+            'second studs',
+            'rings',
+            'necklaces',
+            'bracelets',
+            'bangles',
+            'pendants',
+            'jewellery sets',
+            'watches',
+            'diamond replica',
+            'silver replica',
+            "men's jewellery",
+            'kids jewellery',
+          ];
+
+          const categoryEntries = Array.from(catMap.entries());
+
+          categoryEntries.sort(([keyA], [keyB]) => {
+            const indexA = preferredOrder.indexOf(keyA);
+            const indexB = preferredOrder.indexOf(keyB);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return keyA.localeCompare(keyB);
+          });
+
+          const derivedCards: { name: string; image: string; href: string }[] = [];
+
+          for (const [key, { originalName, products: catProds }] of categoryEntries) {
+            catProds.sort((a, b) => {
+              if (!!b.featured !== !!a.featured) return b.featured ? 1 : -1;
+              const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              if (timeB !== timeA) return timeB - timeA;
+              return String(b.id || '').localeCompare(String(a.id || ''));
+            });
+
+            let selectedImage: string | undefined = undefined;
+            for (const p of catProds) {
+              const rawImg = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : undefined;
+              const validUrl = getValidImageUrl(rawImg);
+              if (validUrl && validUrl !== '/hero-jewellery.jpg') {
+                selectedImage = validUrl;
+                break;
+              }
+            }
+
+            if (!selectedImage && catProds.length > 0) {
+              const rawImg = catProds[0].images?.[0];
+              selectedImage = getValidImageUrl(rawImg);
+            }
+
+            if (selectedImage) {
+              let href = `/shop?category=${encodeURIComponent(originalName)}`;
+              if (key === "men's jewellery" || key === "men's") {
+                href = '/collections/mens';
+              } else if (key === 'kids jewellery' || key === 'kids') {
+                href = '/collections/kids';
+              }
+
+              derivedCards.push({
+                name: originalName,
+                image: selectedImage,
+                href,
+              });
+            }
+          }
+
+          if (derivedCards.length > 0) {
+            setDynamicCategories(derivedCards);
+            setCategoriesLoaded(true);
+            setCategoriesError(false);
+          } else {
+            setCategoriesLoaded(false);
+            setCategoriesError(true);
+          }
+        } else {
+          if (isMounted) {
+            setCategoriesLoaded(false);
+            setCategoriesError(true);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setCategoriesLoaded(false);
+          setCategoriesError(true);
+        }
+      });
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const displayedAntiTarnish = antiTarnishLoaded && !antiTarnishError
+  const displayedAntiTarnish = antiTarnishLoaded && antiTarnishItems.length > 0
     ? antiTarnishItems
-    : (antiTarnishError ? products.filter((p) => p.collection === 'Anti-Tarnish').slice(0, 4) : []);
-  const newArrivals = products.filter((p) => p.newArrival).slice(0, 4);
+    : products.filter((p) => p.collection === 'Anti-Tarnish').slice(0, 4);
+
+  const newArrivals = newArrivalsLoaded && newArrivalsItems.length > 0
+    ? newArrivalsItems
+    : products.filter((p) => Boolean(p.newArrival)).slice(0, 4);
+
   const bestsellers = products.filter((p) => p.bestseller).slice(0, 4);
+
+  const displayedCategories = categoriesLoaded && dynamicCategories.length > 0
+    ? dynamicCategories
+    : categoriesList;
 
   return (
     <main>
@@ -223,7 +372,7 @@ export function HomePage() {
             <span className="eyebrow">NEW SEASON RELEASE</span>
             <h2>New Arrivals</h2>
           </div>
-          <Link className="text-link" href="/new-arrivals">
+          <Link className="text-link" href="/collections/new-arrivals">
             View All <ArrowRight size={15} />
           </Link>
         </div>
@@ -278,7 +427,7 @@ export function HomePage() {
           </div>
         </div>
         <div className="grid category-grid">
-          {categoriesList.slice(0, 6).map((cat) => (
+          {displayedCategories.slice(0, 6).map((cat) => (
             <Link href={cat.href} className="category-card" key={cat.name}>
               <div className="category-image">
                 <Image src={cat.image} alt={cat.name} fill sizes="(max-width:640px) 50vw, 16vw" />

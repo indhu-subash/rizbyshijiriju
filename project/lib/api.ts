@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rizbyshijiriju-production-2116.up.railway.app/api';
+// Force overwrite of any stale Railway production URLs without -2116
+const API_URL = RAW_API_URL.replace(/rizbyshijiriju-production\.up\.railway\.app/g, 'rizbyshijiriju-production-2116.up.railway.app');
 
 export const AUTH_TOKEN_KEY = 'riz_auth_token';
 
@@ -16,8 +18,12 @@ export function setStoredToken(token: string | null): void {
   try {
     if (token) {
       localStorage.setItem(AUTH_TOKEN_KEY, token);
+      document.cookie = `${AUTH_TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
     } else {
       localStorage.removeItem(AUTH_TOKEN_KEY);
+      document.cookie = `${AUTH_TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      document.cookie = `token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     }
   } catch (e) {
     // Ignore storage errors
@@ -25,7 +31,9 @@ export function setStoredToken(token: string | null): void {
 }
 
 async function request(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_URL}${endpoint}`;
+  const cleanBase = API_URL.replace(/\/+$/, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${cleanBase}${cleanEndpoint}`;
 
   // Ensure cookies are sent and received
   options.credentials = 'include';
@@ -158,6 +166,7 @@ export const api = {
       request('/payments/cancel', { method: 'POST', body: JSON.stringify(body) }),
   },
 
+
   // Admin Operations
   admin: {
     getStats: () => request('/admin/stats'),
@@ -170,8 +179,31 @@ export const api = {
     },
     updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) =>
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteOrder: (id: string) => request(`/admin/orders/${id}`, { method: 'DELETE' }),
+    getProducts: (params: { category?: string; collection?: string; query?: string } = {}) => {
+      const q = new URLSearchParams();
+      if (params.category) q.append('category', params.category);
+      if (params.collection) q.append('collection', params.collection);
+      if (params.query) q.append('query', params.query);
+      const str = q.toString();
+      return request(`/admin/products${str ? `?${str}` : ''}`);
+    },
+    getProductById: async (id: string) => {
+      try {
+        return await request(`/admin/products/${encodeURIComponent(id)}`);
+      } catch (err: any) {
+        try {
+          return await request(`/products/${encodeURIComponent(id)}`);
+        } catch (err2) {
+          const res = await request('/admin/products');
+          const found = res?.products?.find((p: any) => p.id === id || p.slug === id);
+          if (found) return { product: found };
+          throw err2;
+        }
+      }
+    },
     createProduct: (body: any) => request('/admin/products', { method: 'POST', body: JSON.stringify(body) }),
-    getProductById: (id: string) => request(`/admin/products/${encodeURIComponent(id)}`),
+    seedProducts: () => request('/admin/products/seed', { method: 'POST' }),
     editProduct: (id: string, body: any) => request(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     updateProductStock: (id: string, stock: number) =>
       request(`/admin/products/${id}/stock`, {
