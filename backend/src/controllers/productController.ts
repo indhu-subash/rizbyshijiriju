@@ -11,21 +11,24 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
 
     if (category) {
       const catStr = String(category).trim();
+      const catNorm = catStr.toLowerCase();
       const unhyphenated = catStr.replace(/-/g, ' ').trim();
-      const singularCat = catStr.endsWith('s') ? catStr.slice(0, -1) : catStr;
-      const singularUnhyphenated = unhyphenated.endsWith('s') ? unhyphenated.slice(0, -1) : unhyphenated;
+      const unhyphenatedNorm = unhyphenated.toLowerCase();
+
+      const singularCat = catNorm.endsWith('s') ? catNorm.slice(0, -1) : catNorm;
+      const pluralCat = catNorm.endsWith('s') ? catNorm : catNorm + 's';
+      const singularUnhyphenated = unhyphenatedNorm.endsWith('s') ? unhyphenatedNorm.slice(0, -1) : unhyphenatedNorm;
+      const pluralUnhyphenated = unhyphenatedNorm.endsWith('s') ? unhyphenatedNorm : unhyphenatedNorm + 's';
 
       whereClause.OR = [
-        { category: { contains: catStr, mode: 'insensitive' } },
-        { category: { contains: unhyphenated, mode: 'insensitive' } },
-        { category: { contains: singularCat, mode: 'insensitive' } },
-        { category: { contains: singularUnhyphenated, mode: 'insensitive' } },
-        { name: { contains: catStr, mode: 'insensitive' } },
-        { name: { contains: unhyphenated, mode: 'insensitive' } },
-        { tags: { has: catStr.toLowerCase() } },
-        { tags: { has: unhyphenated.toLowerCase() } },
-        { tags: { has: singularCat.toLowerCase() } },
-        { tags: { has: singularUnhyphenated.toLowerCase() } },
+        { category: { equals: catStr, mode: 'insensitive' } },
+        { category: { equals: catNorm, mode: 'insensitive' } },
+        { category: { equals: unhyphenated, mode: 'insensitive' } },
+        { category: { equals: unhyphenatedNorm, mode: 'insensitive' } },
+        { category: { equals: singularCat, mode: 'insensitive' } },
+        { category: { equals: pluralCat, mode: 'insensitive' } },
+        { category: { equals: singularUnhyphenated, mode: 'insensitive' } },
+        { category: { equals: pluralUnhyphenated, mode: 'insensitive' } },
       ];
     }
 

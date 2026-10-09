@@ -51,6 +51,25 @@ const colorOptions = [
 
 const priceOptions = ['Under ₹500', '₹500–₹999', '₹1,000–₹1,999', '₹2,000+'];
 
+const isStrictCategoryMatch = (productCategory: string, targetCategory: string) => {
+  if (!targetCategory) return true;
+  const target = targetCategory.trim().toLowerCase();
+  const targetSingular = target.endsWith('s') ? target.slice(0, -1) : target;
+  const targetPlural = target.endsWith('s') ? target : target + 's';
+
+  const pCat = (productCategory || '').trim().toLowerCase();
+  const pCatSingular = pCat.endsWith('s') ? pCat.slice(0, -1) : pCat;
+  const pCatPlural = pCat.endsWith('s') ? pCat : pCat + 's';
+
+  return (
+    pCat === target ||
+    pCat === targetSingular ||
+    pCat === targetPlural ||
+    pCatSingular === targetSingular ||
+    pCatPlural === targetPlural
+  );
+};
+
 export function ShopPage({
   initialCategory,
   initialCollection,
@@ -117,94 +136,34 @@ export function ShopPage({
       })
       .then((res) => {
         if (isMounted) {
-          if (res && Array.isArray(res.products) && res.products.length > 0) {
-            setItems(res.products);
+          if (res && Array.isArray(res.products)) {
+            const strictFiltered = category
+              ? res.products.filter((p: any) => isStrictCategoryMatch(p.category, category))
+              : res.products;
+            setItems(strictFiltered);
           } else {
-            const matchesCategory = (p: any, cat: string) => {
-              if (!cat) return true;
-              const c = cat.toLowerCase().trim();
-              const singular = c.endsWith('s') ? c.slice(0, -1) : c;
-              const pCat = (p.category || '').toLowerCase();
-              const pName = (p.name || '').toLowerCase();
-              const pGender = (p.gender || '').toLowerCase();
-              const pCollection = (p.collection || '').toLowerCase();
-              const pTags = (p.tags || []).map((t: string) => t.toLowerCase());
-
-              if (c.includes('anklet')) return pCat.includes('anklet') || pName.includes('anklet') || pTags.includes('anklets') || pTags.includes('anklet');
-              if (c.includes('bangle')) return pCat.includes('bangle') || pCat.includes('bracelet') || pName.includes('bangle') || pTags.includes('bangles') || pTags.includes('bangle');
-              if (c.includes('pendant')) return pCat.includes('pendant') || pCat.includes('necklace') || pName.includes('pendant') || pTags.includes('pendants') || pTags.includes('pendant');
-              if (c.includes('hair')) return pCat.includes('hair') || pName.includes('hair') || pTags.includes('hair');
-              if (c.includes('nose')) return pCat.includes('nose') || pName.includes('nose') || pTags.includes('nose');
-              if (c.includes('stud')) return pCat.includes('stud') || pCat.includes('earring') || pName.includes('stud') || pTags.includes('studs');
-              if (c.includes('men')) return pGender === 'men' || pCollection.includes('men') || pCat.includes('men') || pTags.includes('men');
-              if (c.includes('kid')) return pGender === 'kids' || pCollection.includes('kids') || pCat.includes('kid') || pTags.includes('kids');
-
-              return (
-                pCat === c ||
-                pCat.includes(c) ||
-                pCat.includes(singular) ||
-                pName.includes(c) ||
-                pName.includes(singular) ||
-                pTags.includes(c) ||
-                pTags.includes(singular)
-              );
-            };
-
-            const matchesCollection = (p: any, col: string) => {
-              if (!col) return true;
-              const c = col.toLowerCase().trim();
-              const pCol = (p.collection || '').toLowerCase();
-              const pName = (p.name || '').toLowerCase();
-              const pTags = (p.tags || []).map((t: string) => t.toLowerCase());
-              return pCol === c || pCol.includes(c) || pName.includes(c) || pTags.includes(c);
-            };
-
-            const filteredFallback = fallbackProducts.filter((p) => {
-              if (category && !matchesCategory(p, category)) return false;
-              if (collection && !matchesCollection(p, collection)) return false;
-              if (
-                colors.length > 0 &&
-                !colors.some((c) => p.colors?.some((pc: string) => pc.toLowerCase() === c.toLowerCase()))
-              )
-                return false;
-              if (debouncedQuery) {
-                const q = debouncedQuery.toLowerCase();
-                const matchName = p.name.toLowerCase().includes(q);
-                const matchCat = p.category.toLowerCase().includes(q);
-                const matchCol = p.collection.toLowerCase().includes(q);
-                if (!matchName && !matchCat && !matchCol) return false;
-              }
-              return true;
-            });
-            setItems(filteredFallback.length > 0 ? filteredFallback : fallbackProducts);
+            setItems([]);
           }
         }
       })
       .catch((err) => {
         console.error('API load products failed, using fallback:', err);
         if (isMounted) {
-          const matchesCategory = (p: any, cat: string) => {
-            if (!cat) return true;
-            const c = cat.toLowerCase().trim();
-            const singular = c.endsWith('s') ? c.slice(0, -1) : c;
-            const pCat = (p.category || '').toLowerCase();
-            const pName = (p.name || '').toLowerCase();
-            const pGender = (p.gender || '').toLowerCase();
-            return pCat.includes(c) || pCat.includes(singular) || pName.includes(c) || pName.includes(singular) || (c.includes('men') && pGender === 'men') || (c.includes('kid') && pGender === 'kids');
-          };
           const matchesCollection = (p: any, col: string) => {
             if (!col) return true;
             const c = col.toLowerCase().trim();
             const pCol = (p.collection || '').toLowerCase();
             const pName = (p.name || '').toLowerCase();
-            return pCol.includes(c) || pName.includes(c);
+            const pTags = (p.tags || []).map((t: string) => t.toLowerCase());
+            return pCol === c || pCol.includes(c) || pName.includes(c) || pTags.includes(c);
           };
+
           const filteredFallback = fallbackProducts.filter((p) => {
-            if (category && !matchesCategory(p, category)) return false;
+            if (category && !isStrictCategoryMatch(p.category, category)) return false;
             if (collection && !matchesCollection(p, collection)) return false;
             return true;
           });
-          setItems(filteredFallback.length > 0 ? filteredFallback : fallbackProducts);
+          setItems(filteredFallback);
         }
       })
       .finally(() => {
