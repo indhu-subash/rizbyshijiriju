@@ -23,6 +23,7 @@ export const INITIAL_COLLECTIONS = [
   { name: 'Gold Covering & Micro Plated', sortOrder: 18, description: 'Micro plated gold finish jewellery.' },
   { name: 'RIZ House of Fashion', sortOrder: 19, description: 'Exclusive house designs and couture edits.' },
   { name: 'Watches', sortOrder: 20, description: 'Luxury and everyday watches collection.' },
+  { name: 'Jadayu Collections', sortOrder: 21, description: 'Discover the distinctive elegance of Jadayu Collections, featuring statement jewellery crafted to make every occasion memorable.', image: '/jadayu-collections.jpg' },
 ];
 
 export function generateSlug(name: string): string {

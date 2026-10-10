@@ -77,6 +77,7 @@ const collectionDisplayNames: Record<string, string> = {
   'fancy': 'Fancy',
   'gold-covering-micro-plated': 'Gold Covering & Micro Plated',
   'riz-house-of-fashion': 'RIZ House of Fashion',
+  'jadayu-collections': 'Jadayu Collections',
 };
 
 async function main() {

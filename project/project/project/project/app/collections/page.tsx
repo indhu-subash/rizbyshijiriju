@@ -63,11 +63,17 @@ const allCollections = [
     '/collections/watches',
     '/watches-collection.png',
   ],
+  [
+    'Jadayu Collections',
+    'Discover the distinctive elegance of statement jewellery.',
+    '/collections/jadayu-collections',
+    '/jadayu-collections.jpg',
+  ],
 ];
 
 export const metadata = {
   title: 'Explore Our Collections | RIZ BY SHIJIRIJU',
-  description: 'Browse all 10 curated jewellery and watches collections from RIZ BY SHIJIRIJU.',
+  description: 'Browse all 11 curated jewellery and watches collections from RIZ BY SHIJIRIJU.',
 };
 
 export default function CollectionsPage() {

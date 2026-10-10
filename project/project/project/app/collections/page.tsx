@@ -61,13 +61,19 @@ const allCollections = [
     'Watches Collection',
     'Luxury and everyday watches collection.',
     '/collections/watches',
-    'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=1800&q=80',
+    '/watches-collection.png',
+  ],
+  [
+    'Jadayu Collections',
+    'Discover the distinctive elegance of statement jewellery.',
+    '/collections/jadayu-collections',
+    '/jadayu-collections.jpg',
   ],
 ];
 
 export const metadata = {
   title: 'Explore Our Collections | RIZ BY SHIJIRIJU',
-  description: 'Browse all 10 curated jewellery and watches collections from RIZ BY SHIJIRIJU.',
+  description: 'Browse all 11 curated jewellery and watches collections from RIZ BY SHIJIRIJU.',
 };
 
 export default function CollectionsPage() {

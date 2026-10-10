@@ -17,6 +17,13 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       image: string;
     }
   > = {
+    'new-arrivals': {
+      title: 'New Arrivals',
+      description: 'Fresh pieces for the chapters you’re stepping into.',
+      dbCollectionName: 'New Arrivals',
+      filter: (p) => p.newArrival || (p.createdAt && new Date(p.createdAt).getTime() >= Date.now() - 30 * 24 * 60 * 60 * 1000),
+      image: 'https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=1800',
+    },
     'anti-tarnish': {
       title: 'Anti-Tarnish Collection',
       description: 'Everyday pieces with an anti-tarnish finish and an easy shine.',
@@ -50,14 +57,14 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       description: 'Sweet, delicate pieces made for little celebrations.',
       dbCollectionName: 'Kids',
       filter: (p) => p.collection === 'Kids' || p.ageGroup === 'Kids',
-      image: 'https://images.pexels.com/photos/37601638/pexels-photo-37601638.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/kids-collection.jpg',
     },
     'hair-accessories': {
       title: 'Hair Accessories',
       description: 'Beautiful details to elevate your hair styling.',
       dbCollectionName: 'Hair Accessories',
       filter: (p) => p.collection === 'Hair Accessories' || p.category === 'Hair Accessories',
-      image: 'https://images.pexels.com/photos/30200528/pexels-photo-30200528.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=1800&q=80',
     },
     'silver-replica': {
       title: 'Silver Replica',
@@ -78,28 +85,42 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       description: 'Exquisite American Diamond jewellery for all occasions.',
       dbCollectionName: 'AD Collections',
       filter: (p) => p.collection === 'AD Collections',
-      image: 'https://images.pexels.com/photos/29502969/pexels-photo-29502969.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/ad-collection.jpg',
     },
     'fancy': {
       title: 'Fancy Jewellery',
       description: 'Trendy, playful designs for your style experiments.',
       dbCollectionName: 'Fancy',
       filter: (p) => p.collection === 'Fancy',
-      image: 'https://images.pexels.com/photos/21235147/pexels-photo-21235147.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1800&q=80',
     },
     'gold-covering-micro-plated': {
       title: 'Gold Covering & Micro Plated',
       description: 'Premium gold-plated finish that lasts long.',
       dbCollectionName: 'Gold Covering & Micro Plated',
       filter: (p) => p.collection === 'Gold Covering & Micro Plated',
-      image: 'https://images.pexels.com/photos/19373665/pexels-photo-19373665.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: 'https://images.unsplash.com/photo-1611591475777-233cd749228e?auto=format&fit=crop&w=1800&q=80',
     },
     'riz-house-of-fashion': {
       title: 'RIZ House of Fashion',
       description: 'Our signature luxury and high-fashion edits.',
       dbCollectionName: 'RIZ House of Fashion',
       filter: (p) => p.collection === 'RIZ House of Fashion',
-      image: 'https://images.pexels.com/photos/10907855/pexels-photo-10907855.jpeg?auto=compress&cs=tinysrgb&w=1800',
+      image: '/riz-house-of-fashion.jpg',
+    },
+    'watches': {
+      title: 'Watches Collection',
+      description: 'Luxury and everyday watches collection.',
+      dbCollectionName: 'Watches',
+      filter: (p) => p.collection === 'Watches',
+      image: '/watches-collection.png',
+    },
+    'jadayu-collections': {
+      title: 'Jadayu Collections',
+      description: 'Discover the distinctive elegance of Jadayu Collections, featuring statement jewellery crafted to make every occasion memorable.',
+      dbCollectionName: 'Jadayu Collections',
+      filter: (p) => p.collection === 'Jadayu Collections',
+      image: '/jadayu-collections.jpg',
     },
   };
 
@@ -108,7 +129,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
 
   let title = config?.title || type.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   let description = config?.description || 'Explore our exquisite jewellery collection.';
-  let image = config?.image || 'https://images.pexels.com/photos/29502912/pexels-photo-29502912.jpeg?auto=compress&cs=tinysrgb&w=1800';
+  let image = config?.image || 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1800&q=80';
   let dbCollectionName = config?.dbCollectionName || type;
 
   // Try fetching collection metadata from backend DB
@@ -131,7 +152,7 @@ export default async function Page({ params }: { params: Promise<{ type: string 
   let items: any[] | undefined = undefined;
   try {
     const res = await fetch(
-      `${API_URL}/products?collection=${encodeURIComponent(dbCollectionName)}`,
+      `${API_URL}/products?collection=${encodeURIComponent(dbCollectionName)}${dbCollectionName.toLowerCase().includes('new arrival') ? '&sort=Newest' : ''}`,
       { cache: 'no-store' }
     );
     if (res.ok) {

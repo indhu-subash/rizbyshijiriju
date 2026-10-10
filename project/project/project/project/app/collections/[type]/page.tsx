@@ -115,6 +115,13 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       filter: (p) => p.collection === 'Watches',
       image: '/watches-collection.png',
     },
+    'jadayu-collections': {
+      title: 'Jadayu Collections',
+      description: 'Discover the distinctive elegance of Jadayu Collections, featuring statement jewellery crafted to make every occasion memorable.',
+      dbCollectionName: 'Jadayu Collections',
+      filter: (p) => p.collection === 'Jadayu Collections',
+      image: '/jadayu-collections.jpg',
+    },
   };
 
   const config = configs[type];

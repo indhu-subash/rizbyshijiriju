@@ -72,6 +72,12 @@ const featuredCollections = [
     '/collections/watches',
     '/watches-collection.png',
   ],
+  [
+    'Jadayu Collections',
+    'Discover the distinctive elegance of statement jewellery.',
+    '/collections/jadayu-collections',
+    '/jadayu-collections.jpg',
+  ],
 ];
 
 export function HomePage() {
