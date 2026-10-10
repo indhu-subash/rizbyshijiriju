@@ -8,7 +8,7 @@ import { INITIAL_PRODUCTS } from '../config/initialProducts';
 export async function getDashboardStats(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const totalOrders = await prisma.order.count();
-    
+
     const paidOrders = await prisma.order.findMany({
       where: { paymentStatus: 'paid' },
       select: { total: true },
@@ -370,7 +370,7 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : product.tags;
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : product.colors;
-    
+
     let imagesArr = product.images;
     if (images !== undefined) {
       const rawImages = Array.isArray(images) ? images : [images];
@@ -448,7 +448,7 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     }
 
     const parsedPrice = price !== undefined && !isNaN(parseFloat(price)) ? parseFloat(price) : product.price;
-    
+
     let parsedOriginalPrice: number | null = product.originalPrice;
     if (originalPrice !== undefined) {
       parsedOriginalPrice = originalPrice && !isNaN(parseFloat(originalPrice)) ? parseFloat(originalPrice) : null;

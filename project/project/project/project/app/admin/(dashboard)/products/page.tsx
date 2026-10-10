@@ -23,7 +23,7 @@ export default function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  
+
   // Search & Filter State
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');

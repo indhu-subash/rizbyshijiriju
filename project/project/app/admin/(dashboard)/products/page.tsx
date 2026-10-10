@@ -8,10 +8,12 @@ import { Plus, Edit, Trash2, RotateCcw, Search, Filter, Sparkles } from 'lucide-
 type Product = {
   id: string;
   name: string;
+  productCode?: string | null;
   category: string;
   collection: string;
   price: number;
   stock: number;
+  unitsSold?: number;
   images: string[];
   isActive: boolean;
 };
@@ -26,6 +28,10 @@ export default function AdminProducts() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [collection, setCollection] = useState('');
+
+  // Delete Modal State
+  const [deleteModalProduct, setDeleteModalProduct] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Live Stock Editing & Polling State
   const [stockSaving, setStockSaving] = useState<{ [id: string]: boolean }>({});
@@ -144,7 +150,9 @@ export default function AdminProducts() {
   const handleDeactivate = async (id: string) => {
     if (!confirm('Are you sure you want to deactivate this product? It will no longer show up in the shop.')) return;
     try {
-      await api.admin.deleteProduct(id);
+      await api.admin.editProduct(id, { isActive: false });
+      setSuccessMessage('Product deactivated successfully.');
+      setTimeout(() => setSuccessMessage(''), 3000);
       loadProducts();
     } catch (err: any) {
       setError(err.message || 'Failed to deactivate product.');
@@ -163,11 +171,29 @@ export default function AdminProducts() {
     }
   };
 
+  const confirmDeleteProduct = async () => {
+    if (!deleteModalProduct || deleting) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await api.admin.deleteProduct(deleteModalProduct.id);
+      setSuccessMessage(`Product "${deleteModalProduct.name}" deleted successfully.`);
+      setTimeout(() => setSuccessMessage(''), 4000);
+      setDeleteModalProduct(null);
+      loadProducts();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete product.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Filter products by search query client-side
   const filteredProducts = products.filter((p) => {
     const q = query.toLowerCase();
     return (
       p.name.toLowerCase().includes(q) ||
+      (p.productCode && p.productCode.toLowerCase().includes(q)) ||
       p.category.toLowerCase().includes(q) ||
       p.collection.toLowerCase().includes(q)
     );
@@ -225,7 +251,7 @@ export default function AdminProducts() {
         <div style={{ position: 'relative' }}>
           <input
             type="text"
-            placeholder="Search products..."
+            placeholder="Search by name, SKU/code..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             style={{ paddingLeft: '35px' }}
@@ -295,11 +321,13 @@ export default function AdminProducts() {
             <thead>
               <tr className="border-b" style={{ borderBottom: '1px solid #eee' }}>
                 <th style={{ padding: '16px' }}>Image</th>
+                <th>Product Code</th>
                 <th>Name</th>
                 <th>Category</th>
                 <th>Collection</th>
                 <th>Price</th>
                 <th style={{ width: '190px' }}>Live Stock</th>
+                <th>Total Sold</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right', paddingRight: '16px' }}>Actions</th>
               </tr>
@@ -323,6 +351,27 @@ export default function AdminProducts() {
                           borderRadius: '4px',
                         }}
                       />
+                    )}
+                  </td>
+                  <td>
+                    {p.productCode ? (
+                      <span
+                        style={{
+                          fontFamily: 'monospace',
+                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          background: '#f4f4f5',
+                          color: '#27272a',
+                          padding: '3px 7px',
+                          borderRadius: '4px',
+                          border: '1px solid #e4e4e7',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        {p.productCode}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#aaa' }}>—</span>
                     )}
                   </td>
                   <td className="serif font-semibold">{p.name}</td>
@@ -407,38 +456,104 @@ export default function AdminProducts() {
                     </div>
                   </td>
                   <td>
+                    <span style={{ fontWeight: 600, color: (p.unitsSold ?? 0) > 0 ? '#16a34a' : '#71717a' }}>
+                      {p.unitsSold ?? 0}
+                    </span>
+                  </td>
+                  <td>
                     <span className={`status-tag ${p.isActive ? 'confirmed' : 'cancelled'}`} style={{ fontSize: '10px' }}>
                       {p.isActive ? 'Active' : 'Deactive'}
                     </span>
                   </td>
                   <td style={{ textAlign: 'right', paddingRight: '16px' }}>
-                    <div className="flex justify-end gap-3" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                    <div className="flex justify-end gap-3" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center' }}>
                       <Link href={`/admin/products/edit/${p.id}`} className="text-link flex items-center gap-1">
                         <Edit size={14} /> Edit
                       </Link>
                       {p.isActive ? (
                         <button
-                          className="text-red-500 hover:text-red-700 flex items-center gap-1"
-                          style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                          className="text-amber-600 hover:text-amber-800 flex items-center gap-1 font-medium"
+                          style={{ color: '#d97706', minHeight: '36px', display: 'inline-flex', alignItems: 'center' }}
                           onClick={() => handleDeactivate(p.id)}
                         >
-                          <Trash2 size={14} /> Deactivate
+                          <RotateCcw size={14} style={{ transform: 'rotate(180deg)' }} /> Deactivate
                         </button>
                       ) : (
                         <button
                           className="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium"
-                          style={{ color: '#16a34a', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                          style={{ color: '#16a34a', minHeight: '36px', display: 'inline-flex', alignItems: 'center' }}
                           onClick={() => handleReactivate(p.id)}
                         >
                           <RotateCcw size={14} /> Reactivate
                         </button>
                       )}
+                      <button
+                        className="text-red-600 hover:text-red-800 flex items-center gap-1 font-medium"
+                        style={{ color: '#dc2626', minHeight: '36px', display: 'inline-flex', alignItems: 'center' }}
+                        onClick={() => setDeleteModalProduct(p)}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalProduct && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '16px',
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '440px',
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            <h3 className="serif text-xl font-semibold mb-2" style={{ color: '#111827', margin: '0 0 8px 0' }}>
+              Delete Product?
+            </h3>
+            <p style={{ color: '#4b5563', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '24px' }}>
+              Are you sure you want to permanently delete "{deleteModalProduct.name}"? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeleteModalProduct(null)}
+                className="button secondary"
+                style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={confirmDeleteProduct}
+                className="button danger"
+                style={{ background: '#dc2626', color: '#fff', border: 'none' }}
+              >
+                {deleting ? 'Deleting...' : 'Delete Product'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
