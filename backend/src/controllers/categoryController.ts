@@ -30,7 +30,7 @@ export async function getCategories(req: Request, res: Response): Promise<void> 
       orderBy: [{ group: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         _count: {
-          select: { products: true },
+          select: { products: { where: { isActive: true } } },
         },
       },
     });
@@ -56,7 +56,7 @@ export async function getCategories(req: Request, res: Response): Promise<void> 
         orderBy: [{ group: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
         include: {
           _count: {
-            select: { products: true },
+            select: { products: { where: { isActive: true } } },
           },
         },
       });
@@ -76,7 +76,7 @@ export async function getActiveCategories(req: Request, res: Response): Promise<
       orderBy: [{ group: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         _count: {
-          select: { products: true },
+          select: { products: { where: { isActive: true } } },
         },
       },
     });

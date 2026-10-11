@@ -722,6 +722,8 @@ export async function updateProductStock(req: AuthenticatedRequest, res: Respons
 export async function deleteProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const { permanent } = req.query;
+
     const product = await prisma.product.findUnique({ where: { id } });
 
     if (!product) {
@@ -729,16 +731,52 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    // Soft delete/deactivate so existing orders don't break
+    if (permanent === 'true') {
+      // Check if product is referenced in historical customer orders
+      const orderItemCount = await prisma.orderItem.count({
+        where: { productId: id },
+      });
+
+      if (orderItemCount > 0) {
+        res.status(400).json({
+          error: `Cannot permanently delete product "${product.name}" because it is referenced in ${orderItemCount} historical customer order(s). Please use deactivation instead to hide it while preserving order records.`,
+          cannotDelete: true,
+          orderCount: orderItemCount,
+        });
+        return;
+      }
+
+      // Safe to permanently delete because no order history references it
+      await prisma.$transaction([
+        prisma.cartItem.deleteMany({ where: { productId: id } }),
+        prisma.wishlistItem.deleteMany({ where: { productId: id } }),
+        prisma.productVariant.deleteMany({ where: { productId: id } }),
+        prisma.productSize.deleteMany({ where: { productId: id } }),
+        prisma.product.delete({ where: { id } }),
+      ]);
+
+      res.status(200).json({
+        message: `Product "${product.name}" permanently deleted successfully.`,
+        id: product.id,
+        permanent: true,
+      });
+      return;
+    }
+
+    // Default: Soft delete/deactivate so existing orders don't break
     await prisma.product.update({
       where: { id },
       data: { isActive: false },
     });
 
-    res.status(200).json({ message: 'Product deactivated successfully.', id: product.id, isActive: false });
+    res.status(200).json({
+      message: `Product "${product.name}" deactivated successfully and hidden from shop.`,
+      id: product.id,
+      isActive: false,
+    });
   } catch (error) {
-    console.error('Delete product error:', error);
-    res.status(500).json({ error: 'Failed to delete product.' });
+    console.error('Delete/deactivate product error:', error);
+    res.status(500).json({ error: 'Failed to process product deletion/deactivation.' });
   }
 }
 

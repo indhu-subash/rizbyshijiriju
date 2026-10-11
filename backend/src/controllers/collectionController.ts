@@ -72,7 +72,7 @@ export async function getActiveCollections(req: Request, res: Response): Promise
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         _count: {
-          select: { products: true },
+          select: { products: { where: { isActive: true } } },
         },
       },
     });
@@ -136,7 +136,7 @@ export async function getCollectionBySlug(req: Request, res: Response): Promise<
         OR: [{ id: slug }, { slug: slug.toLowerCase() }, { name: { equals: slug, mode: 'insensitive' } }],
       },
       include: {
-        _count: { select: { products: true } },
+        _count: { select: { products: { where: { isActive: true } } } },
       },
     });
 

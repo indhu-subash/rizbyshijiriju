@@ -49,7 +49,7 @@ export default function AdminProducts() {
 
   useEffect(() => {
     loadProducts();
-  }, [category, collection]);
+  }, [category, collection, statusTab]);
 
   // Auto-refresh polling effect
   useEffect(() => {
@@ -61,13 +61,13 @@ export default function AdminProducts() {
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [autoRefresh, editingStock, stockSaving]);
+  }, [autoRefresh, editingStock, stockSaving, statusTab, category, collection]);
 
   const loadProducts = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     setError('');
     try {
-      const res = await api.admin.getProducts({ category, collection });
+      const res = await api.admin.getProducts({ category, collection, status: statusTab });
       setProducts(res.products || []);
     } catch (err: any) {
       if (!isSilent) setError(err.message || 'Failed to load products list.');
@@ -157,15 +157,18 @@ export default function AdminProducts() {
 
   const handleDeactivate = async (id: string, name?: string) => {
     const displayName = name || 'this product';
-    if (!confirm(`Are you sure you want to deactivate "${displayName}"? It will no longer show up in the shop.`)) return;
+    if (!confirm(`Are you sure you want to deactivate "${displayName}"?\nIt will be hidden from the public shop while preserving order records.`)) return;
     try {
-      // Optimistically update UI so it disappears from the active view immediately
-      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isActive: false } : p)));
-      setSuccessMessage(`Product "${displayName}" deactivated successfully and hidden from shop.`);
+      const res = await api.admin.deleteProduct(id, false);
+      if (statusTab === 'active') {
+        // Immediately remove from active view upon confirmed server success
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        // Mark inactive in place
+        setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isActive: false } : p)));
+      }
+      setSuccessMessage(res.message || `Product "${displayName}" deactivated successfully and hidden from shop.`);
       setTimeout(() => setSuccessMessage(''), 4000);
-
-      await api.admin.deleteProduct(id);
-      loadProducts(true);
     } catch (err: any) {
       setError(err.message || 'Failed to deactivate product.');
       loadProducts(true);
@@ -174,18 +177,33 @@ export default function AdminProducts() {
 
   const handleReactivate = async (id: string, name?: string) => {
     const displayName = name || 'this product';
-    if (!confirm(`Reactivate "${displayName}"?\nThis will make the product visible/available on the storefront again.`)) return;
+    if (!confirm(`Reactivate "${displayName}"?\nThis will make the product visible and purchasable on the storefront again.`)) return;
     try {
-      // Optimistically update UI
-      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isActive: true } : p)));
-      setSuccessMessage(`Product "${displayName}" reactivated successfully.`);
+      const res = await api.admin.reactivateProduct(id);
+      if (statusTab === 'inactive') {
+        // Immediately remove from inactive view upon confirmed server success
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isActive: true } : p)));
+      }
+      setSuccessMessage(res.message || `Product "${displayName}" reactivated successfully.`);
       setTimeout(() => setSuccessMessage(''), 4000);
-
-      await api.admin.reactivateProduct(id);
-      loadProducts(true);
     } catch (err: any) {
       setError(err.message || 'Failed to reactivate product.');
       loadProducts(true);
+    }
+  };
+
+  const handlePermanentDelete = async (id: string, name?: string) => {
+    const displayName = name || 'this product';
+    if (!confirm(`PERMANENT DELETE WARNING: Are you sure you want to permanently delete "${displayName}"?\nThis action CANNOT be undone and will only succeed if the product has zero past customer orders.`)) return;
+    try {
+      const res = await api.admin.deleteProduct(id, true);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setSuccessMessage(res.message || `Product "${displayName}" permanently deleted.`);
+      setTimeout(() => setSuccessMessage(''), 4000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to permanently delete product.');
     }
   };
 
@@ -557,13 +575,23 @@ export default function AdminProducts() {
                           <Trash2 size={14} /> Deactivate
                         </button>
                       ) : (
-                        <button
-                          className="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium"
-                          style={{ color: '#16a34a', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
-                          onClick={() => handleReactivate(p.id, p.name)}
-                        >
-                          <RotateCcw size={14} /> Reactivate
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            className="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium"
+                            style={{ color: '#16a34a', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                            onClick={() => handleReactivate(p.id, p.name)}
+                          >
+                            <RotateCcw size={14} /> Reactivate
+                          </button>
+                          <button
+                            className="text-red-600 hover:text-red-800 flex items-center gap-1 font-medium text-xs"
+                            style={{ color: '#dc2626', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                            onClick={() => handlePermanentDelete(p.id, p.name)}
+                            title="Permanently remove from database if zero customer orders"
+                          >
+                            <Trash2 size={12} /> Delete Forever
+                          </button>
+                        </div>
                       )}
                     </div>
                   </td>
