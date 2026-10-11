@@ -5,6 +5,14 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Plus, Edit, Trash2, RotateCcw, Search, Filter, Sparkles } from 'lucide-react';
 
+type ProductVariant = {
+  id: string;
+  color?: string | null;
+  size?: string | null;
+  stock: number;
+  sku?: string | null;
+};
+
 type Product = {
   id: string;
   name: string;
@@ -16,6 +24,7 @@ type Product = {
   unitsSold?: number;
   images: string[];
   isActive: boolean;
+  variants?: ProductVariant[];
 };
 
 export default function AdminProducts() {
@@ -23,6 +32,9 @@ export default function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Status Tab Filter (Active is default)
+  const [statusTab, setStatusTab] = useState<'active' | 'inactive' | 'all'>('active');
 
   // Search & Filter State
   const [query, setQuery] = useState('');
@@ -143,32 +155,45 @@ export default function AdminProducts() {
     }
   };
 
-  const handleDeactivate = async (id: string) => {
-    if (!confirm('Are you sure you want to deactivate this product? It will no longer show up in the shop.')) return;
+  const handleDeactivate = async (id: string, name?: string) => {
+    const displayName = name || 'this product';
+    if (!confirm(`Are you sure you want to deactivate "${displayName}"? It will no longer show up in the shop.`)) return;
     try {
+      // Optimistically update UI so it disappears from the active view immediately
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isActive: false } : p)));
+      setSuccessMessage(`Product "${displayName}" deactivated successfully and hidden from shop.`);
+      setTimeout(() => setSuccessMessage(''), 4000);
+
       await api.admin.deleteProduct(id);
-      setSuccessMessage('Product deactivated successfully.');
-      setTimeout(() => setSuccessMessage(''), 3000);
-      loadProducts();
+      loadProducts(true);
     } catch (err: any) {
       setError(err.message || 'Failed to deactivate product.');
+      loadProducts(true);
     }
   };
 
-  const handleReactivate = async (id: string) => {
-    if (!confirm('Reactivate this product?\nThis will make the product visible/available on the storefront again.')) return;
+  const handleReactivate = async (id: string, name?: string) => {
+    const displayName = name || 'this product';
+    if (!confirm(`Reactivate "${displayName}"?\nThis will make the product visible/available on the storefront again.`)) return;
     try {
-      await api.admin.editProduct(id, { isActive: true });
-      setSuccessMessage('Product reactivated successfully.');
-      setTimeout(() => setSuccessMessage(''), 3000);
-      loadProducts();
+      // Optimistically update UI
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isActive: true } : p)));
+      setSuccessMessage(`Product "${displayName}" reactivated successfully.`);
+      setTimeout(() => setSuccessMessage(''), 4000);
+
+      await api.admin.reactivateProduct(id);
+      loadProducts(true);
     } catch (err: any) {
       setError(err.message || 'Failed to reactivate product.');
+      loadProducts(true);
     }
   };
 
-  // Filter products by search query client-side
+  // Filter products by status tab, search query, category, and collection client-side
   const filteredProducts = products.filter((p) => {
+    if (statusTab === 'active' && p.isActive === false) return false;
+    if (statusTab === 'inactive' && p.isActive !== false) return false;
+
     const q = query.toLowerCase();
     return (
       p.name.toLowerCase().includes(q) ||
@@ -214,6 +239,64 @@ export default function AdminProducts() {
             <Plus size={16} /> Add Product
           </Link>
         </div>
+      </div>
+
+      {/* Status Filter Tabs (Active is default) */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '18px', borderBottom: '1px solid #e5e5e5', paddingBottom: '10px' }}>
+        <button
+          type="button"
+          onClick={() => setStatusTab('active')}
+          style={{
+            padding: '7px 16px',
+            borderRadius: '6px',
+            border: '1px solid',
+            borderColor: statusTab === 'active' ? '#334c3d' : '#e4e4e7',
+            background: statusTab === 'active' ? '#334c3d' : '#f8f8f8',
+            color: statusTab === 'active' ? '#fff' : '#444',
+            fontWeight: 600,
+            fontSize: '0.86rem',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          Active Products ({products.filter((p) => p.isActive !== false).length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusTab('inactive')}
+          style={{
+            padding: '7px 16px',
+            borderRadius: '6px',
+            border: '1px solid',
+            borderColor: statusTab === 'inactive' ? '#334c3d' : '#e4e4e7',
+            background: statusTab === 'inactive' ? '#334c3d' : '#f8f8f8',
+            color: statusTab === 'inactive' ? '#fff' : '#444',
+            fontWeight: 600,
+            fontSize: '0.86rem',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          Inactive / Deactivated ({products.filter((p) => p.isActive === false).length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusTab('all')}
+          style={{
+            padding: '7px 16px',
+            borderRadius: '6px',
+            border: '1px solid',
+            borderColor: statusTab === 'all' ? '#334c3d' : '#e4e4e7',
+            background: statusTab === 'all' ? '#334c3d' : '#f8f8f8',
+            color: statusTab === 'all' ? '#fff' : '#444',
+            fontWeight: 600,
+            fontSize: '0.86rem',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          All Products ({products.length})
+        </button>
       </div>
 
       {/* Filters Bar */}
@@ -432,6 +515,11 @@ export default function AdminProducts() {
                           <span style={{ color: '#d97706', fontWeight: 600 }}>Low Stock ({p.stock})</span>
                         ) : null}
                       </div>
+                      {p.variants && p.variants.length > 0 && (
+                        <div style={{ fontSize: '0.74rem', color: '#555', marginTop: '4px', maxWidth: '180px', lineHeight: 1.3 }}>
+                          {p.variants.map((v) => `${v.color || v.size || 'Variant'}: ${v.stock}`).join(', ')}
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td>
@@ -440,8 +528,19 @@ export default function AdminProducts() {
                     </span>
                   </td>
                   <td>
-                    <span className={`status-tag ${p.isActive ? 'confirmed' : 'cancelled'}`} style={{ fontSize: '10px' }}>
-                      {p.isActive ? 'Active' : 'Deactive'}
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '3px 8px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        background: p.isActive ? '#ecfdf5' : '#fef3c7',
+                        color: p.isActive ? '#065f46' : '#92400e',
+                        border: `1px solid ${p.isActive ? '#a7f3d0' : '#fde68a'}`,
+                      }}
+                    >
+                      {p.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td style={{ textAlign: 'right', paddingRight: '16px' }}>
@@ -453,7 +552,7 @@ export default function AdminProducts() {
                         <button
                           className="text-red-500 hover:text-red-700 flex items-center gap-1"
                           style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
-                          onClick={() => handleDeactivate(p.id)}
+                          onClick={() => handleDeactivate(p.id, p.name)}
                         >
                           <Trash2 size={14} /> Deactivate
                         </button>
@@ -461,7 +560,7 @@ export default function AdminProducts() {
                         <button
                           className="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium"
                           style={{ color: '#16a34a', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
-                          onClick={() => handleReactivate(p.id)}
+                          onClick={() => handleReactivate(p.id, p.name)}
                         >
                           <RotateCcw size={14} /> Reactivate
                         </button>

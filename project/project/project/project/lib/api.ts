@@ -211,6 +211,7 @@ export const api = {
         body: JSON.stringify({ stock }),
       }),
     deleteProduct: (id: string) => request(`/admin/products/${id}`, { method: 'DELETE' }),
+    reactivateProduct: (id: string) => request(`/admin/products/${id}/reactivate`, { method: 'PATCH' }),
 
     uploadImage: (file: File) => {
       const formData = new FormData();

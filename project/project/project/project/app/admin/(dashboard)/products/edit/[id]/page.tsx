@@ -47,6 +47,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   });
 
   const [colorStocks, setColorStocks] = useState<{ [color: string]: number }>({});
+  const [colorSkus, setColorSkus] = useState<{ [color: string]: string }>({});
   const [colorSizeStocks, setColorSizeStocks] = useState<{ [key: string]: number }>({});
   const [hasConfiguredVariants, setHasConfiguredVariants] = useState(false);
   const [legacyTotalStock, setLegacyTotalStock] = useState<number | null>(null);
@@ -105,15 +106,18 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         if (Array.isArray(p.variants) && p.variants.length > 0) {
           setHasConfiguredVariants(true);
           const loadedColorStocks: { [col: string]: number } = {};
+          const loadedColorSkus: { [col: string]: string } = {};
           const loadedMatrix: { [key: string]: number } = {};
           p.variants.forEach((v: any) => {
             if (v.color && !v.size) {
               loadedColorStocks[v.color] = v.stock || 0;
+              if (v.sku) loadedColorSkus[v.color] = v.sku;
             } else if (v.color && v.size) {
               loadedMatrix[`${v.color}_${v.size}`] = v.stock || 0;
             }
           });
           setColorStocks(loadedColorStocks);
+          setColorSkus(loadedColorSkus);
           setColorSizeStocks(loadedMatrix);
         } else {
           setHasConfiguredVariants(false);
@@ -202,6 +206,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     } else {
       setColors([...colors, colorName]);
       setColorStocks((prev) => ({ ...prev, [colorName]: prev[colorName] ?? 0 }));
+      setColorSkus((prev) => ({
+        ...prev,
+        [colorName]: prev[colorName] || (productCode ? `${productCode.trim().toUpperCase()}-${colorName.toUpperCase().replace(/\s+/g, '-')}` : colorName.toUpperCase()),
+      }));
     }
   };
 
@@ -228,6 +236,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     if (trimmed && !colors.includes(trimmed)) {
       setColors([...colors, trimmed]);
       setColorStocks((prev) => ({ ...prev, [trimmed]: 0 }));
+      setColorSkus((prev) => ({
+        ...prev,
+        [trimmed]: productCode ? `${productCode.trim().toUpperCase()}-${trimmed.toUpperCase().replace(/\s+/g, '-')}` : trimmed.toUpperCase(),
+      }));
       setCustomColorInput('');
     }
   };
@@ -304,10 +316,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         })
       : [];
 
-    let variants: Array<{ color: string | null; size: string | null; stock: number }> | undefined = undefined;
+    let variants: Array<{ color: string | null; size: string | null; stock: number; sku?: string | null }> | undefined = undefined;
 
     const isExplicitlyConfigured = hasConfiguredVariants ||
-      (productType === 'regular' && Object.values(colorStocks).some((v) => v > 0)) ||
+      (productType === 'regular' && colors.length > 0) ||
       (productType !== 'regular' && (Object.values(colorSizeStocks).some((v) => v > 0) || Object.values(sizeStocks).some((v) => v > 0)));
 
     if (isExplicitlyConfigured) {
@@ -315,10 +327,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       if (productType === 'regular') {
         if (colors.length > 0) {
           colors.forEach((col) => {
+            const rawSku = colorSkus[col]?.trim();
+            const fallbackSku = productCode ? `${productCode.trim().toUpperCase()}-${col.toUpperCase().replace(/\s+/g, '-')}` : null;
             variants!.push({
               color: col,
               size: null,
               stock: Math.max(0, Number(colorStocks[col] || 0)),
+              sku: rawSku || fallbackSku,
             });
           });
         }
@@ -326,20 +341,24 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         if (colors.length > 1) {
           colors.forEach((col) => {
             selectedSizes.forEach((sz) => {
+              const fallbackSku = productCode ? `${productCode.trim().toUpperCase()}-${col.toUpperCase().replace(/\s+/g, '-')}-${sz}` : null;
               variants!.push({
                 color: col,
                 size: sz,
                 stock: Math.max(0, Number(colorSizeStocks[`${col}_${sz}`] || 0)),
+                sku: fallbackSku,
               });
             });
           });
         } else {
           const singleColor = colors[0] || null;
           selectedSizes.forEach((sz) => {
+            const fallbackSku = singleColor && productCode ? `${productCode.trim().toUpperCase()}-${singleColor.toUpperCase().replace(/\s+/g, '-')}-${sz}` : null;
             variants!.push({
               color: singleColor,
               size: sz,
               stock: Math.max(0, Number(sizeStocks[sz] || 0)),
+              sku: fallbackSku,
             });
           });
         }
@@ -666,18 +685,34 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                           <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{col}</span>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.85rem', color: '#555' }}>Stock:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={colorStocks[col] ?? 0}
-                            onChange={(e) => {
-                              const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-                              setColorStocks((prev) => ({ ...prev, [col]: val }));
-                            }}
-                            style={{ width: '90px', padding: '6px 10px', fontSize: '0.88rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                          />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '0.82rem', color: '#555' }}>SKU:</span>
+                            <input
+                              type="text"
+                              placeholder={productCode ? `${productCode.trim().toUpperCase()}-${col.toUpperCase().replace(/\s+/g, '-')}` : `${col.toUpperCase()}`}
+                              value={colorSkus[col] ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value.toUpperCase();
+                                setColorSkus((prev) => ({ ...prev, [col]: val }));
+                              }}
+                              style={{ width: '150px', padding: '5px 8px', fontSize: '0.84rem', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace' }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '0.82rem', color: '#555' }}>Stock:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={colorStocks[col] ?? 0}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                const val = raw === '' ? 0 : Math.max(0, parseInt(raw, 10) || 0);
+                                setColorStocks((prev) => ({ ...prev, [col]: val }));
+                              }}
+                              style={{ width: '80px', padding: '5px 8px', fontSize: '0.86rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                            />
+                          </div>
                         </div>
                       </div>
                     );

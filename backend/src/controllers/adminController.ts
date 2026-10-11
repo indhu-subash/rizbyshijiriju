@@ -735,10 +735,75 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
       data: { isActive: false },
     });
 
-    res.status(200).json({ message: 'Product deactivated successfully.' });
+    res.status(200).json({ message: 'Product deactivated successfully.', id: product.id, isActive: false });
   } catch (error) {
     console.error('Delete product error:', error);
     res.status(500).json({ error: 'Failed to delete product.' });
+  }
+}
+
+export async function reactivateProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const product = await prisma.product.findUnique({ where: { id } });
+
+    if (!product) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { isActive: true },
+      include: { variants: true, sizes: true, categoryRel: true },
+    });
+
+    res.status(200).json({ message: 'Product reactivated successfully.', product: updated, id: updated.id, isActive: true });
+  } catch (error) {
+    console.error('Reactivate product error:', error);
+    res.status(500).json({ error: 'Failed to reactivate product.' });
+  }
+}
+
+export async function getAdminProductById(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ error: 'Product ID is required.' });
+      return;
+    }
+
+    let decoded = id.trim();
+    try {
+      decoded = decodeURIComponent(id).trim();
+    } catch {
+      decoded = id.trim();
+    }
+
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { id: decoded },
+          { slug: decoded.toLowerCase() },
+          { productCode: { equals: decoded, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        variants: true,
+        sizes: true,
+        categoryRel: true,
+      },
+    });
+
+    if (!product) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    res.status(200).json({ product });
+  } catch (error) {
+    console.error('Fetch admin product by ID error:', error);
+    res.status(500).json({ error: 'Failed to fetch product.' });
   }
 }
 
@@ -1002,11 +1067,16 @@ export async function deleteShippingRule(req: AuthenticatedRequest, res: Respons
 
 export async function getAdminProducts(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { category, collection, query } = req.query;
+    const { category, collection, query, status } = req.query;
 
     const where: any = {};
     if (category) where.category = String(category);
     if (collection) where.collection = String(collection);
+    if (status === 'active') {
+      where.isActive = true;
+    } else if (status === 'inactive') {
+      where.isActive = false;
+    }
     if (query) {
       const q = String(query).trim();
       where.OR = [
