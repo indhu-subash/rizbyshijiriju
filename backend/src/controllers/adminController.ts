@@ -731,8 +731,8 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
+    // If permanent deletion requested:
     if (permanent === 'true') {
-      // Check if product is referenced in historical customer orders
       const orderItemCount = await prisma.orderItem.count({
         where: { productId: id },
       });
@@ -746,7 +746,7 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
         return;
       }
 
-      // Safe to permanently delete because no order history references it
+      // Zero customer orders: safe to permanently delete transactionally
       await prisma.$transaction([
         prisma.cartItem.deleteMany({ where: { productId: id } }),
         prisma.wishlistItem.deleteMany({ where: { productId: id } }),
@@ -759,11 +759,12 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
         message: `Product "${product.name}" permanently deleted successfully.`,
         id: product.id,
         permanent: true,
+        deleted: true,
       });
       return;
     }
 
-    // Default: Soft delete/deactivate so existing orders don't break
+    // Default safe behaviour: Deactivate (soft-delete) regardless of order history
     await prisma.product.update({
       where: { id },
       data: { isActive: false },
@@ -774,9 +775,9 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
       id: product.id,
       isActive: false,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Delete/deactivate product error:', error);
-    res.status(500).json({ error: 'Failed to process product deletion/deactivation.' });
+    res.status(500).json({ error: error?.message || 'Failed to process product deletion/deactivation.' });
   }
 }
 

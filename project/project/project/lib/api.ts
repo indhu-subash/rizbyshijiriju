@@ -180,11 +180,12 @@ export const api = {
     updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) =>
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteOrder: (id: string) => request(`/admin/orders/${id}`, { method: 'DELETE' }),
-    getProducts: (params: { category?: string; collection?: string; query?: string } = {}) => {
+    getProducts: (params: { category?: string; collection?: string; query?: string; status?: string } = {}) => {
       const q = new URLSearchParams();
       if (params.category) q.append('category', params.category);
       if (params.collection) q.append('collection', params.collection);
       if (params.query) q.append('query', params.query);
+      if (params.status) q.append('status', params.status);
       const str = q.toString();
       return request(`/admin/products${str ? `?${str}` : ''}`);
     },
@@ -210,7 +211,9 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ stock }),
       }),
-    deleteProduct: (id: string) => request(`/admin/products/${id}`, { method: 'DELETE' }),
+    deleteProduct: (id: string, permanent = false) =>
+      request(`/admin/products/${id}${permanent ? '?permanent=true' : ''}`, { method: 'DELETE' }),
+    reactivateProduct: (id: string) => request(`/admin/products/${id}/reactivate`, { method: 'PATCH' }),
 
     uploadImage: (file: File) => {
       const formData = new FormData();

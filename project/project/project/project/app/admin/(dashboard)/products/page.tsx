@@ -562,15 +562,16 @@ export default function AdminProducts() {
                     </span>
                   </td>
                   <td style={{ textAlign: 'right', paddingRight: '16px' }}>
-                    <div className="flex justify-end gap-3" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                    <div className="flex justify-end gap-3" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center' }}>
                       <Link href={`/admin/products/edit/${p.id}`} className="text-link flex items-center gap-1">
                         <Edit size={14} /> Edit
                       </Link>
                       {p.isActive ? (
                         <button
                           className="text-red-500 hover:text-red-700 flex items-center gap-1"
-                          style={{ minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                          style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center' }}
                           onClick={() => handleDeactivate(p.id, p.name)}
+                          title="Deactivate product and hide from storefront"
                         >
                           <Trash2 size={14} /> Deactivate
                         </button>
@@ -578,14 +579,15 @@ export default function AdminProducts() {
                         <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
                           <button
                             className="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium"
-                            style={{ color: '#16a34a', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                            style={{ color: '#16a34a', minHeight: '36px', display: 'inline-flex', alignItems: 'center' }}
                             onClick={() => handleReactivate(p.id, p.name)}
+                            title="Reactivate product"
                           >
                             <RotateCcw size={14} /> Reactivate
                           </button>
                           <button
                             className="text-red-600 hover:text-red-800 flex items-center gap-1 font-medium text-xs"
-                            style={{ color: '#dc2626', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
+                            style={{ color: '#dc2626', minHeight: '36px', display: 'inline-flex', alignItems: 'center' }}
                             onClick={() => handlePermanentDelete(p.id, p.name)}
                             title="Permanently remove from database if zero customer orders"
                           >
