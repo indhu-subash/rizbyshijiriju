@@ -6,6 +6,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { calculateShipping, isIndiaCountry } from '../services/shippingService';
 import { sendOrderConfirmationEmail, sendOrderConfirmationWhatsApp } from '../services/notificationService';
 import { findProductBySlugOrId } from './productController';
+import { deductOrderStock, restoreOrderInventory, resolveProductVariant } from '../services/inventoryService';
 
 
 const PAYMENT_MODE = (process.env.PAYMENT_MODE || 'razorpay').toLowerCase();
@@ -63,17 +64,13 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
       return;
     }
 
-    // 1. Calculate authoritative totals on the server
+    // 1. Pre-validate products and calculate authoritative subtotal on the server
     let subtotal = 0;
-    const checkoutItems: any[] = [];
-    const productUpdates: { id: string; newStock: number }[] = [];
 
-    // Load products from DB and verify stock in a single flow
     for (const item of items) {
-      let product = await findProductBySlugOrId(item.productId, true);
+      const product = await findProductBySlugOrId(item.productId, true);
 
       if (!product) {
-        // Check if product exists but is inactive
         const inactiveProduct = await findProductBySlugOrId(item.productId, false);
         if (inactiveProduct) {
           res.status(404).json({ error: `Product ${item.name || item.productId} is currently inactive.` });
@@ -83,44 +80,36 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         return;
       }
 
-      if (product.stock === 0) {
-        res.status(400).json({ error: `Product ${product.name} is out of stock.` });
-        return;
-      }
+      const requestedQty = Number(item.quantity) || 1;
 
-      if (product.stock < item.quantity) {
-        res.status(400).json({ error: `Insufficient stock for ${product.name}. Only ${product.stock} items left.` });
-        return;
-      }
-
-      // Validate colour selection against product.colors array (case-insensitive)
-      if (Array.isArray(product.colors) && product.colors.length > 0) {
-        const validColorsLower = product.colors.map((c) => c.toLowerCase().trim());
-        const selectedColorLower = (item.color || '').toLowerCase().trim();
-        if (!item.color || !validColorsLower.includes(selectedColorLower)) {
+      if (product.hasVariants) {
+        const variant = await resolveProductVariant(prisma, product.id, item.color, item.size);
+        if (!variant) {
+          const variantDesc = [item.color, item.size].filter(Boolean).join(' / ') || 'standard';
           res.status(400).json({
-            error: `Please select a valid colour for ${product.name}. Available colours: ${product.colors.join(', ')}`,
+            error: `Selected variant (${variantDesc}) for product "${product.name}" is not available.`,
           });
+          return;
+        }
+        if (variant.stock < requestedQty) {
+          const variantDesc = [item.color, item.size].filter(Boolean).join(' / ') || 'standard';
+          res.status(400).json({
+            error: `Insufficient stock for "${product.name}" (${variantDesc}). Only ${variant.stock} left in stock.`,
+          });
+          return;
+        }
+      } else {
+        if (product.stock === 0) {
+          res.status(400).json({ error: `Product ${product.name} is out of stock.` });
+          return;
+        }
+        if (product.stock < requestedQty) {
+          res.status(400).json({ error: `Insufficient stock for ${product.name}. Only ${product.stock} items left.` });
           return;
         }
       }
 
-
-      subtotal += product.price * item.quantity;
-      checkoutItems.push({
-        productId: product.id,
-        productCode: (product as any).productCode || null,
-        name: product.name,
-        price: product.price,
-        quantity: item.quantity,
-        color: item.color || null,
-        image: product.images[0] || '',
-      });
-
-      productUpdates.push({
-        id: product.id,
-        newStock: product.stock - item.quantity,
-      });
+      subtotal += product.price * requestedQty;
     }
 
     // 2. Coupon Validation
@@ -210,22 +199,10 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     const total = Math.max(0, discountedSubtotal + shippingCharge);
     const orderId = `RIZ-2026-${Math.floor(10000 + Math.random() * 89999)}`;
 
-    // 4. Database Transaction: Decrement stock, create order, and increment coupon usage
+    // 4. Database Transaction: Atomic stock deduction, order creation, and coupon usage
     const result = await prisma.$transaction(async (tx: any) => {
-      // Re-verify stock inside the transaction for concurrency safety
-      for (const update of productUpdates) {
-        const prod = await tx.product.findUnique({
-          where: { id: update.id },
-        });
-        if (!prod || prod.stock < (items.find((it) => it.productId === update.id)?.quantity || 0)) {
-          throw new Error('Stock changed during transaction. Please try again.');
-        }
-
-        await tx.product.update({
-          where: { id: update.id },
-          data: { stock: update.newStock },
-        });
-      }
+      // Concurrency-safe atomic deduction of product & variant stock
+      const preparedOrderItems = await deductOrderStock(tx, items);
 
       // Increment coupon usage
       if (couponCode) {
@@ -235,7 +212,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         });
       }
 
-      // Create Order
+      // Create Order with variant references
       const newOrder = await tx.order.create({
         data: {
           userId: req.user?.id || null,
@@ -257,13 +234,15 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
           shippingPincode: postalOrPincode,
           shippingCountry: country,
           items: {
-            create: checkoutItems.map((item) => ({
+            create: preparedOrderItems.map((item) => ({
               productId: item.productId,
               productCode: item.productCode || null,
               name: item.name,
               price: item.price,
               quantity: item.quantity,
               color: item.color,
+              size: item.size,
+              variantId: item.variantId,
               image: item.image,
             })),
           },
@@ -362,13 +341,8 @@ export async function cancelOrder(req: AuthenticatedRequest, res: Response): Pro
           },
         });
 
-        // Restore product stock
-        for (const item of order.items) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
-          });
-        }
+        // Restore product and variant stock atomically and idempotently
+        await restoreOrderInventory(tx, order.id, { reason: 'Customer Cancelled' });
       });
 
       console.log(`[Order Cancelled] Order #${order.orderId} marked as Cancelled and inventory restored.`);
@@ -487,18 +461,13 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
         // Mark payment as failed & restore stock atomically ONLY if order is still Pending
         if (order.orderStatus === 'Pending') {
           await prisma.$transaction(async (tx: any) => {
-            await tx.order.updateMany({
+            const cancelUpdate = await tx.order.updateMany({
               where: { id: order.id, orderStatus: 'Pending' },
               data: { paymentStatus: 'failed', orderStatus: 'Cancelled' },
             });
 
-            for (const item of order.items) {
-              if (item.productId) {
-                await tx.product.update({
-                  where: { id: item.productId },
-                  data: { stock: { increment: item.quantity } },
-                });
-              }
+            if (cancelUpdate.count > 0) {
+              await restoreOrderInventory(tx, order.id, { reason: 'Payment Verification Failed' });
             }
           });
         }
@@ -649,17 +618,8 @@ export async function cancelPayment(req: AuthenticatedRequest, res: Response): P
       });
 
       if (cancelResult.count > 0) {
-        // Restore stock for each item in the order
-        for (const item of order.items) {
-          if (item.productId) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: { increment: item.quantity },
-              },
-            });
-          }
-        }
+        // Restore product and variant stock atomically and idempotently
+        await restoreOrderInventory(tx, order.id, { reason: 'Admin / Webhook Cancelled' });
 
         // Decrement coupon usage if applied
         if (order.couponCode) {

@@ -45,6 +45,11 @@ export default function NewProductPage() {
     '6': 4, '7': 0, '8': 5, '9': 2, '16': 1, '17': 3, '18': 6,
   });
 
+  const [colorStocks, setColorStocks] = useState<{ [color: string]: number }>({ Gold: 10 });
+  const [colorSizeStocks, setColorSizeStocks] = useState<{ [key: string]: number }>({
+    'Gold_2.2': 10, 'Gold_2.4': 5, 'Gold_2.6': 0, 'Gold_2.8': 3, 'Gold_2.10': 7,
+  });
+
   const [collection, setCollection] = useState('Anti-Tarnish');
   const [colors, setColors] = useState<string[]>(['Gold']);
   const [customColorInput, setCustomColorInput] = useState('');
@@ -112,9 +117,38 @@ export default function NewProductPage() {
 
   const toggleColor = (colorName: string) => {
     if (colors.includes(colorName)) {
+      const hasRegularStock = (colorStocks[colorName] || 0) > 0;
+      const hasMatrixStock = Object.keys(colorSizeStocks).some(
+        (key) => key.startsWith(`${colorName}_`) && (colorSizeStocks[key] || 0) > 0
+      );
+      if (hasRegularStock || hasMatrixStock) {
+        const confirmed = window.confirm(
+          `Removing colour "${colorName}" will discard its recorded stock quantity. Are you sure you want to remove it?`
+        );
+        if (!confirmed) return;
+      }
       setColors(colors.filter((c) => c !== colorName));
     } else {
       setColors([...colors, colorName]);
+      setColorStocks((prev) => ({ ...prev, [colorName]: prev[colorName] ?? 0 }));
+    }
+  };
+
+  const toggleSize = (sz: string) => {
+    if (selectedSizes.includes(sz)) {
+      const hasSizeStock = (sizeStocks[sz] || 0) > 0;
+      const hasMatrixStock = Object.keys(colorSizeStocks).some(
+        (key) => key.endsWith(`_${sz}`) && (colorSizeStocks[key] || 0) > 0
+      );
+      if (hasSizeStock || hasMatrixStock) {
+        const confirmed = window.confirm(
+          `Removing Size ${sz} will discard its recorded stock quantity. Are you sure you want to remove it?`
+        );
+        if (!confirmed) return;
+      }
+      setSelectedSizes(selectedSizes.filter((s) => s !== sz));
+    } else {
+      setSelectedSizes([...selectedSizes, sz]);
     }
   };
 
@@ -122,6 +156,7 @@ export default function NewProductPage() {
     const trimmed = customColorInput.trim();
     if (trimmed && !colors.includes(trimmed)) {
       setColors([...colors, trimmed]);
+      setColorStocks((prev) => ({ ...prev, [trimmed]: 0 }));
       setCustomColorInput('');
     }
   };
@@ -156,7 +191,17 @@ export default function NewProductPage() {
     : [];
 
   const totalCalculatedStock = productType !== 'regular'
-    ? selectedSizes.reduce((acc, sz) => acc + Math.max(0, Number(sizeStocks[sz] || 0)), 0)
+    ? colors.length > 1
+      ? selectedSizes.reduce((acc, sz) => {
+          const sizeSum = colors.reduce((cAcc, col) => {
+            const key = `${col}_${sz}`;
+            return cAcc + Math.max(0, Number(colorSizeStocks[key] || 0));
+          }, 0);
+          return acc + sizeSum;
+        }, 0)
+      : selectedSizes.reduce((acc, sz) => acc + Math.max(0, Number(sizeStocks[sz] || 0)), 0)
+    : colors.length > 0
+    ? colors.reduce((acc, col) => acc + Math.max(0, Number(colorStocks[col] || 0)), 0)
     : Number(stock || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -183,11 +228,50 @@ export default function NewProductPage() {
     }
 
     const sizes = productType !== 'regular'
-      ? selectedSizes.map((sz) => ({
-          size: sz,
-          stock: Math.max(0, Number(sizeStocks[sz] || 0)),
-        }))
+      ? selectedSizes.map((sz) => {
+          const sumForSize = colors.length > 1
+            ? colors.reduce((acc, col) => acc + Math.max(0, Number(colorSizeStocks[`${col}_${sz}`] || 0)), 0)
+            : Math.max(0, Number(sizeStocks[sz] || 0));
+          return {
+            size: sz,
+            stock: sumForSize,
+          };
+        })
       : [];
+
+    const variants: Array<{ color: string | null; size: string | null; stock: number }> = [];
+    if (productType === 'regular') {
+      if (colors.length > 0) {
+        colors.forEach((col) => {
+          variants.push({
+            color: col,
+            size: null,
+            stock: Math.max(0, Number(colorStocks[col] || 0)),
+          });
+        });
+      }
+    } else {
+      if (colors.length > 1) {
+        colors.forEach((col) => {
+          selectedSizes.forEach((sz) => {
+            variants.push({
+              color: col,
+              size: sz,
+              stock: Math.max(0, Number(colorSizeStocks[`${col}_${sz}`] || 0)),
+            });
+          });
+        });
+      } else {
+        const singleColor = colors[0] || null;
+        selectedSizes.forEach((sz) => {
+          variants.push({
+            color: singleColor,
+            size: sz,
+            stock: Math.max(0, Number(sizeStocks[sz] || 0)),
+          });
+        });
+      }
+    }
 
     const payload = {
       name,
@@ -197,6 +281,7 @@ export default function NewProductPage() {
       description,
       stock: totalCalculatedStock,
       productType,
+      variants,
       sizes,
       category,
       categoryId: categoryId || undefined,
@@ -325,10 +410,98 @@ export default function NewProductPage() {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Size checkboxes */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                   {activeAvailableSizes.map((sz) => {
                     const isChecked = selectedSizes.includes(sz);
                     return (
+                      <label
+                        key={sz}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          border: isChecked ? '1px solid #c9b097' : '1px solid #e5e5e5',
+                          background: isChecked ? '#fff' : '#f5f5f5',
+                          cursor: 'pointer',
+                          fontWeight: isChecked ? 600 : 400,
+                          fontSize: '0.88rem',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSize(sz)}
+                          style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                        />
+                        Size {sz}
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* If multiple colours are selected: show Colour × Size Matrix */}
+                {colors.length > 1 ? (
+                  <div style={{ marginTop: '10px', overflowX: 'auto' }}>
+                    <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#443b38' }}>
+                        Colour × Size Stock Grid
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: '#777' }}>
+                        Enter available stock for each colour and size combination.
+                      </span>
+                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem', background: '#fff', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e8e2d8' }}>
+                      <thead>
+                        <tr style={{ background: '#f5efe6', borderBottom: '1px solid #e2d9cd' }}>
+                          <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: '#333' }}>Size</th>
+                          {colors.map((col) => (
+                            <th key={col} style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: '#333' }}>
+                              {col}
+                            </th>
+                          ))}
+                          <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#333' }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedSizes.map((sz) => {
+                          const rowTotal = colors.reduce((acc, col) => acc + Math.max(0, Number(colorSizeStocks[`${col}_${sz}`] || 0)), 0);
+                          return (
+                            <tr key={sz} style={{ borderBottom: '1px solid #f0eae1' }}>
+                              <td style={{ padding: '8px 10px', fontWeight: 600, color: '#2c2523' }}>Size {sz}</td>
+                              {colors.map((col) => {
+                                const key = `${col}_${sz}`;
+                                return (
+                                  <td key={col} style={{ padding: '6px 10px', textAlign: 'center' }}>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={colorSizeStocks[key] ?? 0}
+                                      onChange={(e) => {
+                                        const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                                        setColorSizeStocks((prev) => ({ ...prev, [key]: val }));
+                                      }}
+                                      style={{ width: '70px', padding: '5px 8px', textAlign: 'center', fontSize: '0.85rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                                    />
+                                  </td>
+                                );
+                              })}
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#334c3d' }}>
+                                {rowTotal}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  /* Single or no colour selected: show classic size stock list */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {selectedSizes.map((sz) => (
                       <div
                         key={sz}
                         style={{
@@ -338,42 +511,89 @@ export default function NewProductPage() {
                           padding: '8px 12px',
                           background: '#fff',
                           borderRadius: '6px',
-                          border: isChecked ? '1px solid #c9b097' : '1px solid #e5e5e5',
+                          border: '1px solid #e5e5e5',
                         }}
                       >
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '0.92rem' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>Size {sz}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.85rem', color: '#555' }}>Stock:</span>
                           <input
-                            type="checkbox"
-                            checked={isChecked}
+                            type="number"
+                            min="0"
+                            value={sizeStocks[sz] ?? 0}
                             onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedSizes((prev) => [...prev, sz]);
-                              } else {
-                                setSelectedSizes((prev) => prev.filter((s) => s !== sz));
-                              }
+                              const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                              setSizeStocks((prev) => ({ ...prev, [sz]: val }));
                             }}
-                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                            style={{ width: '90px', padding: '6px 10px', fontSize: '0.88rem', border: '1px solid #ccc', borderRadius: '4px' }}
                           />
-                          Size {sz}
-                        </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-                        {isChecked ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '0.85rem', color: '#555' }}>Stock:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={sizeStocks[sz] ?? 0}
-                              onChange={(e) => {
-                                const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-                                setSizeStocks((prev) => ({ ...prev, [sz]: val }));
-                              }}
-                              style={{ width: '90px', padding: '6px 10px', fontSize: '0.88rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                            />
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '0.8rem', color: '#999' }}>Not offered</span>
-                        )}
+                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e0d8cd', fontSize: '0.92rem', fontWeight: 600, color: '#334c3d', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Total Stock (Calculated)</span>
+                  <span>{totalCalculatedStock} units</span>
+                </div>
+              </div>
+            ) : colors.length > 0 ? (
+              /* Regular Product with colours selected: Colour-wise stock inputs */
+              <div className="color-stock-box" style={{ background: '#faf9f6', padding: '16px', borderRadius: '8px', border: '1px solid #ede5db' }}>
+                <div style={{ borderBottom: '1px solid #e5dcd0', paddingBottom: '8px', marginBottom: '12px' }}>
+                  <span className="serif font-semibold" style={{ display: 'block', fontSize: '1rem', color: '#2c2523' }}>
+                    Colour-Wise Stock Configuration
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                    Set stock quantity separately for each active colour option.
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {colors.map((col) => {
+                    const matchedPreset = presetColors.find((p) => p.name.toLowerCase() === col.toLowerCase());
+                    const hex = matchedPreset ? matchedPreset.hex : '#888';
+                    return (
+                      <div
+                        key={col}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          background: '#fff',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e5e5',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              borderRadius: '50%',
+                              background: hex,
+                              border: '1px solid #aaa',
+                              display: 'inline-block',
+                            }}
+                          />
+                          <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{col}</span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.85rem', color: '#555' }}>Stock:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={colorStocks[col] ?? 0}
+                            onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                              setColorStocks((prev) => ({ ...prev, [col]: val }));
+                            }}
+                            style={{ width: '90px', padding: '6px 10px', fontSize: '0.88rem', border: '1px solid #ccc', borderRadius: '4px' }}
+                          />
+                        </div>
                       </div>
                     );
                   })}
@@ -385,6 +605,7 @@ export default function NewProductPage() {
                 </div>
               </div>
             ) : (
+              /* Fallback single stock input if no colours selected */
               <label>
                 Stock Quantity *
                 <input
@@ -394,6 +615,9 @@ export default function NewProductPage() {
                   value={stock}
                   onChange={(e) => setStock(e.target.value)}
                 />
+                <span style={{ fontSize: '0.78rem', color: '#888', display: 'block', marginTop: '4px' }}>
+                  Tip: Select product colours to configure colour-specific inventory.
+                </span>
               </label>
             )}
 

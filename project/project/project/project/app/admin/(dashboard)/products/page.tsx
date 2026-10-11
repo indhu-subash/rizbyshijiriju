@@ -147,6 +147,8 @@ export default function AdminProducts() {
     if (!confirm('Are you sure you want to deactivate this product? It will no longer show up in the shop.')) return;
     try {
       await api.admin.deleteProduct(id);
+      setSuccessMessage('Product deactivated successfully.');
+      setTimeout(() => setSuccessMessage(''), 3000);
       loadProducts();
     } catch (err: any) {
       setError(err.message || 'Failed to deactivate product.');

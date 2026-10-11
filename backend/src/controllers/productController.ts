@@ -287,34 +287,44 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   const normalized = normalizeSlug(decoded);
   const unhyphenated = decoded.replace(/-/g, ' ').trim();
   const activeCondition = mustBeActive ? { isActive: true } : {};
+  const includeVariantsAndSizes = {
+    variants: true,
+    sizes: true,
+    categoryRel: true,
+  };
 
   // 1. Try exact ID match (whether UUID or custom string ID)
   let product = await prisma.product.findFirst({
     where: { id: decoded, ...activeCondition },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
   // 2. Try case-insensitive ID match
   product = await prisma.product.findFirst({
     where: { id: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
   // 3. Try exact slug match
   product = await prisma.product.findFirst({
     where: { slug: decoded, ...activeCondition },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
   // 4. Try case-insensitive slug match
   product = await prisma.product.findFirst({
     where: { slug: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
   // 5. Try exact case-insensitive name match
   product = await prisma.product.findFirst({
     where: { name: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
@@ -322,6 +332,7 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   if (unhyphenated) {
     product = await prisma.product.findFirst({
       where: { name: { equals: unhyphenated, mode: 'insensitive' }, ...activeCondition },
+      include: includeVariantsAndSizes,
     });
     if (product) return product;
   }
@@ -330,6 +341,7 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   if (normalized) {
     product = await prisma.product.findFirst({
       where: { slug: { equals: normalized, mode: 'insensitive' }, ...activeCondition },
+      include: includeVariantsAndSizes,
     });
     if (product) return product;
   }

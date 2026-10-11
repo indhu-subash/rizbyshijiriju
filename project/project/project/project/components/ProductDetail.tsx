@@ -60,9 +60,38 @@ export function ProductDetail({ product }: { product: Product }) {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [sizeError, setSizeError] = useState('');
 
-  const activeSizeStock = isSizedProduct
-    ? (selectedSize ? (productSizes.find((s) => s.size === selectedSize)?.stock ?? 0) : 0)
-    : product.stock;
+  const effectiveStock = (() => {
+    const hasVariantsList = Array.isArray(product.variants) && product.variants.length > 0;
+    if (isSizedProduct) {
+      if (!selectedSize) return 0;
+      if (hasVariantsList) {
+        if (selectedColor) {
+          const match = product.variants!.find(
+            (v) => (v.color || '').toLowerCase() === selectedColor.toLowerCase() &&
+                   (v.size || '').toLowerCase() === selectedSize.toLowerCase()
+          );
+          if (match !== undefined) return match.stock;
+        } else {
+          return product.variants!
+            .filter((v) => (v.size || '').toLowerCase() === selectedSize.toLowerCase())
+            .reduce((sum, v) => sum + (v.stock || 0), 0);
+        }
+      }
+      return productSizes.find((s) => s.size === selectedSize)?.stock ?? 0;
+    }
+
+    if (hasVariantsList) {
+      if (selectedColor) {
+        const match = product.variants!.find(
+          (v) => (v.color || '').toLowerCase() === selectedColor.toLowerCase() && !v.size
+        );
+        if (match !== undefined) return match.stock;
+      }
+      return product.variants!.reduce((sum, v) => sum + (v.stock || 0), 0);
+    }
+
+    return product.stock;
+  })();
 
   // Save to Recently Viewed
   useEffect(() => {
@@ -83,11 +112,12 @@ export function ProductDetail({ product }: { product: Product }) {
         setSizeError('Please select a size before adding to cart.');
         return false;
       }
-      if (activeSizeStock <= 0) {
-        setSizeError('Selected size is currently out of stock.');
+      if (effectiveStock <= 0) {
+        setSizeError('Selected size and colour combination is currently out of stock.');
         return false;
       }
-    } else if (product.stock <= 0) {
+    } else if (effectiveStock <= 0) {
+      setColorError('Selected item is currently out of stock.');
       return false;
     }
 
@@ -112,8 +142,7 @@ export function ProductDetail({ product }: { product: Product }) {
   }
 
   function handleBuyNow() {
-    if (isSizedProduct && activeSizeStock <= 0 && selectedSize) return;
-    if (!isSizedProduct && product.stock <= 0) return;
+    if (effectiveStock <= 0) return;
     const added = add();
     if (added) {
       router.push('/checkout');
@@ -390,7 +419,17 @@ export function ProductDetail({ product }: { product: Product }) {
                     : productSizes.map((s) => s.size)
                   ).map((szStr) => {
                     const sRec = productSizes.find((s) => s.size === szStr);
-                    const sStock = sRec ? sRec.stock : 0;
+                    const sStock = (Array.isArray(product.variants) && product.variants.length > 0)
+                      ? (selectedColor
+                          ? (product.variants.find(
+                              (v) => (v.color || '').toLowerCase() === selectedColor.toLowerCase() &&
+                                     (v.size || '').toLowerCase() === szStr.toLowerCase()
+                            )?.stock ?? 0)
+                          : product.variants
+                              .filter((v) => (v.size || '').toLowerCase() === szStr.toLowerCase())
+                              .reduce((sum, v) => sum + (v.stock || 0), 0)
+                        )
+                      : (sRec ? sRec.stock : 0);
                     const isAvailable = sStock > 0;
                     const isSelected = selectedSize === szStr;
 
@@ -438,7 +477,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   <button
                     type="button"
                     onClick={() => setQty(Math.max(1, qty - 1))}
-                    disabled={(isSizedProduct ? activeSizeStock : product.stock) <= 0 || qty <= 1}
+                    disabled={effectiveStock <= 0 || qty <= 1}
                     aria-label="Decrease quantity"
                   >
                     <Minus size={14} />
@@ -446,8 +485,8 @@ export function ProductDetail({ product }: { product: Product }) {
                   <span>{qty}</span>
                   <button
                     type="button"
-                    onClick={() => setQty(Math.min((isSizedProduct ? activeSizeStock : product.stock) || 1, qty + 1))}
-                    disabled={(isSizedProduct ? activeSizeStock : product.stock) <= 0 || qty >= (isSizedProduct ? activeSizeStock : product.stock)}
+                    onClick={() => setQty(Math.min(effectiveStock || 1, qty + 1))}
+                    disabled={effectiveStock <= 0 || qty >= effectiveStock}
                     aria-label="Increase quantity"
                   >
                     <Plus size={14} />
@@ -460,13 +499,13 @@ export function ProductDetail({ product }: { product: Product }) {
                   <span className="pdp-stock-badge select-size">
                     <span className="dot" style={{ backgroundColor: '#f59e0b' }} /> Please select size
                   </span>
-                ) : (isSizedProduct ? activeSizeStock : product.stock) > 5 ? (
+                ) : effectiveStock > 5 ? (
                   <span className="pdp-stock-badge in-stock">
                     <span className="dot" /> In Stock — Ready to ship
                   </span>
-                ) : (isSizedProduct ? activeSizeStock : product.stock) > 0 ? (
+                ) : effectiveStock > 0 ? (
                   <span className="pdp-stock-badge low-stock">
-                    <span className="dot" /> Low Stock (Only {isSizedProduct ? activeSizeStock : product.stock} left)
+                    <span className="dot" /> Low Stock (Only {effectiveStock} left)
                   </span>
                 ) : (
                   <span className="pdp-stock-badge out-of-stock">
@@ -480,14 +519,14 @@ export function ProductDetail({ product }: { product: Product }) {
             <div className="pdp-actions">
               <button
                 className={`button pdp-btn-add ${addedSuccess ? 'added' : ''}`}
-                disabled={(isSizedProduct ? activeSizeStock : product.stock) <= 0 || isAdding}
+                disabled={effectiveStock <= 0 || isAdding}
                 onClick={add}
               >
                 {isAdding
                   ? 'ADDING TO BAG...'
                   : addedSuccess
                   ? '✓ ADDED TO BAG'
-                  : (isSizedProduct ? activeSizeStock : product.stock) > 0
+                  : effectiveStock > 0
                   ? 'ADD TO BAG'
                   : 'OUT OF STOCK'}
               </button>

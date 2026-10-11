@@ -8,6 +8,16 @@ export type ProductSize = {
   stock: number;
 };
 
+export type ProductVariant = {
+  id?: string;
+  productId?: string;
+  color?: string | null;
+  size?: string | null;
+  variantKey?: string;
+  sku?: string | null;
+  stock: number;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -18,7 +28,9 @@ export type Product = {
   category: Category;
   collection: Collection;
   productType?: 'regular' | 'bangle' | 'ring' | string;
+  hasVariants?: boolean;
   sizes?: ProductSize[];
+  variants?: ProductVariant[];
   gender: 'Women' | 'Men' | 'Kids' | 'Unisex';
   ageGroup: 'Adult' | 'Kids';
   images: string[];

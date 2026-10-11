@@ -54,6 +54,8 @@ model Product {
   collectionId  String?
   collectionRel Collection?    @relation(fields: [collectionId], references: [id], onDelete: SetNull)
   colors        String[]       @default([])
+  productType   String?        @default("regular") // "regular" | "bangle" | "ring"
+  hasVariants   Boolean        @default(false)
   gender        String         @default("Women") // "Women" | "Men" | "Kids" | "Unisex"
   ageGroup      String         @default("Adult") // "Adult" | "Kids"
   images        String[]       // PostgreSQL supports string array
@@ -69,9 +71,40 @@ model Product {
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  sizes         ProductSize[]
+  variants      ProductVariant[]
   orderItems    OrderItem[]
   wishlistItems WishlistItem[]
   cartItems     CartItem[]
+}
+
+model ProductSize {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String   // Exact string: "2.2", "2.4", "2.6", "2.8", "2.10" or "6", "7", "8", "9", "16", "17", "18"
+  stock     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, size])
+}
+
+model ProductVariant {
+  id         String      @id @default(uuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  color      String?
+  size       String?
+  variantKey String
+  sku        String?
+  stock      Int         @default(0)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  orderItems OrderItem[]
+
+  @@unique([variantKey])
+  @@index([productId])
 }
 
 model Category {
@@ -145,17 +178,23 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(uuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String?
-  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  name      String
-  price     Float
-  quantity  Int
-  image     String
-  color     String?
-  productCode String?
+  id                String          @id @default(uuid())
+  orderId           String
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String?
+  product           Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId         String?
+  variant           ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  name              String
+  price             Float
+  quantity          Int
+  image             String
+  color             String?
+  size              String?
+  productCode       String?
+  inventoryRestored Boolean         @default(false)
+  restoredAt        DateTime?
+  restorationStatus String?         // "restored" | "skipped_deleted_product" | "skipped_missing_variant" | "unrestored"
 }
 
 model WishlistItem {
@@ -176,6 +215,8 @@ model CartItem {
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   color     String?
+  size      String?
+  variantId String?
   quantity  Int      @default(1)
   createdAt DateTime @default(now())
 
