@@ -122,6 +122,13 @@ export default async function Page({ params }: { params: Promise<{ type: string 
       filter: (p) => p.collection === 'Jadayu Collections',
       image: '/jadayu-collections.jpg',
     },
+    'mangalsutras': {
+      title: 'Mangalsutras',
+      description: 'Discover elegant mangalsutras that blend traditional charm with timeless style.',
+      dbCollectionName: 'Mangalsutras',
+      filter: (p) => p.collection === 'Mangalsutras',
+      image: '/mangalsutras-collection.png',
+    },
   };
 
   const config = configs[type];

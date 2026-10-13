@@ -69,11 +69,17 @@ const allCollections = [
     '/collections/jadayu-collections',
     '/jadayu-collections.jpg',
   ],
+  [
+    'Mangalsutras',
+    'Discover elegant mangalsutras that blend traditional charm with timeless style.',
+    '/collections/mangalsutras',
+    '/mangalsutras-collection.png',
+  ],
 ];
 
 export const metadata = {
   title: 'Explore Our Collections | RIZ BY SHIJIRIJU',
-  description: 'Browse all 11 curated jewellery and watches collections from RIZ BY SHIJIRIJU.',
+  description: 'Browse all 12 curated jewellery and watches collections from RIZ BY SHIJIRIJU.',
 };
 
 export default function CollectionsPage() {

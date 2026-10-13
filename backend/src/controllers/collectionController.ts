@@ -24,6 +24,7 @@ export const INITIAL_COLLECTIONS = [
   { name: 'RIZ House of Fashion', sortOrder: 19, description: 'Exclusive house designs and couture edits.' },
   { name: 'Watches', sortOrder: 20, description: 'Luxury and everyday watches collection.' },
   { name: 'Jadayu Collections', sortOrder: 21, description: 'Discover the distinctive elegance of Jadayu Collections, featuring statement jewellery crafted to make every occasion memorable.', image: '/jadayu-collections.jpg' },
+  { name: 'Mangalsutras', sortOrder: 22, description: 'Discover elegant mangalsutras that blend traditional charm with timeless style.', image: '/mangalsutras-collection.png' },
 ];
 
 export function generateSlug(name: string): string {
