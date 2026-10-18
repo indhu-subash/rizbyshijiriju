@@ -50,6 +50,7 @@ export function ProductCard({ product }: { product: Product }) {
             alt={product.name || 'Product Image'}
             fill
             sizes="(max-width:640px) 50vw, (max-width:1000px) 33vw, 25vw"
+            unoptimized
           />
         </Link>
         {product.newArrival && <span className="product-badge">NEW</span>}
