@@ -423,23 +423,37 @@ export function ProductDetail({ product }: { product: Product }) {
 
                 <div className="pdp-size-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {(product.productType === 'bangle'
-                    ? ['2.2', '2.4', '2.6', '2.8', '2.10']
-                    : product.productType === 'ring'
-                    ? ['6', '7', '8', '9', '16', '17', '18']
-                    : productSizes.map((s) => s.size)
-                  ).map((szStr) => {
-                    const sRec = productSizes.find((s) => s.size === szStr);
-                    const sStock = (Array.isArray(product.variants) && product.variants.length > 0)
-                      ? (selectedColor
-                          ? (product.variants.find(
-                              (v) => (v.color || '').toLowerCase() === selectedColor.toLowerCase() &&
-                                     (v.size || '').toLowerCase() === szStr.toLowerCase()
-                            )?.stock ?? 0)
-                          : product.variants
-                              .filter((v) => (v.size || '').toLowerCase() === szStr.toLowerCase())
-                              .reduce((sum, v) => sum + (v.stock || 0), 0)
-                        )
-                      : (sRec ? sRec.stock : 0);
+                        ? [
+                            '2.2', '2.4', '2.6', '2.8', '2.10',
+                            ...(productSizes.some(
+                              (s) => s.size.toLowerCase() === 'free size'
+                            )
+                              ? [
+                                  productSizes.find(
+                                    (s) => s.size.toLowerCase() === 'free size'
+                                  )!.size,
+                                ]
+                              : []),
+                          ]
+                        : product.productType === 'ring'
+                        ? ['6', '7', '8', '9', '16', '17', '18']
+                        : productSizes.map((s) => s.size)
+                      ).map((szStr) => {
+                    const sRec = productSizes.find(
+                          (s) => s.size.toLowerCase() === szStr.toLowerCase()
+                          );
+
+                    const matchingVariants = (product.variants || []).filter(
+                          (v) => (v.size || '').toLowerCase() === szStr.toLowerCase()
+                          );
+
+                    const sStock = matchingVariants.length > 0
+                          ? selectedColor
+                          ? matchingVariants.find(
+                              (v) => (v.color || '').toLowerCase() === selectedColor.toLowerCase()
+                              )?.stock ?? 0
+                          : matchingVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+                          : sRec?.stock ?? 0;
                     const isAvailable = sStock > 0;
                     const isSelected = selectedSize === szStr;
 

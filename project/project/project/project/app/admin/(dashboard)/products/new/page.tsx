@@ -38,16 +38,34 @@ export default function NewProductPage() {
   };
 
   const productType = getProductTypeFromCategory(category);
+const [selectedSizes, setSelectedSizes] = useState<string[]>([
+  '2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size'
+]);
 
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(['2.2', '2.4', '2.6', '2.8', '2.10']);
-  const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
-    '2.2': 10, '2.4': 5, '2.6': 0, '2.8': 3, '2.10': 7,
-    '6': 4, '7': 0, '8': 5, '9': 2, '16': 1, '17': 3, '18': 6,
-  });
+const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
+  '2.2': 10,
+  '2.4': 5,
+  '2.6': 0,
+  '2.8': 3,
+  '2.10': 7,
+  'Free Size': 0,
+  '6': 4,
+  '7': 0,
+  '8': 5,
+  '9': 2,
+  '16': 1,
+  '17': 3,
+  '18': 6,
+});
 
   const [colorStocks, setColorStocks] = useState<{ [color: string]: number }>({ Gold: 10 });
   const [colorSizeStocks, setColorSizeStocks] = useState<{ [key: string]: number }>({
-    'Gold_2.2': 10, 'Gold_2.4': 5, 'Gold_2.6': 0, 'Gold_2.8': 3, 'Gold_2.10': 7,
+    'Gold_2.2': 10,
+    'Gold_2.4': 5,
+    'Gold_2.6': 0,
+    'Gold_2.8': 3,
+    'Gold_2.10': 7,
+    'Gold_Free Size': 0,
   });
 
   const [collection, setCollection] = useState('Anti-Tarnish');
@@ -96,7 +114,7 @@ export default function NewProductPage() {
 
     const newType = getProductTypeFromCategory(newCat);
     if (newType === 'bangle') {
-      setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10']);
+      setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']);
     } else if (newType === 'ring') {
       setSelectedSizes(['6', '7', '8', '9', '16', '17', '18']);
     } else {
@@ -194,7 +212,7 @@ export default function NewProductPage() {
   };
 
   const activeAvailableSizes = productType === 'bangle'
-    ? ['2.2', '2.4', '2.6', '2.8', '2.10']
+    ? ['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']
     : productType === 'ring'
     ? ['6', '7', '8', '9', '16', '17', '18']
     : [];
