@@ -195,7 +195,7 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
     setUploading(true);
     setError('');
     setSuccess('');
-    
+
     try {
       const res = await api.admin.uploadImage(file);
       const uploadedUrl = res?.url || res?.imageUrl;
@@ -385,7 +385,7 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
                 ))}
               </select>
             </label>
-            
+
             <label>
               Product Name *
               <input
@@ -819,16 +819,21 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
                   <option value="All Ages">All Ages</option>
                 </select>
               </label>
+            <label>
+              Base Metal / Material
+              <select
+                value={metal}
+                onChange={(e) => setMetal(e.target.value)}
+              >
+                <option value="">Select material</option>
+                <option value="Brass">Brass</option>
+                <option value="Stainless Steel">Stainless Steel</option>
+                <option value="Silver">Silver</option>
+                <option value="Alloy">Alloy</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
 
-              <label>
-                Base Metal / Material
-                <input
-                  type="text"
-                  placeholder="e.g. Brass, Silver, Alloy"
-                  value={metal}
-                  onChange={(e) => setMetal(e.target.value)}
-                />
-              </label>
             </div>
 
             <label>
