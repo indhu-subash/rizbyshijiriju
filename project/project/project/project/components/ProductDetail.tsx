@@ -262,14 +262,16 @@ export function ProductDetail({ product }: { product: Product }) {
                 onClick={() => setLightboxOpen(true)}
                 title="Click to view full size"
               >
-                <Image
-                  src={getValidImageUrl(product.images[activeImage] || product.images[0])}
-                  alt={product.name}
-                  fill
-                  priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="pdp-main-img"
-                />
+            <Image
+                src={getValidImageUrl(product.images[activeImage] || product.images[0])}
+                alt={product.name}
+                fill
+                priority
+                unoptimized
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="pdp-main-img"
+            />
+
                 <button className="pdp-zoom-btn" aria-label="Expand image view">
                   <Maximize2 size={16} />
                 </button>
@@ -285,7 +287,15 @@ export function ProductDetail({ product }: { product: Product }) {
                       onClick={() => setActiveImage(i)}
                       aria-label={`View product image ${i + 1}`}
                     >
-                      <Image src={getValidImageUrl(image)} alt={`${product.name} thumbnail ${i + 1}`} fill sizes="80px" />
+                      
+              <Image
+                src={getValidImageUrl(image)}
+                alt={`${product.name} thumbnail ${i + 1}`}
+                fill
+                unoptimized
+                sizes="80px"
+              />
+
                     </button>
                   ))}
                 </div>
