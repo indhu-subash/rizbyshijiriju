@@ -116,7 +116,7 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
     if (newType === 'bangle') {
       setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']);
     } else if (newType === 'ring') {
-      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18']);
+      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18', 'Free Size']);
     } else {
       setSelectedSizes([]);
     }
@@ -214,7 +214,7 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
   const activeAvailableSizes = productType === 'bangle'
     ? ['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']
     : productType === 'ring'
-    ? ['6', '7', '8', '9', '16', '17', '18']
+    ? ['6', '7', '8', '9', '16', '17', '18', 'Free Size']
     : [];
 
   const totalCalculatedStock = productType !== 'regular'

@@ -43,7 +43,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
     '2.2': 0, '2.4': 0, '2.6': 0, '2.8': 0, '2.10': 0,
-    '6': 0, '7': 0, '8': 0, '9': 0, '16': 0, '17': 0, '18': 0,
+    '6': 0, '7': 0, '8': 0, '9': 0, '16': 0, '17': 0, '18': 0, 'Free Size': 0,
   });
 
   const [colorStocks, setColorStocks] = useState<{ [color: string]: number }>({});
@@ -172,7 +172,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     if (newType === 'bangle') {
       setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10']);
     } else if (newType === 'ring') {
-      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18']);
+      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18', 'Free Size']);
     } else {
       setSelectedSizes([]);
     }
@@ -270,7 +270,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const activeAvailableSizes = productType === 'bangle'
     ? ['2.2', '2.4', '2.6', '2.8', '2.10']
     : productType === 'ring'
-    ? ['6', '7', '8', '9', '16', '17', '18']
+    ? ['6', '7', '8', '9', '16', '17', '18', 'Free Size']
     : [];
 
   const totalCalculatedStock = productType !== 'regular'

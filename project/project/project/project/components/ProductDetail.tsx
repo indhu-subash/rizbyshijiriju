@@ -417,7 +417,7 @@ export function ProductDetail({ product }: { product: Product }) {
                     SELECT SIZE {product.productType === 'bangle' ? '(BANGLE)' : product.productType === 'ring' ? '(RING)' : ''}
                   </span>
                   <span className="pdp-selected-size" style={{ fontSize: '0.85rem' }}>
-                    {selectedSize ? <strong style={{ color: '#111827' }}>Size {selectedSize}</strong> : <em style={{ color: '#d32f2f' }}>Select size</em>}
+                    {selectedSize ? <strong style={{ color: '#111827' }}>{selectedSize.toLowerCase() === 'free size' ? selectedSize : `Size ${selectedSize}`}</strong> : <em style={{ color: '#d32f2f' }}>Select size</em>}
                   </span>
                 </div>
 
@@ -436,7 +436,18 @@ export function ProductDetail({ product }: { product: Product }) {
                               : []),
                           ]
                         : product.productType === 'ring'
-                        ? ['6', '7', '8', '9', '16', '17', '18']
+                        ? [
+                            '6', '7', '8', '9', '16', '17', '18',
+                            ...(productSizes.some(
+                              (s) => s.size.toLowerCase() === 'free size'
+                            )
+                              ? [
+                                  productSizes.find(
+                                    (s) => s.size.toLowerCase() === 'free size'
+                                  )!.size,
+                                ]
+                              : []),
+                          ]
                         : productSizes.map((s) => s.size)
                       ).map((szStr) => {
                     const sRec = productSizes.find(
@@ -481,7 +492,7 @@ export function ProductDetail({ product }: { product: Product }) {
                           transition: 'all 0.15s ease',
                           position: 'relative',
                         }}
-                        title={isAvailable ? `Size ${szStr} (${sStock} in stock)` : `Size ${szStr} (Out of Stock)`}
+                        title={szStr.toLowerCase() === 'free size' ? (isAvailable ? `Free Size (${sStock} in stock)` : 'Free Size (Out of Stock)') : (isAvailable ? `Size ${szStr} (${sStock} in stock)` : `Size ${szStr} (Out of Stock)`)}
                       >
                         {szStr}
                       </button>
