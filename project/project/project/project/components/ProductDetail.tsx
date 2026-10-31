@@ -56,7 +56,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
   // Size management
   const productSizes = Array.isArray(product.sizes) ? product.sizes : [];
-  const isSizedProduct = product.productType === 'bangle' || product.productType === 'ring' || productSizes.length > 0;
+  const isSizedProduct = product.productType === 'bangle' || product.productType === 'ring' || product.productType === 'nosepin' || productSizes.length > 0;
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [sizeError, setSizeError] = useState('');
 
@@ -414,7 +414,7 @@ export function ProductDetail({ product }: { product: Product }) {
               <div className="pdp-size-section" style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}>
                 <div className="pdp-size-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <span className="pdp-label" style={{ fontWeight: 600, fontSize: '0.85rem', letterSpacing: '0.05em', color: '#374151' }}>
-                    SELECT SIZE {product.productType === 'bangle' ? '(BANGLE)' : product.productType === 'ring' ? '(RING)' : ''}
+                    SELECT SIZE {product.productType === 'bangle' ? '(BANGLE)' : product.productType === 'ring' ? '(RING)' : product.productType === 'nosepin' ? '(NOSE RING)' : ''}
                   </span>
                   <span className="pdp-selected-size" style={{ fontSize: '0.85rem' }}>
                     {selectedSize ? <strong style={{ color: '#111827' }}>{selectedSize.toLowerCase() === 'free size' ? selectedSize : `Size ${selectedSize}`}</strong> : <em style={{ color: '#d32f2f' }}>Select size</em>}

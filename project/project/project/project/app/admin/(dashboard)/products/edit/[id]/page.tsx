@@ -31,10 +31,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [category, setCategory] = useState('');
   const [categoryId, setCategoryId] = useState('');
 
-  const getProductTypeFromCategory = (catName: string): 'bangle' | 'ring' | 'regular' => {
+  const getProductTypeFromCategory = (catName: string): 'bangle' | 'ring' | 'nosepin' | 'regular' => {
     const norm = (catName || '').toLowerCase().trim();
     if (norm === 'bangles' || norm === 'bangle') return 'bangle';
     if (norm === 'rings' || norm === 'ring') return 'ring';
+    if (norm === 'nose pins' || norm === 'nose pin' || norm === 'nose rings' || norm === 'nose ring' || norm === 'nosepins' || norm === 'nosepin') return 'nosepin';
     return 'regular';
   };
 
@@ -51,6 +52,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [colorSizeStocks, setColorSizeStocks] = useState<{ [key: string]: number }>({});
   const [hasConfiguredVariants, setHasConfiguredVariants] = useState(false);
   const [legacyTotalStock, setLegacyTotalStock] = useState<number | null>(null);
+  const [customSizeInput, setCustomSizeInput] = useState('');
 
   const [collection, setCollection] = useState('');
   const [colors, setColors] = useState<string[]>([]);
@@ -145,6 +147,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10']);
         } else if (derivedType === 'ring') {
           setSelectedSizes(['6', '7', '8', '9', '16', '17', '18']);
+        } else if (derivedType === 'nosepin') {
+          setSelectedSizes([]);
         }
 
         setColors(Array.isArray(p.colors) ? p.colors : ['Gold']);
@@ -173,9 +177,34 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10']);
     } else if (newType === 'ring') {
       setSelectedSizes(['6', '7', '8', '9', '16', '17', '18', 'Free Size']);
+    } else if (newType === 'nosepin') {
+      setSelectedSizes([]);
     } else {
       setSelectedSizes([]);
     }
+  };
+
+  const addCustomSize = () => {
+    const trimmed = customSizeInput.trim();
+    if (trimmed && !selectedSizes.includes(trimmed)) {
+      setSelectedSizes([...selectedSizes, trimmed]);
+      setSizeStocks((prev) => ({ ...prev, [trimmed]: 0 }));
+      setCustomSizeInput('');
+    }
+  };
+
+  const removeCustomSize = (sz: string) => {
+    const hasSizeStock = (sizeStocks[sz] || 0) > 0;
+    const hasMatrixStock = Object.keys(colorSizeStocks).some(
+      (key) => key.endsWith(`_${sz}`) && (colorSizeStocks[key] || 0) > 0
+    );
+    if (hasSizeStock || hasMatrixStock) {
+      const confirmed = window.confirm(
+        `Removing size "${sz}" will discard its recorded stock quantity. Are you sure?`
+      );
+      if (!confirmed) return;
+    }
+    setSelectedSizes(selectedSizes.filter((s) => s !== sz));
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -271,6 +300,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     ? ['2.2', '2.4', '2.6', '2.8', '2.10']
     : productType === 'ring'
     ? ['6', '7', '8', '9', '16', '17', '18', 'Free Size']
+    : productType === 'nosepin'
+    ? [] // nosepin uses manual entry, no predefined sizes
     : [];
 
   const totalCalculatedStock = productType !== 'regular'
@@ -510,41 +541,88 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     Size & Stock Configuration ({category})
                   </span>
                   <span style={{ fontSize: '0.8rem', color: '#666' }}>
-                    Check active sizes and set stock quantity for each size variant.
+                    {productType === 'nosepin' ? 'Add custom sizes and set stock quantity for each.' : 'Check active sizes and set stock quantity for each size variant.'}
                   </span>
                 </div>
 
-                {/* Size checkboxes */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
-                  {activeAvailableSizes.map((sz) => {
-                    const isChecked = selectedSizes.includes(sz);
-                    return (
-                      <label
-                        key={sz}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          border: isChecked ? '1px solid #c9b097' : '1px solid #e5e5e5',
-                          background: isChecked ? '#fff' : '#f5f5f5',
-                          cursor: 'pointer',
-                          fontWeight: isChecked ? 600 : 400,
-                          fontSize: '0.88rem',
-                        }}
+                {/* Nosepin: Manual size entry */}
+                {productType === 'nosepin' ? (
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                      <input
+                        type="text"
+                        placeholder="Enter size (e.g. 6mm, 8mm, Small)"
+                        value={customSizeInput}
+                        onChange={(e) => setCustomSizeInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomSize(); } }}
+                        style={{ flex: 1, padding: '8px 12px', fontSize: '0.88rem', border: '1px solid #ccc', borderRadius: '6px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={addCustomSize}
+                        className="button secondary"
+                        style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSize(sz)}
-                          style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                        />
-                        Size {sz}
-                      </label>
-                    );
-                  })}
-                </div>
+                        <Plus size={14} /> Add Size
+                      </button>
+                    </div>
+                    {selectedSizes.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {selectedSizes.map((sz) => (
+                          <span
+                            key={sz}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '5px 12px',
+                              borderRadius: '16px',
+                              background: '#fff',
+                              border: '1px solid #c9b097',
+                              fontSize: '0.86rem',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {sz}
+                            <X size={12} style={{ cursor: 'pointer', color: '#999' }} onClick={() => removeCustomSize(sz)} />
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Bangle/Ring: Predefined size checkboxes */
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+                    {activeAvailableSizes.map((sz) => {
+                      const isChecked = selectedSizes.includes(sz);
+                      return (
+                        <label
+                          key={sz}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            border: isChecked ? '1px solid #c9b097' : '1px solid #e5e5e5',
+                            background: isChecked ? '#fff' : '#f5f5f5',
+                            cursor: 'pointer',
+                            fontWeight: isChecked ? 600 : 400,
+                            fontSize: '0.88rem',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSize(sz)}
+                            style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                          />
+                          Size {sz}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* If multiple colours are selected: show Colour × Size Matrix */}
                 {colors.length > 1 ? (
