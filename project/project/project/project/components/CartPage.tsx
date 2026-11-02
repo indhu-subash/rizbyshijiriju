@@ -6,6 +6,7 @@ import { ArrowRight, Minus, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { getValidImageUrl } from './ProductCard';
 import { useStore } from './StoreProvider';
+import { api } from '@/lib/api';
 
 export function CartPage() {
   const { cart, subtotal, updateQuantity, removeFromCart } = useStore();
@@ -16,14 +17,23 @@ export function CartPage() {
   const isFreeShipping = subtotal >= 2000 || subtotal === 0;
   const total = Math.max(0, subtotal - discount);
 
-  function apply() {
-    if (['WELCOME10', 'RIZ10'].includes(coupon.toUpperCase())) {
-      setDiscount(Math.round(subtotal * 0.1));
-      setMessage('10% discount applied.');
-    } else {
-      setMessage('That coupon code isn’t valid.');
+  async function apply() {
+    setMessage('');
+    try {
+      const res = await api.payments.validateCoupon({ couponCode: coupon, subtotal });
+      if (res.valid) {
+        setDiscount(res.discount);
+        setMessage('Coupon applied successfully!');
+      } else {
+        setDiscount(0);
+        setMessage('Invalid coupon code.');
+      }
+    } catch (err: any) {
+      setDiscount(0);
+      setMessage(err.message || 'Failed to apply coupon.');
     }
   }
+
 
   return (
     <main>

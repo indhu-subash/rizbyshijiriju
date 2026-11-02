@@ -641,4 +641,62 @@ export async function cancelPayment(req: AuthenticatedRequest, res: Response): P
   }
 }
 
-
+// New endpoint: Validate coupon without creating order
+export async function validateCoupon(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { couponCode, subtotal } = req.body;
+    if (!couponCode) {
+      res.status(400).json({ error: 'Coupon code is required.' });
+      return;
+    }
+    if (typeof subtotal !== 'number' || subtotal < 0) {
+      res.status(400).json({ error: 'Valid subtotal is required.' });
+      return;
+    }
+    const coupon = await prisma.coupon.findUnique({
+      where: { code: couponCode.toUpperCase(), isActive: true },
+    });
+    if (!coupon) {
+      res.status(400).json({ error: 'Invalid coupon code.' });
+      return;
+    }
+    // Expiry check
+    if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+      res.status(400).json({ error: 'This coupon code has expired.' });
+      return;
+    }
+    // Min order check
+    if (subtotal < coupon.minOrderValue) {
+      res.status(400).json({ error: `Coupon requires a minimum order value of ₹${coupon.minOrderValue}.` });
+      return;
+    }
+    // Usage limit check (do not increment here)
+    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+      res.status(400).json({ error: 'This coupon has reached its usage limit.' });
+      return;
+    }
+    // Calculate discount
+    let discount = 0;
+    if (coupon.discountType === 'percentage') {
+      discount = (subtotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscount !== null && discount > coupon.maxDiscount) {
+        discount = coupon.maxDiscount;
+      }
+    } else {
+      discount = coupon.discountValue;
+    }
+    discount = Math.round(discount * 100) / 100;
+    res.status(200).json({
+      valid: true,
+      discount,
+      coupon: {
+        code: coupon.code,
+        type: coupon.discountType,
+        value: coupon.discountValue,
+      },
+    });
+  } catch (error: any) {
+    console.error('Validate coupon error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error during coupon validation.' });
+  }
+}

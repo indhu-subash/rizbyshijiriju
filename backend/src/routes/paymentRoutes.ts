@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createCheckoutOrder, verifyPayment, cancelPayment, cancelOrder, handleRazorpayWebhook } from '../controllers/paymentController';
+import { createCheckoutOrder, verifyPayment, cancelPayment, cancelOrder, handleRazorpayWebhook, validateCoupon } from '../controllers/paymentController';
 import { optionalAuthenticateUser } from '../middleware/auth';
 
 const router = Router();
@@ -8,6 +8,7 @@ const router = Router();
 router.post('/checkout', optionalAuthenticateUser as any, createCheckoutOrder as any);
 router.post('/verify', optionalAuthenticateUser as any, verifyPayment as any);
 router.post('/cancel', optionalAuthenticateUser as any, (cancelPayment || cancelOrder) as any);
+router.post('/validate-coupon', optionalAuthenticateUser as any, validateCoupon as any);
 router.post('/webhook', handleRazorpayWebhook as any);
 
 export default router;

@@ -236,30 +236,21 @@ export function CheckoutPage() {
     e.preventDefault();
     setCouponError('');
     setCouponSuccess('');
-
     if (!couponCode) return;
-
     try {
-      const code = couponCode.toUpperCase();
-      if (code === 'WELCOME10') {
-        if (subtotal < 500) {
-          setCouponError('WELCOME10 requires a minimum order of ₹500.');
-          return;
-        }
-        setAppliedCoupon({ code, type: 'percentage', value: 10 });
-        setCouponSuccess('Coupon WELCOME10 applied successfully!');
-      } else if (code === 'RIZ100') {
-        if (subtotal < 999) {
-          setCouponError('RIZ100 requires a minimum order of ₹999.');
-          return;
-        }
-        setAppliedCoupon({ code, type: 'fixed', value: 100 });
-        setCouponSuccess('Coupon RIZ100 applied successfully!');
+      const res = await api.payments.validateCoupon({ couponCode, subtotal });
+      if (res.valid) {
+        setAppliedCoupon({
+          code: res.coupon.code,
+          type: res.coupon.type,
+          value: res.coupon.value,
+        });
+        setCouponSuccess('Coupon applied successfully!');
       } else {
         setCouponError('Invalid coupon code.');
       }
-    } catch (err) {
-      setCouponError('Failed to apply coupon.');
+    } catch (err: any) {
+      setCouponError(err.message || 'Failed to apply coupon.');
     }
   };
 
