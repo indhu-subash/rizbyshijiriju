@@ -7,6 +7,7 @@ import orderRoutes from './orderRoutes';
 import paymentRoutes from './paymentRoutes';
 import adminRoutes from './adminRoutes';
 import { calculateShippingEndpoint } from '../controllers/orderController';
+import { getPublicCoupons } from '../controllers/couponController';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/admin', adminRoutes);
 
 // Direct endpoint for shipping calculation
 router.post('/shipping/calculate', calculateShippingEndpoint as any);
+router.get('/coupons/public', getPublicCoupons as any);
 
 export default router;

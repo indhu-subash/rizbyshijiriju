@@ -1,12 +1,13 @@
 'use client';
 
+import React from 'react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Star } from 'lucide-react';
 import { categoriesList, products } from '@/data/products';
 import { ProductGrid, getValidImageUrl } from './ProductCard';
-import { Newsletter } from './Newsletter';
+import { AvailableOffers } from './AvailableOffers';
 import { api } from '@/lib/api';
 
 const heroImage = '/hero-jewellery.jpg';
@@ -438,21 +439,24 @@ export function HomePage() {
 
       {/* Bestsellers Section */}
       {bestsellerLoaded && bestsellerItems.length > 0 && (
-        <section className="section section-tinted">
-          <div className="container">
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">MOST LOVED PIECES</span>
-                <h2>Bestsellers</h2>
-              </div>
-              <Link className="text-link" href="/best-sellers">
-                Shop Bestsellers <ArrowRight size={15} />
-              </Link>
-            </div>
-            <ProductGrid items={bestsellers} />
+  <>
+    <section className="section section-tinted">
+      <div className="container">
+        <div className="section-head">
+          <div>
+            <span className="eyebrow">MOST LOVED PIECES</span>
+            <h2>Bestsellers</h2>
           </div>
-        </section>
-      )}
+          <Link className="text-link" href="/best-sellers">
+            Shop Bestsellers <ArrowRight size={15} />
+          </Link>
+        </div>
+        <ProductGrid items={bestsellers} />
+      </div>
+    </section>
+    <AvailableOffers />
+  </>
+)}
 
       {/* Shop By Product Category */}
       <section className="section container">
@@ -520,7 +524,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <Newsletter />
+
     </main>
   );
 }
