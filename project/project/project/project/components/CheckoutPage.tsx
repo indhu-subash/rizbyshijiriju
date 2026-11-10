@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Check, Lock, Globe, MapPin } from 'lucide-react';
 import { FormEvent, useState, useEffect, useMemo } from 'react';
 import { useStore } from './StoreProvider';
@@ -9,6 +10,7 @@ import { api } from '@/lib/api';
 import { INTERNATIONAL_COUNTRIES, isIndia, CountryOption } from '@/lib/countries';
 
 export function CheckoutPage() {
+  const router = useRouter();
   const { cart, subtotal, clearCart, user, isAuthenticated } = useStore();
 
   const [placed, setPlaced] = useState(false);
@@ -51,7 +53,7 @@ export function CheckoutPage() {
     baseCharge?: number;
   } | null>(null);
 
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'card'>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'card' | 'cod'>('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
 
@@ -357,6 +359,7 @@ export function CheckoutPage() {
         setPlacedOrderId(dbOrder.orderId);
         setPlaced(true);
         setIsSubmitting(false);
+        router.push(`/thankyou?orderId=${encodeURIComponent(dbOrder.orderId)}`);
         return;
       }
 
@@ -385,8 +388,10 @@ export function CheckoutPage() {
               });
 
               clearCart();
-              setPlacedOrderId(verification.orderId);
+              const confirmedId = verification.orderId || dbOrder.orderId;
+              setPlacedOrderId(confirmedId);
               setPlaced(true);
+              router.push(`/thankyou?orderId=${encodeURIComponent(confirmedId)}`);
             } catch (err: any) {
               alert(err.message || 'Payment verification failed.');
               await api.payments.cancel({ orderId: dbOrder.orderId });
@@ -425,6 +430,17 @@ export function CheckoutPage() {
           setIsSubmitting(false);
         });
         rzp.open();
+        return;
+      }
+
+      // 4. Handle Cash on Delivery (COD) Checkout
+      if (res.paymentMode === 'cod') {
+        clearCart();
+        setPlacedOrderId(dbOrder.orderId);
+        setPlaced(true);
+        setIsSubmitting(false);
+        router.push(`/thankyou?orderId=${encodeURIComponent(dbOrder.orderId)}`);
+        return;
       }
     } catch (err: any) {
       setCheckoutError(err.message || 'An error occurred during checkout.');
@@ -827,6 +843,20 @@ export function CheckoutPage() {
                       <small>Visa, Mastercard, RuPay, American Express</small>
                     </span>
                   </label>
+                  {deliveryType === 'IN' && (
+                    <label>
+                      <input
+                        type="radio"
+                        name="payment"
+                        checked={paymentMethod === 'cod'}
+                        onChange={() => setPaymentMethod('cod')}
+                      />
+                      <span>
+                        <b>Cash on Delivery (COD)</b>
+                        <small>Pay with cash upon delivery in India</small>
+                      </span>
+                    </label>
+                  )}
                 </div>
               )}
 
@@ -850,7 +880,11 @@ export function CheckoutPage() {
                     <div>
                       <span className="eyebrow">Payment Method</span>
                       <p className="font-medium">
-                        {paymentMethod === 'card' ? 'Credit/Debit Card' : 'UPI / Instant Online Gateway'}
+                        {paymentMethod === 'card'
+                          ? 'Credit/Debit Card'
+                          : paymentMethod === 'cod'
+                          ? 'Cash on Delivery (COD)'
+                          : 'UPI / Instant Online Gateway'}
                       </p>
                     </div>
                   </div>

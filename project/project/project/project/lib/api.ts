@@ -166,6 +166,11 @@ export const api = {
     validateCoupon: (body: { couponCode: string; subtotal: number }) => request('/payments/validate-coupon', { method: 'POST', body: JSON.stringify(body) }),
   },
 
+  // Public Coupons / Offers
+  coupons: {
+    public: () => request('/coupons/public'),
+  },
+
 
   // Admin Operations
   admin: {
