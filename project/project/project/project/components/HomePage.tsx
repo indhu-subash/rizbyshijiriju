@@ -8,6 +8,7 @@ import { categoriesList, products } from '@/data/products';
 import { ProductGrid, getValidImageUrl } from './ProductCard';
 import { Newsletter } from './Newsletter';
 import { api } from '@/lib/api';
+import { AvailableOffers } from './AvailableOffers';
 
 const heroImage = '/hero-jewellery.jpg';
 
@@ -332,6 +333,9 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+{/* Available Offers Section */}
+<AvailableOffers />
 
       {/* Featured Collections Grid */}
       <section className="section container">
