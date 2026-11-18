@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "test": "ts-node --transpile-only tests/wholesale.test.ts && ts-node --transpile-only tests/wholesale.http.test.ts && ts-node --transpile-only tests/notifications.test.ts && ts-node --transpile-only tests/webhook.test.ts && ts-node --transpile-only tests/wholesale-notifications.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.712.0",

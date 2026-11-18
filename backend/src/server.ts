@@ -53,7 +53,9 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json({ limit: '50mb' }));
+// SECURITY: keep the exact raw bytes of Razorpay webhook requests so the signature can be verified
+// against what Razorpay actually signed (re-serialising req.body would not match). Only for the webhook path.
+app.use(express.json({ limit: '50mb', verify: captureWebhookRawBody }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve local upload fallbacks in development
@@ -80,6 +82,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 import prisma from './config/db';
 import { INITIAL_PRODUCTS } from './config/initialProducts';
+import { captureWebhookRawBody } from './utils/webhookRawBody';
+import { logNotificationConfigStatus, startNotificationWorker } from './services/adminNotifications';
 
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
@@ -195,5 +199,14 @@ app.listen(PORT, async () => {
     }
   } catch (seedErr) {
     console.error('Auto-seed check error on startup:', seedErr);
+  }
+
+  // Admin order notifications (WhatsApp + email): report config status and start the recovery worker.
+  // Wrapped so that a problem here can never stop the API from serving requests.
+  try {
+    logNotificationConfigStatus();
+    startNotificationWorker();
+  } catch (notifyErr) {
+    console.error('Admin notification worker failed to start:', notifyErr);
   }
 });

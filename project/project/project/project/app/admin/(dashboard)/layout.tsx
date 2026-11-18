@@ -13,6 +13,7 @@ import {
   Ticket,
   Users,
   Truck,
+  Store,
   ArrowLeft,
   Loader2,
   Menu,
@@ -52,6 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
     { label: 'Shipping Rates', href: '/admin/shipping', icon: Truck },
     { label: 'Customers', href: '/admin/customers', icon: Users },
+    { label: 'Wholesale', href: '/admin/wholesale', icon: Store },
   ];
 
   if (loadingAuth || !authorized) {
