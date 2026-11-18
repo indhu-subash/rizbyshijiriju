@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { OrderNotificationsPanel } from '@/components/OrderNotificationsPanel';
 import { api } from '@/lib/api';
 import { Search, Eye, Edit2, Trash2, Loader2, X } from 'lucide-react';
 
@@ -361,6 +362,8 @@ export default function AdminOrders() {
                 <p className="serif text-xl font-bold">₹{selectedOrder.total}</p>
               </div>
             </div>
+
+            <OrderNotificationsPanel orderRef={selectedOrder.id} />
 
             <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button

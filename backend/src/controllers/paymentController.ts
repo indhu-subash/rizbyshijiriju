@@ -5,6 +5,8 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { calculateShipping, isIndiaCountry } from '../services/shippingService';
 import { sendOrderConfirmationEmail, sendOrderConfirmationWhatsApp } from '../services/notificationService';
+import { notifyOrderConfirmed } from '../services/adminNotifications';
+import { verifyRazorpayWebhookSignature } from '../services/razorpayWebhook';
 import { findProductBySlugOrId } from './productController';
 import { deductOrderStock, restoreOrderInventory, resolveProductVariant } from '../services/inventoryService';
 
@@ -298,6 +300,10 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     }
 
     // 6. Cash on Delivery (COD) fallback
+    // COD orders are created directly in the existing 'Confirmed' state: record the admin notifications
+    // (a single fast DB insert; the actual WhatsApp/email sending runs asynchronously and cannot fail the order).
+    if (paymentMethod === 'cod') await notifyOrderConfirmed(result);
+
     res.status(201).json({
       message: 'Order placed successfully.',
       paymentMode: 'cod',
@@ -411,6 +417,9 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
               data: { paymentId: payId, ...(rzpOrdId ? { razorpayOrderId: rzpOrdId } : {}) },
             });
           }
+          // Self-healing + idempotent: ensures the admin notification rows exist (unique per order/channel).
+          // Never in mock mode: mock mode does not verify any payment.
+          if (PAYMENT_MODE !== 'mock') await notifyOrderConfirmed(existingOrder);
           return existingOrder;
         }
 
@@ -425,6 +434,8 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       if (updatedOrder) {
         sendOrderConfirmationEmail(updatedOrder).catch((e) => console.error('Email error:', e));
         sendOrderConfirmationWhatsApp(updatedOrder).catch((e) => console.error('WhatsApp error:', e));
+        // Admin WhatsApp + email (DB-backed, async, never blocks or fails the order). Skipped in mock mode.
+        if (PAYMENT_MODE !== 'mock') await notifyOrderConfirmed(updatedOrder);
       }
 
       return updatedOrder;
@@ -494,21 +505,25 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
 
 export async function handleRazorpayWebhook(req: any, res: Response): Promise<void> {
   try {
-    const signature = req.headers['x-razorpay-signature'] as string;
+    // SECURITY: a webhook may only confirm a payment if its signature is verified against the ORIGINAL raw body
+    // with RAZORPAY_WEBHOOK_SECRET. No secret, no signature, no raw body or a bad signature => rejected, nothing is changed.
+    const signature = req.headers['x-razorpay-signature'];
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
-    const rawBody = req.rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
-
-    if (webhookSecret && signature) {
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(rawBody)
-        .digest('hex');
-
-      if (expectedSignature !== signature) {
-        res.status(400).json({ error: 'Invalid webhook signature.' });
-        return;
-      }
+    if (!webhookSecret) {
+      console.error('[Webhook] RAZORPAY_WEBHOOK_SECRET is not configured. Rejecting webhook; no order was changed.');
+      res.status(503).json({ error: 'Webhook verification is not configured.' });
+      return;
+    }
+    if (!Buffer.isBuffer(req.rawBody) || !signature) {
+      console.warn('[Webhook] Rejected: missing signature header or raw body.');
+      res.status(400).json({ error: 'Invalid webhook request.' });
+      return;
+    }
+    if (!verifyRazorpayWebhookSignature(req.rawBody, signature, webhookSecret)) {
+      console.warn('[Webhook] Rejected: invalid signature.');
+      res.status(400).json({ error: 'Invalid webhook signature.' });
+      return;
     }
 
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -551,6 +566,7 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
               if (updated) {
                 sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
                 sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
+                await notifyOrderConfirmed(updated);
               }
             }
           } else if (order.orderStatus === 'Confirmed' || order.paymentStatus === 'paid') {
@@ -561,6 +577,8 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
                 data: { paymentId: razorpayPaymentId, razorpayOrderId: razorpayOrderId },
               });
             }
+            // Idempotent: guarantees the admin notification rows exist if an earlier attempt crashed.
+            await notifyOrderConfirmed(order);
           }
         }
       }

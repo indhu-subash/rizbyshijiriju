@@ -230,3 +230,74 @@ model ShippingRule {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+// ---------------------------------------------------------------------------
+// Wholesale enquiries (additive model - no relations to existing tables)
+// ---------------------------------------------------------------------------
+model WholesaleEnquiry {
+  id                String   @id @default(uuid())
+  fullName          String
+  businessName      String
+  email             String
+  whatsappNumber    String
+  location          String
+  estimatedQuantity Int
+  message           String?
+  status            String   @default("pending") // "pending" | "contacted" | "approved" | "rejected"
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Admin order-notification tracking (additive; deliberately has NO relation to
+// Order so the existing Order model is untouched). One row per order + channel.
+// The unique constraint is what guarantees an order can never be notified twice
+// on the same channel, even under concurrent webhook / verify calls.
+// ---------------------------------------------------------------------------
+model OrderNotification {
+  id                String    @id @default(uuid())
+  orderRef          String    // Order.id (internal uuid)
+  orderNumber       String    // Order.orderId (e.g. RIZ-2026-12345), for readability
+  channel           String    // "whatsapp" | "email"
+  status            String    @default("pending") // "pending" | "sent" | "failed"
+  attempts          Int       @default(0)
+  lastAttemptAt     DateTime?
+  nextAttemptAt     DateTime?
+  lockedAt          DateTime? // worker claim; stale claims are reclaimable
+  sentAt            DateTime?
+  providerMessageId String?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([orderRef, channel])
+  @@index([status, nextAttemptAt])
+  @@index([orderRef])
+}
+
+// ---------------------------------------------------------------------------
+// Admin wholesale enquiry notification tracking (additive model).
+// One row per enquiry + channel. The unique constraint prevents duplicates.
+// ---------------------------------------------------------------------------
+model WholesaleNotification {
+  id                String    @id @default(uuid())
+  enquiryRef        String    // WholesaleEnquiry.id
+  channel           String    // "whatsapp" | "email"
+  status            String    @default("pending") // "pending" | "sent" | "failed"
+  attempts          Int       @default(0)
+  lastAttemptAt     DateTime?
+  nextAttemptAt     DateTime?
+  lockedAt          DateTime? // worker claim lock
+  sentAt            DateTime?
+  providerMessageId String?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([enquiryRef, channel])
+  @@index([status, nextAttemptAt])
+  @@index([enquiryRef])
+}

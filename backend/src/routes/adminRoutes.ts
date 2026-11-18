@@ -32,6 +32,12 @@ import {
   deleteCategory,
   seedCategories,
 } from '../controllers/categoryController';
+import {
+  getAdminWholesaleEnquiries,
+  updateWholesaleEnquiryStatus,
+  retryAdminWholesaleNotification,
+} from '../controllers/wholesaleController';
+import { listOrderNotifications, retryOrderNotification } from '../controllers/orderNotificationController';
 import { authenticateUser, requireAdmin } from '../middleware/auth';
 
 const router = Router();
@@ -80,6 +86,15 @@ router.delete('/coupons/:id', deleteCoupon as any);
 
 // Customers
 router.get('/customers', getAdminCustomers as any);
+
+// Wholesale enquiries (admin only - protected by the router-level auth above)
+router.get('/wholesale-enquiries', getAdminWholesaleEnquiries as any);
+router.patch('/wholesale-enquiries/:id', updateWholesaleEnquiryStatus as any);
+router.post('/wholesale-enquiries/notifications/:id/retry', retryAdminWholesaleNotification as any);
+
+// Admin order-notification tracking + safe retry (admin only)
+router.get('/order-notifications', listOrderNotifications as any);
+router.post('/order-notifications/:id/retry', retryOrderNotification as any);
 
 // Shipping Rules CRUD
 router.get('/shipping-rules', getAdminShippingRules as any);

@@ -166,8 +166,18 @@ export const api = {
     validateCoupon: (body: { couponCode: string; subtotal: number }) => request('/payments/validate-coupon', { method: 'POST', body: JSON.stringify(body) }),
   },
 
+  // Public Coupons / Offers
+  coupons: {
+    public: () => request('/coupons/public'),
+  },
+
 
   // Admin Operations
+  // Wholesale (public)
+  wholesale: {
+    submitEnquiry: (body: any) => request('/wholesale/enquiries', { method: 'POST', body: JSON.stringify(body) }),
+  },
+
   admin: {
     getStats: () => request('/admin/stats'),
     getOrders: (status?: string, query?: string) => {
@@ -281,6 +291,19 @@ export const api = {
     editCoupon: (id: string, body: any) => request(`/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteCoupon: (id: string) => request(`/admin/coupons/${id}`, { method: 'DELETE' }),
     getCustomers: () => request('/admin/customers'),
+    getOrderNotifications: (params?: Record<string, string>) => {
+      const str = params ? new URLSearchParams(params).toString() : '';
+      return request(`/admin/order-notifications${str ? `?${str}` : ''}`);
+    },
+    retryOrderNotification: (id: string) => request(`/admin/order-notifications/${encodeURIComponent(id)}/retry`, { method: 'POST' }),
+    getWholesaleEnquiries: (params?: Record<string, string>) => {
+      const str = params ? new URLSearchParams(params).toString() : '';
+      return request(`/admin/wholesale-enquiries${str ? `?${str}` : ''}`);
+    },
+    updateWholesaleEnquiryStatus: (id: string, status: string) =>
+      request(`/admin/wholesale-enquiries/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    retryWholesaleNotification: (id: string) =>
+      request(`/admin/wholesale-enquiries/notifications/${encodeURIComponent(id)}/retry`, { method: 'POST' }),
     getShippingRules: () => request('/admin/shipping-rules'),
     createShippingRule: (body: any) => request('/admin/shipping-rules', { method: 'POST', body: JSON.stringify(body) }),
     editShippingRule: (id: string, body: any) => request(`/admin/shipping-rules/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

@@ -6,6 +6,7 @@ import collectionRoutes from './collectionRoutes';
 import orderRoutes from './orderRoutes';
 import paymentRoutes from './paymentRoutes';
 import adminRoutes from './adminRoutes';
+import wholesaleRoutes from './wholesaleRoutes';
 import { calculateShippingEndpoint } from '../controllers/orderController';
 import { getPublicCoupons } from '../controllers/couponController';
 
@@ -18,6 +19,7 @@ router.use('/collections', collectionRoutes);
 router.use('/orders', orderRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/admin', adminRoutes);
+router.use('/wholesale', wholesaleRoutes);
 
 // Direct endpoint for shipping calculation
 router.post('/shipping/calculate', calculateShippingEndpoint as any);

@@ -96,6 +96,7 @@ export function Header() {
             <Link href="/best-sellers">Bestsellers</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
+            <Link href="/wholesale">Wholesale</Link>
           </nav>
 
           <div className="header-actions">
@@ -216,6 +217,9 @@ export function Header() {
               </Link>
               <Link href="/contact" onClick={() => setOpen(false)} className="mobile-nav-sub">
                 Contact
+              </Link>
+              <Link href="/wholesale" onClick={() => setOpen(false)} className="mobile-nav-sub">
+                Wholesale
               </Link>
             </nav>
 
