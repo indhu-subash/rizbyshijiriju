@@ -5,12 +5,12 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "test": "ts-node --transpile-only tests/wholesale.test.ts && ts-node --transpile-only tests/wholesale.http.test.ts && ts-node --transpile-only tests/notifications.test.ts && ts-node --transpile-only tests/webhook.test.ts && ts-node --transpile-only tests/wholesale-notifications.test.ts"
+    "test": "ts-node --transpile-only tests/wholesale.test.ts && ts-node --transpile-only tests/wholesale.http.test.ts && ts-node --transpile-only tests/notifications.test.ts && ts-node --transpile-only tests/webhook.test.ts && ts-node --transpile-only tests/wholesale-notifications.test.ts && ts-node --transpile-only tests/production-api-cors.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.712.0",
@@ -23,6 +23,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^10.0.10",
+    "prisma": "^6.0.1",
     "razorpay": "^2.9.5"
   },
   "devDependencies": {
@@ -34,7 +35,6 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.2",
     "@types/nodemailer": "^8.0.2",
-    "prisma": "^6.0.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.2"

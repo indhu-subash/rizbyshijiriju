@@ -119,7 +119,13 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
           };
         });
 
-        whereClause.AND = tokenConditions;
+        if (whereClause.AND && Array.isArray(whereClause.AND)) {
+          whereClause.AND.push(...tokenConditions);
+        } else if (whereClause.AND) {
+          whereClause.AND = [whereClause.AND, ...tokenConditions];
+        } else {
+          whereClause.AND = tokenConditions;
+        }
       }
     }
 
