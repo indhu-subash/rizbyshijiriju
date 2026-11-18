@@ -32,7 +32,11 @@ export function setStoredToken(token: string | null): void {
 
 async function request(endpoint: string, options: RequestInit = {}) {
   const cleanBase = API_URL.replace(/\/+$/, '');
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  // Prevent duplicate /api prefix if cleanBase already ends with /api
+  if (cleanBase.endsWith('/api') && cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = cleanEndpoint.slice(4);
+  }
   const url = `${cleanBase}${cleanEndpoint}`;
 
   // Ensure cookies are sent and received
