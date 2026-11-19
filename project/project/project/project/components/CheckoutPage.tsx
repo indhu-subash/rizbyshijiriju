@@ -84,7 +84,7 @@ export function CheckoutPage() {
     baseCharge?: number;
   } | null>(null);
 
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'card' | 'cod'>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'card'>('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
 
@@ -895,21 +895,6 @@ export function CheckoutPage() {
                     <small style={{ color: '#666', fontSize: '0.82rem' }}>Visa, Mastercard, RuPay, American Express</small>
                   </div>
                 </label>
-
-                {deliveryType === 'IN' && (
-                  <label className={`shopify-payment-item ${paymentMethod === 'cod' ? 'active' : ''}`}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === 'cod'}
-                      onChange={() => setPaymentMethod('cod')}
-                    />
-                    <div>
-                      <b style={{ fontSize: '0.92rem', color: '#1a1a1a', display: 'block' }}>Cash on Delivery (COD)</b>
-                      <small style={{ color: '#666', fontSize: '0.82rem' }}>Pay with cash upon delivery in India</small>
-                    </div>
-                  </label>
-                )}
               </div>
             </div>
 
