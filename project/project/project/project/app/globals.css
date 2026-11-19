@@ -466,6 +466,212 @@ img {
   color: #fff
 }
 
+/* CRO Enhancements from Marketing Report: Product Card Badges & Discounts */
+.product-badge-discount {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #ffffff;
+  color: #111111;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+  text-transform: uppercase;
+}
+
+.product-badge-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #ffffff;
+  color: #111111;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+  text-transform: uppercase;
+}
+
+.product-tag-bottom {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #2a2a2a;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.product-meta .current-price {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.product-meta .original-price {
+  color: #888888;
+  font-size: 11.5px;
+  text-decoration: line-through;
+}
+
+.product-meta .discount-tag {
+  font-size: 10.5px;
+  color: #c2410c;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.product-stock-status {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.product-stock-status .stock-in {
+  color: #0891b2;
+  font-weight: 500;
+}
+
+.product-stock-status .stock-low {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.product-stock-status .stock-out {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.rating .rating-val {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-left: 2px;
+}
+
+.rating .reviews-cnt {
+  color: #777777;
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+/* Average Order Value (AOV) Gamified Progress Widget */
+.aov-tracker-card {
+  background: #fffafa;
+  border: 1px solid #fed7d7;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.aov-banner {
+  background: #ffe3e3;
+  color: #9b2c2c;
+  text-align: center;
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.aov-progress-container {
+  padding: 24px 20px 18px;
+  position: relative;
+}
+
+.aov-progress-bar-bg {
+  position: absolute;
+  top: 48px;
+  left: 45px;
+  right: 45px;
+  height: 6px;
+  background: #f0e6e6;
+  border-radius: 9999px;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.aov-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f56565, #38a169);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.aov-milestones {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+}
+
+.aov-milestone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  width: 90px;
+}
+
+.aov-node-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #718096;
+  text-transform: uppercase;
+}
+
+.aov-milestone.active .aov-node-title {
+  color: #276749;
+}
+
+.aov-node-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #edf2f7;
+  color: #718096;
+  border: 2px solid #cbd5e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+
+.aov-milestone.active .aov-node-icon {
+  background: #38a169;
+  color: #ffffff;
+  border-color: #2f855a;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.2);
+}
+
+.aov-node-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4a5568;
+  background: #edf2f7;
+  padding: 2px 7px;
+  border-radius: 9999px;
+}
+
+.aov-milestone.active .aov-node-badge {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
 .wishlist {
   position: absolute;
   right: 13px;
@@ -5211,4 +5417,224 @@ img {
 .ws-status-contacted { border-color: #4a7fb5; }
 .ws-status-approved { border-color: #2f8f5b; }
 .ws-status-rejected { border-color: #b3261e; }
+
+/* Clean 1-Page Express Checkout (Shopify Style) */
+.shopify-checkout-card {
+  background: #ffffff;
+  border: 1px solid #e2ddd5;
+  border-radius: 12px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.shopify-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shopify-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shopify-section-head h2,
+.shopify-section h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.shopify-section-sub {
+  font-size: 0.85rem;
+  color: #666666;
+  margin: -6px 0 2px;
+}
+
+.shopify-signin-link {
+  font-size: 0.88rem;
+  color: #334c3d;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.shopify-field-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.shopify-input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d4cdc5;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  color: #1a1a1a;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.shopify-input:focus {
+  outline: none;
+  border-color: #334c3d;
+  box-shadow: 0 0 0 2px rgba(51, 76, 61, 0.15);
+}
+
+.shopify-field-icon {
+  position: absolute;
+  right: 12px;
+  color: #888888;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.shopify-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.shopify-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.shopify-select {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d4cdc5;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  color: #1a1a1a;
+  background: #ffffff;
+  appearance: auto;
+  cursor: pointer;
+}
+
+.shopify-select:focus {
+  outline: none;
+  border-color: #334c3d;
+  box-shadow: 0 0 0 2px rgba(51, 76, 61, 0.15);
+}
+
+.shopify-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.shopify-checkbox-row input {
+  width: 17px;
+  height: 17px;
+  accent-color: #334c3d;
+  cursor: pointer;
+}
+
+.shopify-checkbox-row span {
+  font-size: 0.88rem;
+  color: #333333;
+}
+
+.shopify-shipping-box {
+  background: #f7f6f4;
+  border: 1px solid #e5e0d8;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shopify-shipping-empty {
+  background: #faf9f7;
+  border: 1px dashed #dcd5cb;
+  border-radius: 8px;
+  padding: 16px;
+  color: #666666;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.shopify-payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shopify-payment-item {
+  border: 1px solid #dcd5cb;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.shopify-payment-item.active {
+  border-color: #334c3d;
+  background: #fafaf8;
+  box-shadow: 0 0 0 1px #334c3d;
+}
+
+.shopify-payment-item input[type="radio"] {
+  margin-top: 3px;
+  accent-color: #334c3d;
+}
+
+.shopify-pay-btn {
+  width: 100%;
+  padding: 16px 24px;
+  background: #334c3d;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 14px rgba(51, 76, 61, 0.25);
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.shopify-pay-btn:hover:not(:disabled) {
+  background: #273b2f;
+  transform: translateY(-1px);
+}
+
+.shopify-pay-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .shopify-checkout-card {
+    padding: 18px 16px;
+  }
+  .shopify-grid-2,
+  .shopify-grid-3 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
 

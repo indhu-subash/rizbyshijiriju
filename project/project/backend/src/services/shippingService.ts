@@ -99,7 +99,7 @@ export function findCountry(countryInput?: string): CountryInfo | null {
 /**
  * Calculate India Shipping Charge based on pincode & regional rules
  */
-export async function calculateIndiaShipping(pincode: string): Promise<ShippingResult> {
+export async function calculateIndiaShipping(pincode: string, providedState?: string): Promise<ShippingResult> {
   const cleanPincode = pincode.trim();
 
   if (!cleanPincode || cleanPincode.length !== 6 || isNaN(Number(cleanPincode))) {
@@ -141,9 +141,9 @@ export async function calculateIndiaShipping(pincode: string): Promise<ShippingR
   let estimate = '4–6 working days';
   let inferredState = 'Rest of India';
 
-  // Kerala prefix: 67, 68, 69
+  // Kerala prefix: 67, 68, 69 -> ₹60 inside Kerala
   if (prefix2 === 67 || prefix2 === 68 || prefix2 === 69) {
-    shippingCharge = 79;
+    shippingCharge = 60;
     estimate = '2–4 working days';
     inferredState = 'Kerala';
   }
@@ -178,6 +178,22 @@ export async function calculateIndiaShipping(pincode: string): Promise<ShippingR
     }
   } catch (err) {
     // Ignore external postal API timeouts or network errors gracefully
+  }
+
+  // Enforce ₹60 shipping charge inside Kerala (by pincode prefix 67/68/69, fetched state, or provided state)
+  const isKerala =
+    prefix2 === 67 ||
+    prefix2 === 68 ||
+    prefix2 === 69 ||
+    (fetchedState && fetchedState.trim().toLowerCase().includes('kerala')) ||
+    (providedState && providedState.trim().toLowerCase().includes('kerala'));
+
+  if (isKerala) {
+    shippingCharge = 60;
+    estimate = '2–4 working days';
+    if (!fetchedState || fetchedState === 'Rest of India') {
+      fetchedState = 'Kerala';
+    }
   }
 
   return {
@@ -244,11 +260,11 @@ export function calculateInternationalShipping(params: ShippingCalculationParams
  * Unified Shipping Calculation Entrance Point
  */
 export async function calculateShipping(params: ShippingCalculationParams): Promise<ShippingResult> {
-  const { country, pincode, postalCode } = params;
+  const { country, pincode, postalCode, state } = params;
 
   if (isIndiaCountry(country)) {
     const codeToUse = pincode || postalCode || '';
-    return calculateIndiaShipping(codeToUse);
+    return calculateIndiaShipping(codeToUse, state);
   }
 
   return calculateInternationalShipping(params);
