@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Product } from '@/data/products';
 import { api, setStoredToken } from '@/lib/api';
 
@@ -8,6 +9,7 @@ export type CartItem = {
   product: Product;
   quantity: number;
   color?: string;
+  size?: string;
 };
 
 export type User = {
@@ -29,9 +31,9 @@ export type ToastNotification = {
 export type Store = {
   cart: CartItem[];
   wishlist: string[];
-  addToCart: (p: Product, quantity?: number, color?: string) => void;
-  removeFromCart: (id: string, color?: string) => void;
-  updateQuantity: (id: string, color: string | undefined, n: number) => void;
+  addToCart: (p: Product, quantity?: number, color?: string, size?: string) => void;
+  removeFromCart: (id: string, color?: string, size?: string) => void;
+  updateQuantity: (id: string, color: string | undefined, size: string | undefined, n: number) => void;
   toggleWishlist: (id: string, product?: Product) => void;
   clearCart: () => void;
   cartCount: number;
@@ -85,6 +87,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             product: item.product,
             quantity: typeof item.quantity === 'number' ? item.quantity : 1,
             color: item.color || undefined,
+            size: item.size || undefined,
           }))
         : [];
       setCart(parsedCart);
@@ -187,31 +190,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return {
       cart,
       wishlist,
-      addToCart: (product: Product, quantity: number = 1, color?: string) => {
+      addToCart: (product: Product, quantity: number = 1, color?: string, size?: string) => {
         setCart((items) => {
           const targetColor = color || undefined;
+          const targetSize = size || undefined;
           const index = items.findIndex(
-            (item) => item.product.id === product.id && (item.color || undefined) === targetColor
+            (item) =>
+              item.product.id === product.id &&
+              (item.color || undefined) === targetColor &&
+              (item.size || undefined) === targetSize
           );
           if (index !== -1) {
             return items.map((item, i) =>
               i === index ? { ...item, quantity: item.quantity + quantity } : item
             );
           }
-          return [...items, { product, quantity, color: targetColor }];
+          return [...items, { product, quantity, color: targetColor, size: targetSize }];
         });
         showToast('Item added to cart', 'cart', product.name, product.images?.[0]);
       },
-      removeFromCart: (id: string, color?: string) =>
+      removeFromCart: (id: string, color?: string, size?: string) =>
         setCart((items) =>
           items.filter(
-            (item) => !(item.product.id === id && (item.color || undefined) === (color || undefined))
+            (item) =>
+              !(
+                item.product.id === id &&
+                (item.color || undefined) === (color || undefined) &&
+                (item.size || undefined) === (size || undefined)
+              )
           )
         ),
-      updateQuantity: (id: string, color: string | undefined, n: number) =>
+      updateQuantity: (id: string, color: string | undefined, size: string | undefined, n: number) =>
         setCart((items) =>
           items.map((item) =>
-            item.product.id === id && (item.color || undefined) === (color || undefined)
+            item.product.id === id &&
+            (item.color || undefined) === (color || undefined) &&
+            (item.size || undefined) === (size || undefined)
               ? { ...item, quantity: Math.max(1, n) }
               : item
           )
@@ -259,14 +273,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       {/* Global Toast Notification Popup */}
       {toast && (
-        <div className={`toast-notification ${toast.type}`}>
+        <Link
+          href={toast.type === 'cart' ? '/cart' : '/wishlist'}
+          onClick={() => setToast(null)}
+          className={`toast-notification ${toast.type}`}
+          style={{ textDecoration: 'none', cursor: 'pointer' }}
+          title={toast.type === 'cart' ? 'Go to shopping bag' : 'Go to wishlist'}
+        >
           {toast.image && <img src={toast.image} alt={toast.productName || 'Product'} className="toast-img" />}
-          <div className="toast-text">
+          <div className="toast-text" style={{ flex: 1 }}>
             <strong>{toast.type === 'cart' ? 'Shopping Bag' : 'Wishlist'}</strong>
             <span>{toast.message}{toast.productName ? `: ${toast.productName}` : ''}</span>
+            <span style={{ fontSize: '0.74rem', color: '#d4af37', fontWeight: 600, marginTop: '2px', display: 'inline-block' }}>
+              {toast.type === 'cart' ? 'View bag & checkout →' : 'View wishlist →'}
+            </span>
           </div>
-          <button onClick={() => setToast(null)} className="toast-close" aria-label="Close notification">✕</button>
-        </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setToast(null);
+            }}
+            className="toast-close"
+            aria-label="Close notification"
+          >
+            ✕
+          </button>
+        </Link>
       )}
     </StoreContext.Provider>
   );
