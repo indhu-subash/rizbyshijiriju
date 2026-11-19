@@ -679,7 +679,7 @@ export function CheckoutPage() {
                     ) : (
                       <label className="wide">
                         Country
-                        <input value="India 🇮🇳" disabled style={{ background: '#f5f5f5', color: '#666' }} />
+                        <input value="India IN" disabled style={{ background: '#f8f8f8', color: '#333', fontWeight: 500 }} />
                       </label>
                     )}
 
@@ -898,12 +898,12 @@ export function CheckoutPage() {
                   </button>
                 )}
                 {step < 4 ? (
-                  <button type="button" className="button" onClick={() => handleStepClick(step + 1)}>
-                    Continue
+                  <button type="button" className="button" style={{ fontWeight: 700, letterSpacing: '0.08em', padding: '14px 28px', textTransform: 'uppercase' }} onClick={() => handleStepClick(step + 1)}>
+                    CONTINUE
                   </button>
                 ) : (
-                  <button className="button" type="submit" disabled={isSubmitting || isLocationAvailable === false}>
-                    {isSubmitting ? 'Processing...' : 'Place Order'}
+                  <button className="button" type="submit" style={{ fontWeight: 700, letterSpacing: '0.08em', padding: '14px 28px', textTransform: 'uppercase' }} disabled={isSubmitting || isLocationAvailable === false}>
+                    {isSubmitting ? 'Processing...' : 'PLACE ORDER'}
                   </button>
                 )}
               </div>

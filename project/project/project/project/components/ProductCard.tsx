@@ -34,12 +34,17 @@ export function getValidImageUrl(url?: string): string {
 
 export function ProductCard({ product }: { product: Product }) {
   const { toggleWishlist, wishlist, addToCart } = useStore();
-  const sale = product.originalPrice && Math.round((1 - product.price / product.originalPrice) * 100);
+  const sale = product.originalPrice && product.originalPrice > product.price
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    : 0;
   const limited = Array.isArray(product.tags) && product.tags.includes('limited');
   const productSlug = product.slug || product.id || encodeURIComponent(product.name);
 
   const rawImage = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : undefined;
   const imageUrl = getValidImageUrl(rawImage);
+
+  const ratingValue = product.rating ? Number(product.rating).toFixed(1) : '4.5';
+  const reviewsCount = product.reviewCount ?? product.reviews ?? 0;
 
   return (
     <article className="product-card">
@@ -53,10 +58,18 @@ export function ProductCard({ product }: { product: Product }) {
             unoptimized
           />
         </Link>
-        {product.newArrival && <span className="product-badge">NEW</span>}
-        {!product.newArrival && product.bestseller && <span className="product-badge">BESTSELLER</span>}
-        {sale && <span className="product-badge sale">SALE</span>}
-        {limited && product.stock > 0 && product.stock < 4 && <span className="product-badge limited">LIMITED</span>}
+        {sale > 0 ? (
+          <span className="product-badge-discount">{sale}% OFF</span>
+        ) : product.newArrival ? (
+          <span className="product-badge-pill">NEW</span>
+        ) : product.bestseller ? (
+          <span className="product-badge-pill">BESTSELLER</span>
+        ) : null}
+
+        {(limited || (product.stock > 0 && product.stock <= 4)) && (
+          <span className="product-tag-bottom">LIMITED OFFER</span>
+        )}
+
         <button
           className={`wishlist ${wishlist.includes(product.id) ? 'active' : ''}`}
           aria-label="Add to wishlist"
@@ -76,16 +89,18 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="product-category">{product.category}</div>
         <h3>{product.name}</h3>
         <div className="product-meta">
-          <span>₹{(product.price || 0).toLocaleString('en-IN')}</span>
-          {product.originalPrice && (
+          <span className="current-price">₹{(product.price || 0).toLocaleString('en-IN')}</span>
+          {product.originalPrice && product.originalPrice > product.price && (
             <>
-              <del>₹{(product.originalPrice || 0).toLocaleString('en-IN')}</del>
-              <em>{sale}% off</em>
+              <del className="original-price">₹{product.originalPrice.toLocaleString('en-IN')}</del>
+              {sale > 0 && <em className="discount-tag">{sale}% off</em>}
             </>
           )}
         </div>
         <div className="rating">
-          <Star size={12} fill="currentColor" /> {product.rating || 5} <span>({product.reviewCount || 0})</span>
+          <Star size={13} fill="#a9895b" color="#a9895b" />
+          <span className="rating-val">{ratingValue}</span>
+          <span className="reviews-cnt">({reviewsCount})</span>
         </div>
       </Link>
     </article>
