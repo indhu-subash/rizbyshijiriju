@@ -14,7 +14,6 @@ export function CartPage() {
   const [discount, setDiscount] = useState(0);
   const [message, setMessage] = useState('');
 
-  const isFreeShipping = subtotal >= 599 || subtotal === 0;
   const total = Math.max(0, subtotal - discount);
 
   async function apply() {
@@ -109,7 +108,7 @@ export function CartPage() {
               </div>
               <div className="summary-line">
                 <span>Shipping</span>
-                <b>{isFreeShipping ? 'Free' : 'Calculated at checkout'}</b>
+                <b>Calculated at checkout</b>
               </div>
               {discount > 0 && (
                 <div className="summary-line discount">
@@ -129,7 +128,7 @@ export function CartPage() {
               <Link href="/checkout" className="button add-button">
                 Proceed to checkout <ArrowRight size={15} />
               </Link>
-              <p className="summary-note">Free shipping on orders over ₹599 · Free gift on orders over ₹899</p>
+              <p className="summary-note">Fast courier delivery · Free gift on orders over ₹899</p>
             </aside>
           </>
         ) : (

@@ -220,12 +220,8 @@ export function CheckoutPage() {
                 baseCharge: resolvedCharge,
               });
 
-              // Apply ₹599 Free Shipping Rule for India
-              if (discountedSubtotal >= 599) {
-                setShippingCharge(0);
-              } else {
-                setShippingCharge(resolvedCharge);
-              }
+              // Apply calculated regional shipping charge (Kerala ₹60, South India ₹89, Rest of India ₹99)
+              setShippingCharge(resolvedCharge);
             }
           } catch (err: any) {
             console.warn('Failed to fetch India shipping rate:', err);
@@ -858,15 +854,9 @@ export function CheckoutPage() {
                     </small>
                   </div>
                   <div>
-                    {deliveryType === 'IN' && discountedSubtotal >= 599 ? (
-                      <span style={{ background: '#334c3d', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                        FREE
-                      </span>
-                    ) : (
-                      <strong style={{ fontSize: '0.95rem', color: '#111' }}>
-                        ₹{shippingCharge.toLocaleString('en-IN')}
-                      </strong>
-                    )}
+                    <strong style={{ fontSize: '0.95rem', color: '#111' }}>
+                      ₹{shippingCharge.toLocaleString('en-IN')}
+                    </strong>
                   </div>
                 </div>
               ) : (
@@ -920,8 +910,10 @@ export function CheckoutPage() {
             >
               {isSubmitting ? (
                 'Processing Order...'
-              ) : (
+              ) : isLocationAvailable ? (
                 `Complete Order · ₹${(totalAmount || 0).toLocaleString('en-IN')}`
+              ) : (
+                'Enter PIN code to continue'
               )}
             </button>
           </form>
@@ -980,8 +972,8 @@ export function CheckoutPage() {
               <span>
                 {isLocationAvailable === false ? (
                   <span style={{ color: '#d32f2f' }}>Unavailable</span>
-                ) : deliveryType === 'IN' && shippingCharge === 0 ? (
-                  'Free'
+                ) : !isLocationAvailable ? (
+                  <span style={{ color: '#b45309', fontWeight: 600 }}>Enter PIN code</span>
                 ) : (
                   `₹${(shippingCharge || 0).toLocaleString('en-IN')}`
                 )}
@@ -991,7 +983,14 @@ export function CheckoutPage() {
 
           <div className="summary-total border-t pt-4 mt-4">
             <span>Total</span>
-            <strong>₹{(totalAmount || 0).toLocaleString('en-IN')}</strong>
+            <div style={{ textAlign: 'right' }}>
+              <strong>₹{(totalAmount || 0).toLocaleString('en-IN')}</strong>
+              {!isLocationAvailable && (
+                <small style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#777' }}>
+                  + shipping fee
+                </small>
+              )}
+            </div>
           </div>
 
           <p className="summary-note" style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.82rem', color: '#777' }}>

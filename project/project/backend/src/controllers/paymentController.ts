@@ -5,18 +5,24 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { calculateShipping, isIndiaCountry } from '../services/shippingService';
 import { sendOrderConfirmationEmail, sendOrderConfirmationWhatsApp } from '../services/notificationService';
+import { notifyOrderConfirmed } from '../services/adminNotifications';
+import { verifyRazorpayWebhookSignature } from '../services/razorpayWebhook';
+import { findProductBySlugOrId } from './productController';
+import { deductOrderStock, restoreOrderInventory, resolveProductVariant } from '../services/inventoryService';
 
-const PAYMENT_MODE = process.env.PAYMENT_MODE || 'mock';
+
+const PAYMENT_MODE = (process.env.PAYMENT_MODE || 'razorpay').toLowerCase();
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
 
 let razorpay: Razorpay | null = null;
-if (PAYMENT_MODE === 'razorpay' && RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
+if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
   razorpay = new Razorpay({
     key_id: RAZORPAY_KEY_ID,
     key_secret: RAZORPAY_KEY_SECRET,
   });
 }
+
 
 export async function createCheckoutOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -60,52 +66,52 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
       return;
     }
 
-    // 1. Calculate authoritative totals on the server
+    // 1. Pre-validate products and calculate authoritative subtotal on the server
     let subtotal = 0;
-    const checkoutItems: any[] = [];
-    const productUpdates: { id: string; newStock: number }[] = [];
 
-    // Load products from DB and verify stock in a single flow
     for (const item of items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId, isActive: true },
-      });
+      const product = await findProductBySlugOrId(item.productId, true);
 
       if (!product) {
+        const inactiveProduct = await findProductBySlugOrId(item.productId, false);
+        if (inactiveProduct) {
+          res.status(404).json({ error: `Product ${item.name || item.productId} is currently inactive.` });
+          return;
+        }
         res.status(404).json({ error: `Product ${item.name || item.productId} is no longer available.` });
         return;
       }
 
-      if (product.stock < item.quantity) {
-        res.status(400).json({ error: `Insufficient stock for ${product.name}. Only ${product.stock} items left.` });
-        return;
-      }
+      const requestedQty = Number(item.quantity) || 1;
 
-      // Validate colour selection against product.colors array
-      if (Array.isArray(product.colors) && product.colors.length > 0) {
-        if (!item.color || !product.colors.includes(item.color)) {
+      if (product.hasVariants) {
+        const variant = await resolveProductVariant(prisma, product.id, item.color, item.size);
+        if (!variant) {
+          const variantDesc = [item.color, item.size].filter(Boolean).join(' / ') || 'standard';
           res.status(400).json({
-            error: `Please select a valid colour for ${product.name}. Available colours: ${product.colors.join(', ')}`,
+            error: `Selected variant (${variantDesc}) for product "${product.name}" is not available.`,
           });
+          return;
+        }
+        if (variant.stock < requestedQty) {
+          const variantDesc = [item.color, item.size].filter(Boolean).join(' / ') || 'standard';
+          res.status(400).json({
+            error: `Insufficient stock for "${product.name}" (${variantDesc}). Only ${variant.stock} left in stock.`,
+          });
+          return;
+        }
+      } else {
+        if (product.stock === 0) {
+          res.status(400).json({ error: `Product ${product.name} is out of stock.` });
+          return;
+        }
+        if (product.stock < requestedQty) {
+          res.status(400).json({ error: `Insufficient stock for ${product.name}. Only ${product.stock} items left.` });
           return;
         }
       }
 
-      subtotal += product.price * item.quantity;
-      checkoutItems.push({
-        productId: product.id,
-        productCode: (product as any).productCode || null,
-        name: product.name,
-        price: product.price,
-        quantity: item.quantity,
-        color: item.color || null,
-        image: product.images[0] || '',
-      });
-
-      productUpdates.push({
-        id: product.id,
-        newStock: product.stock - item.quantity,
-      });
+      subtotal += product.price * requestedQty;
     }
 
     // 2. Coupon Validation
@@ -155,24 +161,20 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     let shippingCharge = 0;
 
     if (isIndia) {
-      // India orders: qualify for free shipping if discounted subtotal >= ₹2000
-      if (discountedSubtotal >= 2000) {
-        shippingCharge = 0;
-      } else {
-        const shippingRes = await calculateShipping({
-          country: 'IN',
-          pincode: postalOrPincode,
+      const shippingRes = await calculateShipping({
+        country: 'IN',
+        pincode: postalOrPincode,
+        state: shippingAddress.state,
+      });
+
+      if (!shippingRes.available) {
+        res.status(400).json({
+          error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
         });
-
-        if (!shippingRes.available) {
-          res.status(400).json({
-            error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
-          });
-          return;
-        }
-
-        shippingCharge = shippingRes.shippingCharge;
+        return;
       }
+
+      shippingCharge = shippingRes.shippingCharge;
     } else {
       // International orders: DO NOT automatically apply India's ₹2000 free-shipping rule
       const shippingRes = await calculateShipping({
@@ -195,22 +197,10 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     const total = Math.max(0, discountedSubtotal + shippingCharge);
     const orderId = `RIZ-2026-${Math.floor(10000 + Math.random() * 89999)}`;
 
-    // 4. Database Transaction: Decrement stock, create order, and increment coupon usage
+    // 4. Database Transaction: Atomic stock deduction, order creation, and coupon usage
     const result = await prisma.$transaction(async (tx: any) => {
-      // Re-verify stock inside the transaction for concurrency safety
-      for (const update of productUpdates) {
-        const prod = await tx.product.findUnique({
-          where: { id: update.id },
-        });
-        if (!prod || prod.stock < (items.find((it) => it.productId === update.id)?.quantity || 0)) {
-          throw new Error('Stock changed during transaction. Please try again.');
-        }
-
-        await tx.product.update({
-          where: { id: update.id },
-          data: { stock: update.newStock },
-        });
-      }
+      // Concurrency-safe atomic deduction of product & variant stock
+      const preparedOrderItems = await deductOrderStock(tx, items);
 
       // Increment coupon usage
       if (couponCode) {
@@ -220,7 +210,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         });
       }
 
-      // Create Order
+      // Create Order with variant references
       const newOrder = await tx.order.create({
         data: {
           userId: req.user?.id || null,
@@ -242,13 +232,15 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
           shippingPincode: postalOrPincode,
           shippingCountry: country,
           items: {
-            create: checkoutItems.map((item) => ({
+            create: preparedOrderItems.map((item) => ({
               productId: item.productId,
               productCode: item.productCode || null,
               name: item.name,
               price: item.price,
               quantity: item.quantity,
               color: item.color,
+              size: item.size,
+              variantId: item.variantId,
               image: item.image,
             })),
           },
@@ -259,39 +251,61 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     });
 
     // 5. Razorpay Integration
-    if (paymentMethod !== 'cod' && PAYMENT_MODE === 'razorpay' && razorpay) {
-      try {
-        const razorpayOrder = await razorpay.orders.create({
-          amount: Math.round(total * 100), // Razorpay accepts paise
-          currency: 'INR',
-          receipt: result.orderId,
-        });
+    if (paymentMethod !== 'cod') {
+      if (PAYMENT_MODE === 'razorpay') {
+        if (!razorpay || !RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+          res.status(500).json({ error: 'Razorpay payment gateway configuration missing on backend (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET required).' });
+          return;
+        }
 
-        await prisma.order.update({
-          where: { id: result.id },
-          data: { razorpayOrderId: razorpayOrder.id },
-        });
+        try {
+          const razorpayOrder = await razorpay.orders.create({
+            amount: Math.round(total * 100), // Razorpay accepts paise
+            currency: 'INR',
+            receipt: result.orderId,
+          });
 
+          await prisma.order.update({
+            where: { id: result.id },
+            data: { razorpayOrderId: razorpayOrder.id },
+          });
+
+          res.status(201).json({
+            message: 'Checkout initialized.',
+            paymentMode: 'razorpay',
+            razorpayKeyId: RAZORPAY_KEY_ID,
+            razorpayOrderId: razorpayOrder.id,
+            order: result,
+          });
+          return;
+        } catch (err) {
+          console.error('Razorpay order creation error:', err);
+          throw new Error('Razorpay integration error. Order could not be initialized.');
+        }
+      }
+
+      // Explicit Mock Mode for local development only if process.env.PAYMENT_MODE === 'mock'
+      if (PAYMENT_MODE === 'mock') {
         res.status(201).json({
-          message: 'Checkout initialized.',
-          paymentMode: 'razorpay',
-          razorpayKeyId: RAZORPAY_KEY_ID,
-          razorpayOrderId: razorpayOrder.id,
+          message: 'Checkout initialized in mock payment mode.',
+          paymentMode: 'mock',
           order: result,
         });
         return;
-      } catch (err) {
-        console.error('Razorpay order creation error:', err);
-        throw new Error('Razorpay integration error. Order could not be initialized.');
       }
     }
 
-    // 6. Cash on Delivery or Mock Payment fallback
+    // 6. Cash on Delivery (COD) fallback
+    // COD orders are created directly in the existing 'Confirmed' state: record the admin notifications
+    // (a single fast DB insert; the actual WhatsApp/email sending runs asynchronously and cannot fail the order).
+    if (paymentMethod === 'cod') await notifyOrderConfirmed(result);
+
     res.status(201).json({
-      message: paymentMethod === 'cod' ? 'Order placed successfully.' : 'Checkout initialized in mock payment mode.',
-      paymentMode: paymentMethod === 'cod' ? 'cod' : 'mock',
+      message: 'Order placed successfully.',
+      paymentMode: 'cod',
       order: result,
     });
+
   } catch (error: any) {
     console.error('Checkout error:', error);
     res.status(500).json({ error: error.message || 'Internal server error during checkout.' });
@@ -329,13 +343,8 @@ export async function cancelOrder(req: AuthenticatedRequest, res: Response): Pro
           },
         });
 
-        // Restore product stock
-        for (const item of order.items) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
-          });
-        }
+        // Restore product and variant stock atomically and idempotently
+        await restoreOrderInventory(tx, order.id, { reason: 'Customer Cancelled' });
       });
 
       console.log(`[Order Cancelled] Order #${order.orderId} marked as Cancelled and inventory restored.`);
@@ -369,22 +378,61 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    // Helper to confirm order and trigger Email + WhatsApp notifications
+    // STRICT GUARD: Rejects verification if order is already Cancelled
+    if (order.orderStatus === 'Cancelled' || order.paymentStatus === 'cancelled') {
+      res.status(400).json({ error: 'Order has already been cancelled and cannot be confirmed.' });
+      return;
+    }
+
+    // Helper to confirm order atomically and trigger Email + WhatsApp notifications
     const confirmAndNotifyOrder = async (payId: string, rzpOrdId?: string) => {
-      const updatedOrder = await prisma.order.update({
-        where: { id: order.id },
+      const updateResult = await prisma.order.updateMany({
+        where: {
+          id: order.id,
+          orderStatus: 'Pending',
+        },
         data: {
           paymentStatus: 'paid',
           orderStatus: 'Confirmed',
           paymentId: payId,
           ...(rzpOrdId ? { razorpayOrderId: rzpOrdId } : {}),
         },
+      });
+
+      if (updateResult.count === 0) {
+        // Idempotent recovery: If order was ALREADY confirmed (e.g. by webhook or prior verify call)
+        const existingOrder = await prisma.order.findUnique({
+          where: { id: order.id },
+          include: { items: true },
+        });
+
+        if (existingOrder && (existingOrder.orderStatus === 'Confirmed' || existingOrder.paymentStatus === 'paid')) {
+          if (!existingOrder.paymentId && payId) {
+            await prisma.order.update({
+              where: { id: existingOrder.id },
+              data: { paymentId: payId, ...(rzpOrdId ? { razorpayOrderId: rzpOrdId } : {}) },
+            });
+          }
+          // Self-healing + idempotent: ensures the admin notification rows exist (unique per order/channel).
+          // Never in mock mode: mock mode does not verify any payment.
+          if (PAYMENT_MODE !== 'mock') await notifyOrderConfirmed(existingOrder);
+          return existingOrder;
+        }
+
+        throw new Error('Order is not in pending status and cannot be confirmed.');
+      }
+
+      const updatedOrder = await prisma.order.findUnique({
+        where: { id: order.id },
         include: { items: true },
       });
 
-      // Async dispatch notifications
-      sendOrderConfirmationEmail(updatedOrder).catch((e) => console.error('Email error:', e));
-      sendOrderConfirmationWhatsApp(updatedOrder).catch((e) => console.error('WhatsApp error:', e));
+      if (updatedOrder) {
+        sendOrderConfirmationEmail(updatedOrder).catch((e) => console.error('Email error:', e));
+        sendOrderConfirmationWhatsApp(updatedOrder).catch((e) => console.error('WhatsApp error:', e));
+        // Admin WhatsApp + email (DB-backed, async, never blocks or fails the order). Skipped in mock mode.
+        if (PAYMENT_MODE !== 'mock') await notifyOrderConfirmed(updatedOrder);
+      }
 
       return updatedOrder;
     };
@@ -406,25 +454,30 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
         return;
       }
 
+      // Check razorpayOrderId matches order.razorpayOrderId if present
+      if (order.razorpayOrderId && order.razorpayOrderId !== razorpayOrderId) {
+        res.status(400).json({ error: 'Razorpay order ID mismatch.' });
+        return;
+      }
+
       const hmac = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET);
       hmac.update(`${razorpayOrderId}|${razorpayPaymentId}`);
       const generatedSignature = hmac.digest('hex');
 
       if (generatedSignature !== razorpaySignature) {
-        // Mark payment as failed & restore stock
-        await prisma.$transaction(async (tx: any) => {
-          await tx.order.update({
-            where: { id: order.id },
-            data: { paymentStatus: 'failed', orderStatus: 'Cancelled' },
-          });
-
-          for (const item of order.items) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
+        // Mark payment as failed & restore stock atomically ONLY if order is still Pending
+        if (order.orderStatus === 'Pending') {
+          await prisma.$transaction(async (tx: any) => {
+            const cancelUpdate = await tx.order.updateMany({
+              where: { id: order.id, orderStatus: 'Pending' },
+              data: { paymentStatus: 'failed', orderStatus: 'Cancelled' },
             });
-          }
-        });
+
+            if (cancelUpdate.count > 0) {
+              await restoreOrderInventory(tx, order.id, { reason: 'Payment Verification Failed' });
+            }
+          });
+        }
 
         res.status(400).json({ error: 'Invalid signature. Payment verification failed.' });
         return;
@@ -440,29 +493,33 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
     }
 
     res.status(400).json({ error: 'Payment mode mismatch or keys missing.' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Payment verification error:', error);
-    res.status(500).json({ error: 'Failed to verify payment.' });
+    res.status(500).json({ error: error.message || 'Failed to verify payment.' });
   }
 }
 
 export async function handleRazorpayWebhook(req: any, res: Response): Promise<void> {
   try {
-    const signature = req.headers['x-razorpay-signature'] as string;
+    // SECURITY: a webhook may only confirm a payment if its signature is verified against the ORIGINAL raw body
+    // with RAZORPAY_WEBHOOK_SECRET. No secret, no signature, no raw body or a bad signature => rejected, nothing is changed.
+    const signature = req.headers['x-razorpay-signature'];
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
-    const rawBody = req.rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
-
-    if (webhookSecret && signature) {
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(rawBody)
-        .digest('hex');
-
-      if (expectedSignature !== signature) {
-        res.status(400).json({ error: 'Invalid webhook signature.' });
-        return;
-      }
+    if (!webhookSecret) {
+      console.error('[Webhook] RAZORPAY_WEBHOOK_SECRET is not configured. Rejecting webhook; no order was changed.');
+      res.status(503).json({ error: 'Webhook verification is not configured.' });
+      return;
+    }
+    if (!Buffer.isBuffer(req.rawBody) || !signature) {
+      console.warn('[Webhook] Rejected: missing signature header or raw body.');
+      res.status(400).json({ error: 'Invalid webhook request.' });
+      return;
+    }
+    if (!verifyRazorpayWebhookSignature(req.rawBody, signature, webhookSecret)) {
+      console.warn('[Webhook] Rejected: invalid signature.');
+      res.status(400).json({ error: 'Invalid webhook signature.' });
+      return;
     }
 
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -485,20 +542,40 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
           include: { items: true },
         });
 
-        if (order && order.paymentStatus !== 'paid') {
-          const updated = await prisma.order.update({
-            where: { id: order.id },
-            data: {
-              paymentStatus: 'paid',
-              orderStatus: 'Confirmed',
-              paymentId: razorpayPaymentId || order.paymentId,
-              razorpayOrderId: razorpayOrderId,
-            },
-            include: { items: true },
-          });
+        if (order && order.orderStatus !== 'Cancelled' && order.paymentStatus !== 'cancelled') {
+          if (order.orderStatus === 'Pending') {
+            const updateResult = await prisma.order.updateMany({
+              where: { id: order.id, orderStatus: 'Pending' },
+              data: {
+                paymentStatus: 'paid',
+                orderStatus: 'Confirmed',
+                paymentId: razorpayPaymentId || order.paymentId,
+                razorpayOrderId: razorpayOrderId,
+              },
+            });
 
-          sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
-          sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
+            if (updateResult.count > 0) {
+              const updated = await prisma.order.findUnique({
+                where: { id: order.id },
+                include: { items: true },
+              });
+              if (updated) {
+                sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
+                sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
+                await notifyOrderConfirmed(updated);
+              }
+            }
+          } else if (order.orderStatus === 'Confirmed' || order.paymentStatus === 'paid') {
+            // Idempotent webhook receipt for already confirmed order
+            if (!order.paymentId && razorpayPaymentId) {
+              await prisma.order.update({
+                where: { id: order.id },
+                data: { paymentId: razorpayPaymentId, razorpayOrderId: razorpayOrderId },
+              });
+            }
+            // Idempotent: guarantees the admin notification rows exist if an earlier attempt crashed.
+            await notifyOrderConfirmed(order);
+          }
         }
       }
     }
@@ -510,3 +587,130 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
   }
 }
 
+export async function cancelPayment(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      res.status(400).json({ error: 'Order ID is required for cancellation.' });
+      return;
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      res.status(404).json({ error: 'Order not found.' });
+      return;
+    }
+
+    // Rejects cancellation if order was already confirmed / paid
+    if (order.paymentStatus === 'paid' || order.orderStatus === 'Confirmed') {
+      res.status(400).json({ error: 'Cannot cancel a verified and paid order.' });
+      return;
+    }
+
+    // Idempotency check: If order is ALREADY cancelled, return success without restoring stock again
+    if (order.orderStatus === 'Cancelled' || order.paymentStatus === 'cancelled') {
+      res.status(200).json({
+        message: 'Order is already cancelled.',
+        orderId: order.orderId,
+      });
+      return;
+    }
+
+    // Perform cancellation transaction: update order status + idempotently restore stock + adjust coupon usage
+    await prisma.$transaction(async (tx: any) => {
+      const cancelResult = await tx.order.updateMany({
+        where: { id: order.id, orderStatus: 'Pending' },
+        data: {
+          orderStatus: 'Cancelled',
+          paymentStatus: 'cancelled',
+        },
+      });
+
+      if (cancelResult.count > 0) {
+        // Restore product and variant stock atomically and idempotently
+        await restoreOrderInventory(tx, order.id, { reason: 'Admin / Webhook Cancelled' });
+
+        // Decrement coupon usage if applied
+        if (order.couponCode) {
+          await tx.coupon.updateMany({
+            where: { code: order.couponCode.toUpperCase(), usedCount: { gt: 0 } },
+            data: { usedCount: { decrement: 1 } },
+          });
+        }
+      }
+    });
+
+    res.status(200).json({
+      message: 'Order cancelled successfully and inventory restored.',
+      orderId: order.orderId,
+    });
+  } catch (error: any) {
+    console.error('Order cancellation error:', error);
+    res.status(500).json({ error: 'Failed to cancel order.' });
+  }
+}
+
+// New endpoint: Validate coupon without creating order
+export async function validateCoupon(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { couponCode, subtotal } = req.body;
+    if (!couponCode) {
+      res.status(400).json({ error: 'Coupon code is required.' });
+      return;
+    }
+    if (typeof subtotal !== 'number' || subtotal < 0) {
+      res.status(400).json({ error: 'Valid subtotal is required.' });
+      return;
+    }
+    const coupon = await prisma.coupon.findUnique({
+      where: { code: couponCode.toUpperCase(), isActive: true },
+    });
+    if (!coupon) {
+      res.status(400).json({ error: 'Invalid coupon code.' });
+      return;
+    }
+    // Expiry check
+    if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+      res.status(400).json({ error: 'This coupon code has expired.' });
+      return;
+    }
+    // Min order check
+    if (subtotal < coupon.minOrderValue) {
+      res.status(400).json({ error: `Coupon requires a minimum order value of ₹${coupon.minOrderValue}.` });
+      return;
+    }
+    // Usage limit check (do not increment here)
+    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+      res.status(400).json({ error: 'This coupon has reached its usage limit.' });
+      return;
+    }
+    // Calculate discount
+    let discount = 0;
+    if (coupon.discountType === 'percentage') {
+      discount = (subtotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscount !== null && discount > coupon.maxDiscount) {
+        discount = coupon.maxDiscount;
+      }
+    } else {
+      discount = coupon.discountValue;
+    }
+    discount = Math.round(discount * 100) / 100;
+    res.status(200).json({
+      valid: true,
+      discount,
+      coupon: {
+        code: coupon.code,
+        type: coupon.discountType,
+        value: coupon.discountValue,
+      },
+    });
+  } catch (error: any) {
+    console.error('Validate coupon error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error during coupon validation.' });
+  }
+}

@@ -5,7 +5,10 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { calculateShipping, isIndiaCountry } from '../services/shippingService';
 import { sendOrderConfirmationEmail, sendOrderConfirmationWhatsApp } from '../services/notificationService';
+import { notifyOrderConfirmed } from '../services/adminNotifications';
+import { verifyRazorpayWebhookSignature } from '../services/razorpayWebhook';
 import { findProductBySlugOrId } from './productController';
+import { deductOrderStock, restoreOrderInventory, resolveProductVariant } from '../services/inventoryService';
 
 
 const PAYMENT_MODE = (process.env.PAYMENT_MODE || 'razorpay').toLowerCase();
@@ -63,17 +66,13 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
       return;
     }
 
-    // 1. Calculate authoritative totals on the server
+    // 1. Pre-validate products and calculate authoritative subtotal on the server
     let subtotal = 0;
-    const checkoutItems: any[] = [];
-    const productUpdates: { id: string; sizeId?: string | null; size?: string | null; quantity: number }[] = [];
 
-    // Load products from DB and verify stock in a single flow
     for (const item of items) {
-      let product = await findProductBySlugOrId(item.productId, true);
+      const product = await findProductBySlugOrId(item.productId, true);
 
       if (!product) {
-        // Check if product exists but is inactive
         const inactiveProduct = await findProductBySlugOrId(item.productId, false);
         if (inactiveProduct) {
           res.status(404).json({ error: `Product ${item.name || item.productId} is currently inactive.` });
@@ -83,33 +82,21 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         return;
       }
 
-      // Check if product has size variants
-      const hasSizes = Array.isArray(product.sizes) && product.sizes.length > 0;
-      const isSizedType = product.productType === 'bangle' || product.productType === 'ring';
+      const requestedQty = Number(item.quantity) || 1;
 
-      let selectedSizeRecord: any = null;
-
-      if (hasSizes || isSizedType) {
-        if (!item.size || typeof item.size !== 'string' || !item.size.trim()) {
-          res.status(400).json({ error: `Please select a size for ${product.name}.` });
-          return;
-        }
-        const itemSizeTrimmed = String(item.size).trim();
-        selectedSizeRecord = (product.sizes || []).find((s: any) => String(s.size).trim() === itemSizeTrimmed);
-
-        if (!selectedSizeRecord) {
-          res.status(400).json({ error: `Invalid size '${item.size}' for ${product.name}.` });
-          return;
-        }
-
-        if (selectedSizeRecord.stock === 0) {
-          res.status(400).json({ error: `Size ${item.size} of ${product.name} is out of stock.` });
-          return;
-        }
-
-        if (selectedSizeRecord.stock < item.quantity) {
+      if (product.hasVariants) {
+        const variant = await resolveProductVariant(prisma, product.id, item.color, item.size);
+        if (!variant) {
+          const variantDesc = [item.color, item.size].filter(Boolean).join(' / ') || 'standard';
           res.status(400).json({
-            error: `Insufficient stock for size ${item.size} of ${product.name}. Only ${selectedSizeRecord.stock} items left.`,
+            error: `Selected variant (${variantDesc}) for product "${product.name}" is not available.`,
+          });
+          return;
+        }
+        if (variant.stock < requestedQty) {
+          const variantDesc = [item.color, item.size].filter(Boolean).join(' / ') || 'standard';
+          res.status(400).json({
+            error: `Insufficient stock for "${product.name}" (${variantDesc}). Only ${variant.stock} left in stock.`,
           });
           return;
         }
@@ -118,43 +105,13 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
           res.status(400).json({ error: `Product ${product.name} is out of stock.` });
           return;
         }
-
-        if (product.stock < item.quantity) {
+        if (product.stock < requestedQty) {
           res.status(400).json({ error: `Insufficient stock for ${product.name}. Only ${product.stock} items left.` });
           return;
         }
       }
 
-      // Validate colour selection against product.colors array (case-insensitive)
-      if (Array.isArray(product.colors) && product.colors.length > 0) {
-        const validColorsLower = product.colors.map((c) => c.toLowerCase().trim());
-        const selectedColorLower = (item.color || '').toLowerCase().trim();
-        if (!item.color || !validColorsLower.includes(selectedColorLower)) {
-          res.status(400).json({
-            error: `Please select a valid colour for ${product.name}. Available colours: ${product.colors.join(', ')}`,
-          });
-          return;
-        }
-      }
-
-      subtotal += product.price * item.quantity;
-      checkoutItems.push({
-        productId: product.id,
-        productCode: (product as any).productCode || null,
-        name: product.name,
-        price: product.price,
-        quantity: item.quantity,
-        color: item.color || null,
-        size: item.size ? String(item.size).trim() : null,
-        image: product.images[0] || '',
-      });
-
-      productUpdates.push({
-        id: product.id,
-        sizeId: selectedSizeRecord ? selectedSizeRecord.id : null,
-        size: item.size ? String(item.size).trim() : null,
-        quantity: item.quantity,
-      });
+      subtotal += product.price * requestedQty;
     }
 
     // 2. Coupon Validation
@@ -204,24 +161,20 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     let shippingCharge = 0;
 
     if (isIndia) {
-      // India orders: qualify for free shipping if discounted subtotal >= ₹2000
-      if (discountedSubtotal >= 2000) {
-        shippingCharge = 0;
-      } else {
-        const shippingRes = await calculateShipping({
-          country: 'IN',
-          pincode: postalOrPincode,
+      const shippingRes = await calculateShipping({
+        country: 'IN',
+        pincode: postalOrPincode,
+        state: shippingAddress.state,
+      });
+
+      if (!shippingRes.available) {
+        res.status(400).json({
+          error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
         });
-
-        if (!shippingRes.available) {
-          res.status(400).json({
-            error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
-          });
-          return;
-        }
-
-        shippingCharge = shippingRes.shippingCharge;
+        return;
       }
+
+      shippingCharge = shippingRes.shippingCharge;
     } else {
       // International orders: DO NOT automatically apply India's ₹2000 free-shipping rule
       const shippingRes = await calculateShipping({
@@ -244,48 +197,10 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     const total = Math.max(0, discountedSubtotal + shippingCharge);
     const orderId = `RIZ-2026-${Math.floor(10000 + Math.random() * 89999)}`;
 
-    // 4. Database Transaction: Decrement stock, create order, and increment coupon usage
+    // 4. Database Transaction: Atomic stock deduction, order creation, and coupon usage
     const result = await prisma.$transaction(async (tx: any) => {
-      // Re-verify and deduct stock inside transaction
-      for (const update of productUpdates) {
-        if (update.sizeId && update.size) {
-          // Size-wise product: atomically decrement ProductSize stock
-          const updateSizeRes = await tx.productSize.updateMany({
-            where: {
-              id: update.sizeId,
-              stock: { gte: update.quantity },
-            },
-            data: {
-              stock: { decrement: update.quantity },
-            },
-          });
-
-          if (updateSizeRes.count === 0) {
-            throw new Error(`Size stock changed during transaction for item. Please try again.`);
-          }
-
-          // Decrement total Product stock as well
-          await tx.product.update({
-            where: { id: update.id },
-            data: { stock: { decrement: update.quantity } },
-          });
-        } else {
-          // Regular product
-          const updateProdRes = await tx.product.updateMany({
-            where: {
-              id: update.id,
-              stock: { gte: update.quantity },
-            },
-            data: {
-              stock: { decrement: update.quantity },
-            },
-          });
-
-          if (updateProdRes.count === 0) {
-            throw new Error(`Stock changed during transaction for product. Please try again.`);
-          }
-        }
-      }
+      // Concurrency-safe atomic deduction of product & variant stock
+      const preparedOrderItems = await deductOrderStock(tx, items);
 
       // Increment coupon usage
       if (couponCode) {
@@ -295,7 +210,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
         });
       }
 
-      // Create Order
+      // Create Order with variant references
       const newOrder = await tx.order.create({
         data: {
           userId: req.user?.id || null,
@@ -317,14 +232,15 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
           shippingPincode: postalOrPincode,
           shippingCountry: country,
           items: {
-            create: checkoutItems.map((item) => ({
+            create: preparedOrderItems.map((item) => ({
               productId: item.productId,
               productCode: item.productCode || null,
               name: item.name,
               price: item.price,
               quantity: item.quantity,
               color: item.color,
-              size: item.size || null,
+              size: item.size,
+              variantId: item.variantId,
               image: item.image,
             })),
           },
@@ -380,6 +296,10 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     }
 
     // 6. Cash on Delivery (COD) fallback
+    // COD orders are created directly in the existing 'Confirmed' state: record the admin notifications
+    // (a single fast DB insert; the actual WhatsApp/email sending runs asynchronously and cannot fail the order).
+    if (paymentMethod === 'cod') await notifyOrderConfirmed(result);
+
     res.status(201).json({
       message: 'Order placed successfully.',
       paymentMode: 'cod',
@@ -423,21 +343,8 @@ export async function cancelOrder(req: AuthenticatedRequest, res: Response): Pro
           },
         });
 
-        // Restore product stock
-        for (const item of order.items) {
-          if (item.productId) {
-            if (item.size) {
-              await tx.productSize.updateMany({
-                where: { productId: item.productId, size: item.size },
-                data: { stock: { increment: item.quantity } },
-              });
-            }
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
-            });
-          }
-        }
+        // Restore product and variant stock atomically and idempotently
+        await restoreOrderInventory(tx, order.id, { reason: 'Customer Cancelled' });
       });
 
       console.log(`[Order Cancelled] Order #${order.orderId} marked as Cancelled and inventory restored.`);
@@ -506,6 +413,9 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
               data: { paymentId: payId, ...(rzpOrdId ? { razorpayOrderId: rzpOrdId } : {}) },
             });
           }
+          // Self-healing + idempotent: ensures the admin notification rows exist (unique per order/channel).
+          // Never in mock mode: mock mode does not verify any payment.
+          if (PAYMENT_MODE !== 'mock') await notifyOrderConfirmed(existingOrder);
           return existingOrder;
         }
 
@@ -520,6 +430,8 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       if (updatedOrder) {
         sendOrderConfirmationEmail(updatedOrder).catch((e) => console.error('Email error:', e));
         sendOrderConfirmationWhatsApp(updatedOrder).catch((e) => console.error('WhatsApp error:', e));
+        // Admin WhatsApp + email (DB-backed, async, never blocks or fails the order). Skipped in mock mode.
+        if (PAYMENT_MODE !== 'mock') await notifyOrderConfirmed(updatedOrder);
       }
 
       return updatedOrder;
@@ -556,24 +468,13 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
         // Mark payment as failed & restore stock atomically ONLY if order is still Pending
         if (order.orderStatus === 'Pending') {
           await prisma.$transaction(async (tx: any) => {
-            await tx.order.updateMany({
+            const cancelUpdate = await tx.order.updateMany({
               where: { id: order.id, orderStatus: 'Pending' },
               data: { paymentStatus: 'failed', orderStatus: 'Cancelled' },
             });
 
-            for (const item of order.items) {
-              if (item.productId) {
-                if (item.size) {
-                  await tx.productSize.updateMany({
-                    where: { productId: item.productId, size: item.size },
-                    data: { stock: { increment: item.quantity } },
-                  });
-                }
-                await tx.product.update({
-                  where: { id: item.productId },
-                  data: { stock: { increment: item.quantity } },
-                });
-              }
+            if (cancelUpdate.count > 0) {
+              await restoreOrderInventory(tx, order.id, { reason: 'Payment Verification Failed' });
             }
           });
         }
@@ -600,21 +501,25 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
 
 export async function handleRazorpayWebhook(req: any, res: Response): Promise<void> {
   try {
-    const signature = req.headers['x-razorpay-signature'] as string;
+    // SECURITY: a webhook may only confirm a payment if its signature is verified against the ORIGINAL raw body
+    // with RAZORPAY_WEBHOOK_SECRET. No secret, no signature, no raw body or a bad signature => rejected, nothing is changed.
+    const signature = req.headers['x-razorpay-signature'];
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
-    const rawBody = req.rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
-
-    if (webhookSecret && signature) {
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(rawBody)
-        .digest('hex');
-
-      if (expectedSignature !== signature) {
-        res.status(400).json({ error: 'Invalid webhook signature.' });
-        return;
-      }
+    if (!webhookSecret) {
+      console.error('[Webhook] RAZORPAY_WEBHOOK_SECRET is not configured. Rejecting webhook; no order was changed.');
+      res.status(503).json({ error: 'Webhook verification is not configured.' });
+      return;
+    }
+    if (!Buffer.isBuffer(req.rawBody) || !signature) {
+      console.warn('[Webhook] Rejected: missing signature header or raw body.');
+      res.status(400).json({ error: 'Invalid webhook request.' });
+      return;
+    }
+    if (!verifyRazorpayWebhookSignature(req.rawBody, signature, webhookSecret)) {
+      console.warn('[Webhook] Rejected: invalid signature.');
+      res.status(400).json({ error: 'Invalid webhook signature.' });
+      return;
     }
 
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -657,6 +562,7 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
               if (updated) {
                 sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
                 sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
+                await notifyOrderConfirmed(updated);
               }
             }
           } else if (order.orderStatus === 'Confirmed' || order.paymentStatus === 'paid') {
@@ -667,6 +573,8 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
                 data: { paymentId: razorpayPaymentId, razorpayOrderId: razorpayOrderId },
               });
             }
+            // Idempotent: guarantees the admin notification rows exist if an earlier attempt crashed.
+            await notifyOrderConfirmed(order);
           }
         }
       }
@@ -724,23 +632,8 @@ export async function cancelPayment(req: AuthenticatedRequest, res: Response): P
       });
 
       if (cancelResult.count > 0) {
-        // Restore stock for each item in the order
-        for (const item of order.items) {
-          if (item.productId) {
-            if (item.size) {
-              await tx.productSize.updateMany({
-                where: { productId: item.productId, size: item.size },
-                data: { stock: { increment: item.quantity } },
-              });
-            }
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: { increment: item.quantity },
-              },
-            });
-          }
-        }
+        // Restore product and variant stock atomically and idempotently
+        await restoreOrderInventory(tx, order.id, { reason: 'Admin / Webhook Cancelled' });
 
         // Decrement coupon usage if applied
         if (order.couponCode) {
@@ -762,4 +655,62 @@ export async function cancelPayment(req: AuthenticatedRequest, res: Response): P
   }
 }
 
-
+// New endpoint: Validate coupon without creating order
+export async function validateCoupon(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { couponCode, subtotal } = req.body;
+    if (!couponCode) {
+      res.status(400).json({ error: 'Coupon code is required.' });
+      return;
+    }
+    if (typeof subtotal !== 'number' || subtotal < 0) {
+      res.status(400).json({ error: 'Valid subtotal is required.' });
+      return;
+    }
+    const coupon = await prisma.coupon.findUnique({
+      where: { code: couponCode.toUpperCase(), isActive: true },
+    });
+    if (!coupon) {
+      res.status(400).json({ error: 'Invalid coupon code.' });
+      return;
+    }
+    // Expiry check
+    if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+      res.status(400).json({ error: 'This coupon code has expired.' });
+      return;
+    }
+    // Min order check
+    if (subtotal < coupon.minOrderValue) {
+      res.status(400).json({ error: `Coupon requires a minimum order value of ₹${coupon.minOrderValue}.` });
+      return;
+    }
+    // Usage limit check (do not increment here)
+    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+      res.status(400).json({ error: 'This coupon has reached its usage limit.' });
+      return;
+    }
+    // Calculate discount
+    let discount = 0;
+    if (coupon.discountType === 'percentage') {
+      discount = (subtotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscount !== null && discount > coupon.maxDiscount) {
+        discount = coupon.maxDiscount;
+      }
+    } else {
+      discount = coupon.discountValue;
+    }
+    discount = Math.round(discount * 100) / 100;
+    res.status(200).json({
+      valid: true,
+      discount,
+      coupon: {
+        code: coupon.code,
+        type: coupon.discountType,
+        value: coupon.discountValue,
+      },
+    });
+  } catch (error: any) {
+    console.error('Validate coupon error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error during coupon validation.' });
+  }
+}

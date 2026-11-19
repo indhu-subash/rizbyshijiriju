@@ -161,24 +161,20 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     let shippingCharge = 0;
 
     if (isIndia) {
-      // India orders: qualify for free shipping if discounted subtotal >= ₹599 (aligned with marketing campaign & cart AOV tracker)
-      if (discountedSubtotal >= 599) {
-        shippingCharge = 0;
-      } else {
-        const shippingRes = await calculateShipping({
-          country: 'IN',
-          pincode: postalOrPincode,
+      const shippingRes = await calculateShipping({
+        country: 'IN',
+        pincode: postalOrPincode,
+        state: shippingAddress.state,
+      });
+
+      if (!shippingRes.available) {
+        res.status(400).json({
+          error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
         });
-
-        if (!shippingRes.available) {
-          res.status(400).json({
-            error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
-          });
-          return;
-        }
-
-        shippingCharge = shippingRes.shippingCharge;
+        return;
       }
+
+      shippingCharge = shippingRes.shippingCharge;
     } else {
       // International orders: DO NOT automatically apply India's ₹2000 free-shipping rule
       const shippingRes = await calculateShipping({
