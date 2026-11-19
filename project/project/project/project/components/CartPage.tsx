@@ -14,6 +14,7 @@ export function CartPage() {
   const [discount, setDiscount] = useState(0);
   const [message, setMessage] = useState('');
 
+  const isFreeShipping = subtotal >= 2000 || subtotal === 0;
   const total = Math.max(0, subtotal - discount);
 
   async function apply() {
@@ -32,6 +33,7 @@ export function CartPage() {
       setMessage(err.message || 'Failed to apply coupon.');
     }
   }
+
 
   return (
     <main>
@@ -69,28 +71,18 @@ export function CartPage() {
                           </p>
                         )}
                       </div>
-                      {(() => {
-                        const itemOriginalPrice = product.originalPrice && product.originalPrice > product.price
-                          ? product.originalPrice
-                          : Math.max(Math.ceil(((product.price || 499) * 1.8) / 50) * 50 - 1, (product.price || 499) + 200);
-                        return (
-                          <div className="cart-item-price-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 10px' }}>
-                            <span style={{ fontWeight: 600, fontSize: '0.98rem' }}>₹{(product.price || 0).toLocaleString('en-IN')}</span>
-                            <del style={{ color: '#888', fontSize: '0.85rem' }}>₹{itemOriginalPrice.toLocaleString('en-IN')}</del>
-                          </div>
-                        );
-                      })()}
+                      <p>₹{(product.price || 0).toLocaleString('en-IN')}</p>
                       <div className="cart-actions">
                         <div className="quantity">
-                          <button onClick={() => updateQuantity(product.id, color, size, quantity - 1)} aria-label="Decrease quantity">
+                          <button onClick={() => updateQuantity(product.id, color, size, quantity - 1)}>
                             <Minus size={13} />
                           </button>
                           <span>{quantity}</span>
-                          <button onClick={() => updateQuantity(product.id, color, size, quantity + 1)} aria-label="Increase quantity">
+                          <button onClick={() => updateQuantity(product.id, color, size, quantity + 1)}>
                             <Plus size={13} />
                           </button>
                         </div>
-                        <button className="remove" onClick={() => removeFromCart(product.id, color, size)} aria-label="Remove item">
+                        <button className="remove" onClick={() => removeFromCart(product.id, color, size)}>
                           <Trash2 size={14} /> Remove
                         </button>
                       </div>
@@ -108,7 +100,7 @@ export function CartPage() {
               </div>
               <div className="summary-line">
                 <span>Shipping</span>
-                <b>Calculated at checkout</b>
+                <b>{isFreeShipping ? 'Free' : 'Calculated at checkout'}</b>
               </div>
               {discount > 0 && (
                 <div className="summary-line discount">
@@ -128,7 +120,7 @@ export function CartPage() {
               <Link href="/checkout" className="button add-button">
                 Proceed to checkout <ArrowRight size={15} />
               </Link>
-              <p className="summary-note">Fast courier delivery · Free gift on orders over ₹899</p>
+              <p className="summary-note">Free shipping on orders over ₹2,000 · Secure checkout</p>
             </aside>
           </>
         ) : (
