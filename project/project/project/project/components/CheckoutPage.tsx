@@ -186,6 +186,7 @@ export function CheckoutPage() {
             const res = await api.orders.calculateShipping({
               country: 'IN',
               pincode: cleanPincode,
+              state: state || 'Kerala',
             });
 
             if (!res.available || res.error) {
@@ -200,21 +201,30 @@ export function CheckoutPage() {
               if (res.destination?.city && !city) setCity(res.destination.city);
               if (res.destination?.state && !state) setState(res.destination.state);
 
+              // Inside Kerala rate: ₹60 (Kerala pin prefixes: 67, 68, 69 or selected/fetched state)
+              const isKerala =
+                res.destination?.state?.toLowerCase().includes('kerala') ||
+                state?.toLowerCase().includes('kerala') ||
+                ['67', '68', '69'].includes(cleanPincode.substring(0, 2));
+
+              const resolvedCharge = isKerala ? 60 : res.shippingCharge;
+              const resolvedEstimate = isKerala ? '2–4 working days' : (res.estimate || '3–5 working days');
+
               setShippingMeta({
                 city: res.destination?.city || res.destination?.district || '',
                 district: res.destination?.district || '',
-                state: res.destination?.state || '',
+                state: isKerala ? 'Kerala' : (res.destination?.state || ''),
                 country: 'India',
-                estimate: res.estimate || '3–5 working days',
+                estimate: resolvedEstimate,
                 source: res.source,
-                baseCharge: res.shippingCharge,
+                baseCharge: resolvedCharge,
               });
 
               // Apply ₹599 Free Shipping Rule for India
               if (discountedSubtotal >= 599) {
                 setShippingCharge(0);
               } else {
-                setShippingCharge(res.shippingCharge);
+                setShippingCharge(resolvedCharge);
               }
             }
           } catch (err: any) {
@@ -837,10 +847,14 @@ export function CheckoutPage() {
                 <div className="shopify-shipping-box">
                   <div>
                     <b style={{ fontSize: '0.92rem', color: '#1a1a1a', display: 'block' }}>
-                      {deliveryType === 'IN' ? 'Standard Courier Delivery (India)' : `International Air Delivery (${selectedCountryObj.name})`}
+                      {deliveryType === 'IN'
+                        ? (shippingMeta?.state?.toLowerCase().includes('kerala') || state?.toLowerCase().includes('kerala')
+                            ? 'Kerala Standard Delivery'
+                            : 'Standard Courier Delivery (India)')
+                        : `International Air Delivery (${selectedCountryObj.name})`}
                     </b>
                     <small style={{ color: '#666', fontSize: '0.82rem' }}>
-                      {shippingMeta?.estimate || (deliveryType === 'IN' ? '3–5 working days' : '7–12 working days')}
+                      {shippingMeta?.estimate || (deliveryType === 'IN' ? '2–4 working days' : '7–12 working days')}
                     </small>
                   </div>
                   <div>
