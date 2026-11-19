@@ -5418,3 +5418,223 @@ img {
 .ws-status-approved { border-color: #2f8f5b; }
 .ws-status-rejected { border-color: #b3261e; }
 
+/* Clean 1-Page Express Checkout (Shopify Style) */
+.shopify-checkout-card {
+  background: #ffffff;
+  border: 1px solid #e2ddd5;
+  border-radius: 12px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.shopify-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shopify-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shopify-section-head h2,
+.shopify-section h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.shopify-section-sub {
+  font-size: 0.85rem;
+  color: #666666;
+  margin: -6px 0 2px;
+}
+
+.shopify-signin-link {
+  font-size: 0.88rem;
+  color: #334c3d;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.shopify-field-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.shopify-input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d4cdc5;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  color: #1a1a1a;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.shopify-input:focus {
+  outline: none;
+  border-color: #334c3d;
+  box-shadow: 0 0 0 2px rgba(51, 76, 61, 0.15);
+}
+
+.shopify-field-icon {
+  position: absolute;
+  right: 12px;
+  color: #888888;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.shopify-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.shopify-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.shopify-select {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d4cdc5;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  color: #1a1a1a;
+  background: #ffffff;
+  appearance: auto;
+  cursor: pointer;
+}
+
+.shopify-select:focus {
+  outline: none;
+  border-color: #334c3d;
+  box-shadow: 0 0 0 2px rgba(51, 76, 61, 0.15);
+}
+
+.shopify-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.shopify-checkbox-row input {
+  width: 17px;
+  height: 17px;
+  accent-color: #334c3d;
+  cursor: pointer;
+}
+
+.shopify-checkbox-row span {
+  font-size: 0.88rem;
+  color: #333333;
+}
+
+.shopify-shipping-box {
+  background: #f7f6f4;
+  border: 1px solid #e5e0d8;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shopify-shipping-empty {
+  background: #faf9f7;
+  border: 1px dashed #dcd5cb;
+  border-radius: 8px;
+  padding: 16px;
+  color: #666666;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.shopify-payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shopify-payment-item {
+  border: 1px solid #dcd5cb;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.shopify-payment-item.active {
+  border-color: #334c3d;
+  background: #fafaf8;
+  box-shadow: 0 0 0 1px #334c3d;
+}
+
+.shopify-payment-item input[type="radio"] {
+  margin-top: 3px;
+  accent-color: #334c3d;
+}
+
+.shopify-pay-btn {
+  width: 100%;
+  padding: 16px 24px;
+  background: #334c3d;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 14px rgba(51, 76, 61, 0.25);
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.shopify-pay-btn:hover:not(:disabled) {
+  background: #273b2f;
+  transform: translateY(-1px);
+}
+
+.shopify-pay-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .shopify-checkout-card {
+    padding: 18px 16px;
+  }
+  .shopify-grid-2,
+  .shopify-grid-3 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+

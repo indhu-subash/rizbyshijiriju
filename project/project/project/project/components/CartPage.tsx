@@ -2,15 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Minus, Plus, Trash2, Check, Truck, Gift, Package } from 'lucide-react';
+import { ArrowRight, Minus, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { getValidImageUrl } from './ProductCard';
 import { useStore } from './StoreProvider';
 import { api } from '@/lib/api';
-
-const TIER_1_SHIPPING = 599;
-const TIER_2_GIFT = 899;
-const TIER_3_ORGANISER = 1199;
 
 export function CartPage() {
   const { cart, subtotal, updateQuantity, removeFromCart } = useStore();
@@ -18,39 +14,8 @@ export function CartPage() {
   const [discount, setDiscount] = useState(0);
   const [message, setMessage] = useState('');
 
-  const isFreeShipping = subtotal >= TIER_1_SHIPPING || subtotal === 0;
-  const isFreeGift = subtotal >= TIER_2_GIFT;
-  const isOrganiser = subtotal >= TIER_3_ORGANISER;
+  const isFreeShipping = subtotal >= 599 || subtotal === 0;
   const total = Math.max(0, subtotal - discount);
-
-  // Remaining calculation for AOV progress banner
-  let rewardMessage = '';
-  if (subtotal < TIER_1_SHIPPING) {
-    const remaining = TIER_1_SHIPPING - subtotal;
-    rewardMessage = `Add ₹${remaining.toLocaleString('en-IN')} more to get Free Shipping`;
-  } else if (subtotal < TIER_2_GIFT) {
-    const remaining = TIER_2_GIFT - subtotal;
-    rewardMessage = `Add ₹${remaining.toLocaleString('en-IN')} more to get Free Gift`;
-  } else if (subtotal < TIER_3_ORGANISER) {
-    const remaining = TIER_3_ORGANISER - subtotal;
-    rewardMessage = `Add ₹${remaining.toLocaleString('en-IN')} more to get Jewellery Organiser`;
-  } else {
-    rewardMessage = `🎉 Congratulations! You have unlocked Free Shipping, Free Gift & Organiser!`;
-  }
-
-  // Progress percentage across the three milestones (0% to 100%)
-  let progressPercent = 0;
-  if (subtotal <= 0) {
-    progressPercent = 0;
-  } else if (subtotal < TIER_1_SHIPPING) {
-    progressPercent = Math.min(33.3, (subtotal / TIER_1_SHIPPING) * 33.3);
-  } else if (subtotal < TIER_2_GIFT) {
-    progressPercent = 33.3 + Math.min(33.3, ((subtotal - TIER_1_SHIPPING) / (TIER_2_GIFT - TIER_1_SHIPPING)) * 33.3);
-  } else if (subtotal < TIER_3_ORGANISER) {
-    progressPercent = 66.6 + Math.min(33.4, ((subtotal - TIER_2_GIFT) / (TIER_3_ORGANISER - TIER_2_GIFT)) * 33.4);
-  } else {
-    progressPercent = 100;
-  }
 
   async function apply() {
     setMessage('');
@@ -79,49 +44,6 @@ export function CartPage() {
         {cart.length ? (
           <>
             <div className="cart-items">
-              {/* Average Order Value (AOV) Reward Progress Widget */}
-              <div className="aov-tracker-card">
-                <div className="aov-banner">
-                  <span>{rewardMessage}</span>
-                </div>
-                <div className="aov-progress-container">
-                  <div className="aov-progress-bar-bg">
-                    <div
-                      className="aov-progress-bar-fill"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  <div className="aov-milestones">
-                    {/* Milestone 1: Free Shipping */}
-                    <div className={`aov-milestone ${isFreeShipping ? 'active' : ''}`}>
-                      <span className="aov-node-title">FREE SHIPPING</span>
-                      <div className="aov-node-icon">
-                        {isFreeShipping ? <Check size={14} strokeWidth={2.5} /> : <Truck size={14} />}
-                      </div>
-                      <span className="aov-node-badge">₹599</span>
-                    </div>
-
-                    {/* Milestone 2: Free Gift */}
-                    <div className={`aov-milestone ${isFreeGift ? 'active' : ''}`}>
-                      <span className="aov-node-title">FREE GIFT</span>
-                      <div className="aov-node-icon">
-                        {isFreeGift ? <Check size={14} strokeWidth={2.5} /> : <Gift size={14} />}
-                      </div>
-                      <span className="aov-node-badge">₹899</span>
-                    </div>
-
-                    {/* Milestone 3: Organiser */}
-                    <div className={`aov-milestone ${isOrganiser ? 'active' : ''}`}>
-                      <span className="aov-node-title">ORGANISER</span>
-                      <div className="aov-node-icon">
-                        {isOrganiser ? <Check size={14} strokeWidth={2.5} /> : <Package size={14} />}
-                      </div>
-                      <span className="aov-node-badge">₹1,199</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {cart.map(({ product, quantity, color, size }) => {
                 const productSlug = product.slug || product.id || encodeURIComponent(product.name);
                 const imageUrl = getValidImageUrl(product.images?.[0]);

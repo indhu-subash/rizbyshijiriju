@@ -3,11 +3,39 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Lock, Globe, MapPin } from 'lucide-react';
+import { Check, Lock, Globe, MapPin, HelpCircle, Search } from 'lucide-react';
 import { FormEvent, useState, useEffect, useMemo } from 'react';
 import { useStore } from './StoreProvider';
 import { api } from '@/lib/api';
-import { INTERNATIONAL_COUNTRIES, isIndia, CountryOption } from '@/lib/countries';
+import { INTERNATIONAL_COUNTRIES, isIndia } from '@/lib/countries';
+
+const INDIAN_STATES = [
+  'Kerala',
+  'Tamil Nadu',
+  'Karnataka',
+  'Maharashtra',
+  'Delhi',
+  'Andhra Pradesh',
+  'Telangana',
+  'Gujarat',
+  'Goa',
+  'Rajasthan',
+  'Uttar Pradesh',
+  'West Bengal',
+  'Madhya Pradesh',
+  'Punjab',
+  'Haryana',
+  'Bihar',
+  'Odisha',
+  'Assam',
+  'Chandigarh',
+  'Puducherry',
+  'Jammu & Kashmir',
+  'Himachal Pradesh',
+  'Uttarakhand',
+  'Jharkhand',
+  'Chhattisgarh',
+];
 
 export function CheckoutPage() {
   const router = useRouter();
@@ -15,23 +43,26 @@ export function CheckoutPage() {
 
   const [placed, setPlaced] = useState(false);
   const [placedOrderId, setPlacedOrderId] = useState('');
-  const [step, setStep] = useState(1);
 
   // Delivery Location Mode: 'IN' or 'INTL'
   const [deliveryType, setDeliveryType] = useState<'IN' | 'INTL'>('IN');
 
-  // Shipping Address Form State
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  // Customer Contact & Shipping Address State
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [city, setCity] = useState('');
-  const [state, setState] = useState('');
+  const [state, setState] = useState('Kerala');
   const [pincode, setPincode] = useState(''); // India 6-digit pincode
 
   // International Specific State
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('US');
   const [postalCode, setPostalCode] = useState(''); // International postal/zip code
+
+  // Save address information for next time (enabled by default)
+  const [saveInfo, setSaveInfo] = useState(true);
 
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
@@ -57,32 +88,61 @@ export function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
 
-  // Prepopulate form if logged in
+  // 1. Auto-load saved address details from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('riz_saved_checkout_data');
+      if (saved) {
+        const d = JSON.parse(saved);
+        if (d.email) setEmail(d.email);
+        if (d.phone) setPhone(d.phone);
+        if (d.firstName) setFirstName(d.firstName);
+        if (d.lastName) setLastName(d.lastName);
+        if (d.addressLine) setAddressLine(d.addressLine);
+        if (d.city) setCity(d.city);
+        if (d.state) setState(d.state);
+        if (d.pincode) setPincode(d.pincode);
+        if (d.postalCode) setPostalCode(d.postalCode);
+        if (d.deliveryType) setDeliveryType(d.deliveryType);
+        if (d.selectedCountryCode) setSelectedCountryCode(d.selectedCountryCode);
+      }
+    } catch (e) {
+      console.warn('Could not read saved checkout details from local storage:', e);
+    }
+  }, []);
+
+  // 2. Prepopulate form if logged in with user profile and saved account addresses
   useEffect(() => {
     if (isAuthenticated && user) {
-      setName(user.name);
-      setEmail(user.email);
-      if (user.phone) setPhone(user.phone);
+      if (user.email && !email) setEmail(user.email);
+      if (user.phone && !phone) setPhone(user.phone);
+      if (user.name) {
+        const parts = user.name.trim().split(' ');
+        if (!firstName) setFirstName(parts[0] || '');
+        if (!lastName) setLastName(parts.slice(1).join(' ') || '');
+      }
 
       const loadDefaultAddress = async () => {
         try {
           const res = await api.auth.getAddresses();
-          const defaultAddr = res.addresses.find((addr: any) => addr.isDefault);
+          const defaultAddr = res.addresses?.find((addr: any) => addr.isDefault) || res.addresses?.[0];
           if (defaultAddr) {
-            setName(defaultAddr.name);
-            setPhone(defaultAddr.phone);
-            setEmail(defaultAddr.email);
-            setAddressLine(defaultAddr.addressLine);
-            setCity(defaultAddr.city);
-            setState(defaultAddr.state);
+            const parts = (defaultAddr.name || '').trim().split(' ');
+            if (parts[0]) setFirstName(parts[0]);
+            if (parts.length > 1) setLastName(parts.slice(1).join(' '));
+            if (defaultAddr.phone) setPhone(defaultAddr.phone);
+            if (defaultAddr.email) setEmail(defaultAddr.email);
+            if (defaultAddr.addressLine) setAddressLine(defaultAddr.addressLine);
+            if (defaultAddr.city) setCity(defaultAddr.city);
+            if (defaultAddr.state) setState(defaultAddr.state);
 
             const isInd = isIndia(defaultAddr.country);
             if (isInd) {
               setDeliveryType('IN');
-              setPincode(defaultAddr.pincode || '');
+              if (defaultAddr.pincode) setPincode(defaultAddr.pincode);
             } else {
               setDeliveryType('INTL');
-              setPostalCode(defaultAddr.pincode || '');
+              if (defaultAddr.pincode) setPostalCode(defaultAddr.pincode);
               const matchingC = INTERNATIONAL_COUNTRIES.find(
                 (c) => c.name.toLowerCase() === (defaultAddr.country || '').toLowerCase()
               );
@@ -150,8 +210,8 @@ export function CheckoutPage() {
                 baseCharge: res.shippingCharge,
               });
 
-              // Apply ₹2000 Free Shipping Rule for India
-              if (discountedSubtotal >= 2000) {
+              // Apply ₹599 Free Shipping Rule for India
+              if (discountedSubtotal >= 599) {
                 setShippingCharge(0);
               } else {
                 setShippingCharge(res.shippingCharge);
@@ -199,8 +259,6 @@ export function CheckoutPage() {
                 source: res.source,
                 baseCharge: res.shippingCharge,
               });
-
-              // International orders retain authoritative shipping charge (no automatic ₹2000 free shipping rule)
               setShippingCharge(res.shippingCharge);
             }
           } catch (err: any) {
@@ -256,36 +314,90 @@ export function CheckoutPage() {
     }
   };
 
-  const validateStep1 = () => {
-    const cleanName = name.trim();
+  // Helper to persist address into localStorage and backend profile so customer never enters again
+  const persistAddressData = (shippingAddress: any) => {
+    if (saveInfo) {
+      try {
+        localStorage.setItem(
+          'riz_saved_checkout_data',
+          JSON.stringify({
+            email: shippingAddress.email,
+            phone: shippingAddress.phone,
+            firstName,
+            lastName,
+            addressLine: shippingAddress.addressLine,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            pincode: deliveryType === 'IN' ? shippingAddress.pincode : '',
+            postalCode: deliveryType === 'INTL' ? shippingAddress.postalCode : '',
+            deliveryType,
+            selectedCountryCode,
+          })
+        );
+      } catch (e) {
+        console.warn('Failed to save checkout address to localStorage:', e);
+      }
+
+      if (isAuthenticated) {
+        api.auth
+          .addAddress({
+            name: shippingAddress.name,
+            phone: shippingAddress.phone,
+            email: shippingAddress.email,
+            addressLine: shippingAddress.addressLine,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            pincode: shippingAddress.pincode || shippingAddress.postalCode,
+            country: shippingAddress.country,
+            isDefault: true,
+          })
+          .catch(() => {});
+      }
+    }
+  };
+
+  const validateForm = () => {
+    const computedName = `${firstName} ${lastName}`.trim();
     const cleanPhone = phone.trim();
     const cleanEmail = email.trim();
     const cleanAddress = addressLine.trim();
     const cleanCity = city.trim();
     const cleanState = state.trim();
 
-    if (!cleanName || !cleanPhone || !cleanEmail || !cleanAddress || !cleanCity || !cleanState) {
-      setCheckoutError('All customer details (Name, Phone, Email, Address, City, State) are strictly required before proceeding.');
+    if (!cleanEmail) {
+      setCheckoutError('Please enter a valid email address or phone number for order updates.');
       return false;
     }
 
-    // Email regex validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanEmail)) {
       setCheckoutError('Please enter a valid email address (e.g., name@example.com).');
       return false;
     }
 
-    // Phone number validation (at least 10 digits)
-    const digitsOnly = cleanPhone.replace(/[^0-9]/g, '');
-    if (digitsOnly.length < 10) {
-      setCheckoutError('Please enter a valid 10-digit mobile phone number.');
+    if (!lastName.trim() && !firstName.trim()) {
+      setCheckoutError('Please enter your name.');
+      return false;
+    }
+
+    if (!cleanAddress) {
+      setCheckoutError('Please enter your delivery street address.');
+      return false;
+    }
+
+    if (!cleanCity) {
+      setCheckoutError('Please enter your City.');
+      return false;
+    }
+
+    if (!cleanState) {
+      setCheckoutError('Please select or enter your State.');
       return false;
     }
 
     if (deliveryType === 'IN') {
       if (pincode.trim().length !== 6 || isNaN(Number(pincode.trim()))) {
-        setCheckoutError('Please enter a valid 6-digit Indian pincode.');
+        setCheckoutError('Please enter a valid 6-digit Indian PIN code.');
         return false;
       }
     } else {
@@ -293,6 +405,17 @@ export function CheckoutPage() {
         setCheckoutError('Please enter a valid Postal / ZIP code.');
         return false;
       }
+    }
+
+    if (!cleanPhone) {
+      setCheckoutError('Please enter your mobile phone number for courier delivery updates.');
+      return false;
+    }
+
+    const digitsOnly = cleanPhone.replace(/[^0-9]/g, '');
+    if (digitsOnly.length < 10) {
+      setCheckoutError('Please enter a valid 10-digit mobile phone number.');
+      return false;
     }
 
     if (isLocationAvailable === false) {
@@ -304,24 +427,18 @@ export function CheckoutPage() {
     return true;
   };
 
-  const handleStepClick = (targetStep: number) => {
-    if (targetStep > step) {
-      if (!validateStep1()) return;
-    }
-    setCheckoutError('');
-    setStep(targetStep);
-  };
-
   const handlePlaceOrder = async (e: FormEvent) => {
     e.preventDefault();
     setCheckoutError('');
 
-    if (!validateStep1()) return;
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
+    const computedName = `${firstName} ${lastName}`.trim() || 'Customer';
+
     const shippingAddress = {
-      name: name.trim(),
+      name: computedName,
       phone: phone.trim(),
       email: email.trim(),
       addressLine: addressLine.trim(),
@@ -331,6 +448,9 @@ export function CheckoutPage() {
       postalCode: deliveryType === 'IN' ? pincode.trim() : postalCode.trim(),
       country: deliveryType === 'IN' ? 'India' : selectedCountryObj.name,
     };
+
+    // Auto-save address details so customer never needs to enter again!
+    persistAddressData(shippingAddress);
 
     const cartItems = cart.map((item) => ({
       productId: item.product.id,
@@ -401,7 +521,6 @@ export function CheckoutPage() {
           },
           modal: {
             ondismiss: async function () {
-              console.log('Razorpay modal closed without payment.');
               try {
                 await api.payments.cancel({ orderId: dbOrder.orderId });
               } catch (e) {
@@ -417,7 +536,7 @@ export function CheckoutPage() {
             contact: shippingAddress.phone,
           },
           theme: {
-            color: '#121212',
+            color: '#334c3d',
           },
         };
 
@@ -502,7 +621,6 @@ export function CheckoutPage() {
     );
   }
 
-
   if (!cart.length) {
     return (
       <main>
@@ -527,390 +645,290 @@ export function CheckoutPage() {
           <Lock size={13} /> Secure checkout
         </span>
       </div>
+
       <section className="checkout-layout container">
+        {/* Left Column: Clean 1-Page Express Form (Shopify Style) */}
         <div>
-          <div className="steps">
-            {['Address', 'Delivery', 'Payment', 'Review'].map((label, i) => (
-              <button
-                key={label}
-                className={step === i + 1 ? 'active' : ''}
-                onClick={() => handleStepClick(i + 1)}
-                type="button"
-              >
-                <b>{i + 1}</b>
-                {label}
-              </button>
-            ))}
-          </div>
+          <form onSubmit={handlePlaceOrder} className="shopify-checkout-card">
+            {checkoutError && (
+              <div className="error-banner" style={{ background: '#fdf2f2', color: '#d32f2f', padding: '12px 16px', borderRadius: '6px', fontSize: '0.88rem', border: '1px solid #f8d7da' }}>
+                {checkoutError}
+              </div>
+            )}
 
-          <form onSubmit={handlePlaceOrder} className="checkout-form">
-            {checkoutError && <div className="error-banner mb-6">{checkoutError}</div>}
-
-            <div className="checkout-section">
-              <h2 className="serif">
-                {step === 1
-                  ? 'Where should we send it?'
-                  : step === 2
-                  ? 'Choose delivery'
-                  : step === 3
-                  ? 'How would you like to pay?'
-                  : 'Review your order'}
-              </h2>
-
-              {step === 1 && (
-                <div style={{ display: 'grid', gap: '20px' }}>
-                  {/* Delivery Location Toggle */}
-                  <div style={{ background: '#faf9f6', padding: '6px', borderRadius: '8px', border: '1px solid #ede5db', display: 'flex', gap: '6px' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDeliveryType('IN');
-                        setShippingError('');
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        borderRadius: '6px',
-                        fontSize: '0.88rem',
-                        fontWeight: 600,
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        background: deliveryType === 'IN' ? '#334c3d' : 'transparent',
-                        color: deliveryType === 'IN' ? '#ffffff' : '#555555',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <MapPin size={16} /> India Delivery (Pincode)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDeliveryType('INTL');
-                        setShippingError('');
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        borderRadius: '6px',
-                        fontSize: '0.88rem',
-                        fontWeight: 600,
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        background: deliveryType === 'INTL' ? '#334c3d' : 'transparent',
-                        color: deliveryType === 'INTL' ? '#ffffff' : '#555555',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <Globe size={16} /> International Shipping
-                    </button>
-                  </div>
-
-                  <div className="form-grid">
-                    <label>
-                      Full name
-                      <input
-                        required
-                        placeholder="Your full name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Phone number
-                      <input
-                        required
-                        type="tel"
-                        placeholder="Mobile number with country code"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                      />
-                    </label>
-                    <label className="wide">
-                      Email address
-                      <input
-                        required
-                        type="email"
-                        placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </label>
-                    <label className="wide">
-                      Street address
-                      <input
-                        required
-                        placeholder="House no., building, street address"
-                        value={addressLine}
-                        onChange={(e) => setAddressLine(e.target.value)}
-                      />
-                    </label>
-
-                    {/* Country Selector for International Mode */}
-                    {deliveryType === 'INTL' ? (
-                      <label className="wide">
-                        Country / Region
-                        <select
-                          value={selectedCountryCode}
-                          onChange={(e) => setSelectedCountryCode(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '12px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            fontSize: '0.9rem',
-                            background: '#fff',
-                          }}
-                        >
-                          {INTERNATIONAL_COUNTRIES.map((c) => (
-                            <option key={c.code} value={c.code}>
-                              {c.flag} {c.name} ({c.region})
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : (
-                      <label className="wide">
-                        Country
-                        <input value="India IN" disabled style={{ background: '#f8f8f8', color: '#333', fontWeight: 500 }} />
-                      </label>
-                    )}
-
-                    <label>
-                      City / Town
-                      <input
-                        required
-                        placeholder="City"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      State / Province / Region
-                      <input
-                        required
-                        placeholder="State"
-                        value={state}
-                        onChange={(e) => setState(e.target.value)}
-                      />
-                    </label>
-
-                    {deliveryType === 'IN' ? (
-                      <label>
-                        Pincode
-                        <input
-                          required
-                          inputMode="numeric"
-                          maxLength={6}
-                          placeholder="6-digit pincode"
-                          value={pincode}
-                          onChange={(e) => setPincode(e.target.value)}
-                        />
-                        {shippingError && (
-                          <span style={{ color: '#d32f2f', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
-                            {shippingError}
-                          </span>
-                        )}
-                      </label>
-                    ) : (
-                      <label>
-                        Postal / ZIP Code
-                        <input
-                          required
-                          placeholder="ZIP or Postal code"
-                          value={postalCode}
-                          onChange={(e) => setPostalCode(e.target.value)}
-                        />
-                        {shippingError && (
-                          <span style={{ color: '#d32f2f', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
-                            {shippingError}
-                          </span>
-                        )}
-                      </label>
-                    )}
-
-                    {shippingMeta && isLocationAvailable && (
-                      <div style={{ gridColumn: 'span 2', background: '#faf9f6', border: '1px solid #ede5db', borderRadius: '6px', padding: '12px 16px', marginTop: '4px' }}>
-                        <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#666', fontWeight: 600, display: 'block' }}>
-                          Delivery to {deliveryType === 'IN' ? 'India' : selectedCountryObj.name}
-                        </span>
-                        <p style={{ margin: '2px 0 0 0', fontWeight: 600, color: '#334c3d', fontSize: '0.9rem' }}>
-                          {[shippingMeta.city, shippingMeta.district, shippingMeta.state].filter(Boolean).join(', ') || selectedCountryObj.name}
-                        </p>
-                        <p style={{ margin: '1px 0 0 0', color: '#555', fontSize: '0.85rem' }}>
-                          Estimated Delivery: <strong>{shippingMeta.estimate}</strong>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {step === 2 && (
-                <div className="choice-list" style={{ display: 'grid', gap: '12px' }}>
-                  {isLocationAvailable === false ? (
-                    <div className="error-banner" style={{ background: '#fdf2f2', color: '#d32f2f', padding: '14px', borderRadius: '6px', border: '1px solid #f8d7da', fontSize: '0.88rem' }}>
-                      {shippingError || `Delivery is unavailable for the selected location.`}
-                    </div>
-                  ) : (
-                    <div style={{
-                      padding: '18px 20px',
-                      border: '1.5px solid #334c3d',
-                      borderRadius: '8px',
-                      background: '#faf9f6',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'space-between',
-                      gap: '16px'
-                    }}>
-                      <div>
-                        <b style={{ fontSize: '0.95rem', color: '#2a3a2e', display: 'block' }}>
-                          {deliveryType === 'IN' ? 'Standard Courier Delivery (India)' : `International Express Air Delivery (${selectedCountryObj.flag} ${selectedCountryObj.name})`}
-                        </b>
-                        {shippingMeta && (
-                          <div style={{ marginTop: '6px', fontSize: '0.83rem', color: '#444' }}>
-                            <span style={{ color: '#666' }}>Destination: </span>
-                            <strong style={{ color: '#334c3d' }}>
-                              {[shippingMeta.city, shippingMeta.district, shippingMeta.state, shippingMeta.country].filter(Boolean).join(', ')}
-                            </strong>
-                          </div>
-                        )}
-                        <small style={{ display: 'block', color: '#555', marginTop: '6px', fontSize: '0.82rem' }}>
-                          {shippingMeta?.estimate || (deliveryType === 'IN' ? '3–5 working days' : '7–12 working days')}
-                        </small>
-                      </div>
-
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        {deliveryType === 'IN' && discountedSubtotal >= 2000 ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                            <span style={{
-                              background: '#334c3d',
-                              color: '#fff',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              padding: '4px 10px',
-                              borderRadius: '4px',
-                              letterSpacing: '0.06em',
-                              textTransform: 'uppercase'
-                            }}>
-                              FREE DELIVERY
-                            </span>
-                            <small style={{ textDecoration: 'line-through', color: '#888', fontSize: '0.8rem' }}>
-                              ₹{shippingMeta?.baseCharge || 79}
-                            </small>
-                          </div>
-                        ) : (
-                          <strong style={{ fontSize: '1.05rem', color: '#111', whiteSpace: 'nowrap' }}>
-                            Delivery: ₹{shippingCharge.toLocaleString('en-IN')}
-                          </strong>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="choice-list">
-                  <label>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === 'UPI'}
-                      onChange={() => setPaymentMethod('UPI')}
-                    />
-                    <span>
-                      <b>UPI App / Instant Pay</b>
-                      <small>Pay securely via GPay, PhonePe, Paytm</small>
-                    </span>
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === 'card'}
-                      onChange={() => setPaymentMethod('card')}
-                    />
-                    <span>
-                      <b>Credit / Debit Card</b>
-                      <small>Visa, Mastercard, RuPay, American Express</small>
-                    </span>
-                  </label>
-                  {deliveryType === 'IN' && (
-                    <label>
-                      <input
-                        type="radio"
-                        name="payment"
-                        checked={paymentMethod === 'cod'}
-                        onChange={() => setPaymentMethod('cod')}
-                      />
-                      <span>
-                        <b>Cash on Delivery (COD)</b>
-                        <small>Pay with cash upon delivery in India</small>
-                      </span>
-                    </label>
-                  )}
-                </div>
-              )}
-
-              {step === 4 && (
-                <div className="review-section">
-                  <p className="mb-4">
-                    Please review your shipping and payment details before completing your purchase:
-                  </p>
-                  <div className="review-grid border p-4 rounded mb-6" style={{ display: 'grid', gap: '15px' }}>
-                    <div>
-                      <span className="eyebrow">Shipping Destination</span>
-                      <p className="font-medium">{name}</p>
-                      <p className="text-sm muted">
-                        {addressLine}, {city}, {state} - {deliveryType === 'IN' ? pincode : postalCode}
-                      </p>
-                      <p className="text-sm muted">
-                        Country: <strong>{deliveryType === 'IN' ? 'India 🇮🇳' : `${selectedCountryObj.flag} ${selectedCountryObj.name}`}</strong>
-                      </p>
-                      <p className="text-sm muted">Phone: {phone}</p>
-                    </div>
-                    <div>
-                      <span className="eyebrow">Payment Method</span>
-                      <p className="font-medium">
-                        {paymentMethod === 'card'
-                          ? 'Credit/Debit Card'
-                          : paymentMethod === 'cod'
-                          ? 'Cash on Delivery (COD)'
-                          : 'UPI / Instant Online Gateway'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="checkout-actions">
-                {step > 1 && (
-                  <button type="button" className="button secondary" onClick={() => handleStepClick(step - 1)}>
-                    Back
-                  </button>
+            {/* 1. Contact Section */}
+            <div className="shopify-section">
+              <div className="shopify-section-head">
+                <h2>Contact</h2>
+                {!isAuthenticated && (
+                  <Link href="/login?redirect=/checkout" className="shopify-signin-link">
+                    Sign in
+                  </Link>
                 )}
-                {step < 4 ? (
-                  <button type="button" className="button" style={{ fontWeight: 700, letterSpacing: '0.08em', padding: '14px 28px', textTransform: 'uppercase' }} onClick={() => handleStepClick(step + 1)}>
-                    CONTINUE
-                  </button>
+              </div>
+              <div className="shopify-field-wrap">
+                <input
+                  type="email"
+                  className="shopify-input"
+                  placeholder="Email or mobile phone number"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <div className="shopify-field-icon" title="Used for order confirmation receipts">
+                  <HelpCircle size={16} />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Delivery Section */}
+            <div className="shopify-section">
+              <h2>Delivery</h2>
+
+              {/* Country / Region */}
+              <div className="shopify-field-wrap">
+                <select
+                  className="shopify-select"
+                  value={deliveryType === 'IN' ? 'IN' : selectedCountryCode}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'IN') {
+                      setDeliveryType('IN');
+                    } else {
+                      setDeliveryType('INTL');
+                      setSelectedCountryCode(val);
+                    }
+                    setShippingError('');
+                  }}
+                >
+                  <option value="IN">India 🇮🇳</option>
+                  <optgroup label="International Countries">
+                    {INTERNATIONAL_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name} {c.flag}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* First Name & Last Name */}
+              <div className="shopify-grid-2">
+                <input
+                  type="text"
+                  className="shopify-input"
+                  placeholder="First name (optional)"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+                <input
+                  type="text"
+                  className="shopify-input"
+                  placeholder="Last name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Street Address */}
+              <div className="shopify-field-wrap">
+                <input
+                  type="text"
+                  className="shopify-input"
+                  placeholder="Address"
+                  value={addressLine}
+                  onChange={(e) => setAddressLine(e.target.value)}
+                  required
+                />
+                <div className="shopify-field-icon">
+                  <Search size={16} />
+                </div>
+              </div>
+
+              {/* City, State, PIN code (3 columns) */}
+              <div className="shopify-grid-3">
+                <input
+                  type="text"
+                  className="shopify-input"
+                  placeholder="City"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  required
+                />
+
+                {deliveryType === 'IN' ? (
+                  <select
+                    className="shopify-select"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    required
+                  >
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
-                  <button className="button" type="submit" style={{ fontWeight: 700, letterSpacing: '0.08em', padding: '14px 28px', textTransform: 'uppercase' }} disabled={isSubmitting || isLocationAvailable === false}>
-                    {isSubmitting ? 'Processing...' : 'PLACE ORDER'}
-                  </button>
+                  <input
+                    type="text"
+                    className="shopify-input"
+                    placeholder="State / Region"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    required
+                  />
+                )}
+
+                {deliveryType === 'IN' ? (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    className="shopify-input"
+                    placeholder="PIN code"
+                    value={pincode}
+                    onChange={(e) => setPincode(e.target.value)}
+                    required
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    className="shopify-input"
+                    placeholder="ZIP / Postal code"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    required
+                  />
+                )}
+              </div>
+
+              {/* Phone number */}
+              <div className="shopify-field-wrap">
+                <input
+                  type="tel"
+                  className="shopify-input"
+                  placeholder="Phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+                <div className="shopify-field-icon" title="In case we need to contact you regarding delivery">
+                  <HelpCircle size={16} />
+                </div>
+              </div>
+
+              {/* Save Information Checkbox */}
+              <label className="shopify-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={saveInfo}
+                  onChange={(e) => setSaveInfo(e.target.checked)}
+                />
+                <span>Save this information for next time</span>
+              </label>
+            </div>
+
+            {/* 3. Shipping method Section */}
+            <div className="shopify-section">
+              <h2>Shipping method</h2>
+              {isLocationAvailable ? (
+                <div className="shopify-shipping-box">
+                  <div>
+                    <b style={{ fontSize: '0.92rem', color: '#1a1a1a', display: 'block' }}>
+                      {deliveryType === 'IN' ? 'Standard Courier Delivery (India)' : `International Air Delivery (${selectedCountryObj.name})`}
+                    </b>
+                    <small style={{ color: '#666', fontSize: '0.82rem' }}>
+                      {shippingMeta?.estimate || (deliveryType === 'IN' ? '3–5 working days' : '7–12 working days')}
+                    </small>
+                  </div>
+                  <div>
+                    {deliveryType === 'IN' && discountedSubtotal >= 599 ? (
+                      <span style={{ background: '#334c3d', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                        FREE
+                      </span>
+                    ) : (
+                      <strong style={{ fontSize: '0.95rem', color: '#111' }}>
+                        ₹{shippingCharge.toLocaleString('en-IN')}
+                      </strong>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="shopify-shipping-empty">
+                  Enter your shipping address to view available shipping methods.
+                </div>
+              )}
+            </div>
+
+            {/* 4. Payment Section */}
+            <div className="shopify-section">
+              <div className="shopify-section-head">
+                <h2>Payment</h2>
+              </div>
+              <p className="shopify-section-sub">All transactions are secure and encrypted.</p>
+
+              <div className="shopify-payment-list">
+                <label className={`shopify-payment-item ${paymentMethod === 'UPI' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="payment"
+                    checked={paymentMethod === 'UPI'}
+                    onChange={() => setPaymentMethod('UPI')}
+                  />
+                  <div>
+                    <b style={{ fontSize: '0.92rem', color: '#1a1a1a', display: 'block' }}>UPI App / Instant Pay</b>
+                    <small style={{ color: '#666', fontSize: '0.82rem' }}>Pay instantly via Google Pay, PhonePe, Paytm, or QR</small>
+                  </div>
+                </label>
+
+                <label className={`shopify-payment-item ${paymentMethod === 'card' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="payment"
+                    checked={paymentMethod === 'card'}
+                    onChange={() => setPaymentMethod('card')}
+                  />
+                  <div>
+                    <b style={{ fontSize: '0.92rem', color: '#1a1a1a', display: 'block' }}>Credit / Debit Card</b>
+                    <small style={{ color: '#666', fontSize: '0.82rem' }}>Visa, Mastercard, RuPay, American Express</small>
+                  </div>
+                </label>
+
+                {deliveryType === 'IN' && (
+                  <label className={`shopify-payment-item ${paymentMethod === 'cod' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'cod'}
+                      onChange={() => setPaymentMethod('cod')}
+                    />
+                    <div>
+                      <b style={{ fontSize: '0.92rem', color: '#1a1a1a', display: 'block' }}>Cash on Delivery (COD)</b>
+                      <small style={{ color: '#666', fontSize: '0.82rem' }}>Pay with cash upon delivery in India</small>
+                    </div>
+                  </label>
                 )}
               </div>
             </div>
+
+            {/* Submit Action */}
+            <button
+              type="submit"
+              className="shopify-pay-btn"
+              disabled={isSubmitting || isLocationAvailable === false}
+            >
+              {isSubmitting ? (
+                'Processing Order...'
+              ) : (
+                `Complete Order · ₹${(totalAmount || 0).toLocaleString('en-IN')}`
+              )}
+            </button>
           </form>
         </div>
 
+        {/* Right Column: Order Summary */}
         <aside className="summary checkout-summary">
           <h2 className="serif">Your order</h2>
           {cart.map(({ product, quantity, color, size }) => (
@@ -976,6 +994,10 @@ export function CheckoutPage() {
             <span>Total</span>
             <strong>₹{(totalAmount || 0).toLocaleString('en-IN')}</strong>
           </div>
+
+          <p className="summary-note" style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.82rem', color: '#777' }}>
+            🔒 Guaranteed 256-bit Encrypted Checkout
+          </p>
         </aside>
       </section>
     </main>
