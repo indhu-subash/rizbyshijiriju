@@ -533,6 +533,27 @@ img {
   font-style: normal;
 }
 
+.product-stock-status {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.product-stock-status .stock-in {
+  color: #0891b2;
+  font-weight: 500;
+}
+
+.product-stock-status .stock-low {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.product-stock-status .stock-out {
+  color: #dc2626;
+  font-weight: 500;
+}
+
 .rating .rating-val {
   font-weight: 600;
   color: #1a1a1a;

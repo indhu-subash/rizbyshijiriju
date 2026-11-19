@@ -148,12 +148,17 @@ export function CartPage() {
                           </p>
                         )}
                       </div>
-                      <div className="cart-item-price-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 10px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '0.98rem' }}>₹{(product.price || 0).toLocaleString('en-IN')}</span>
-                        {product.originalPrice && product.originalPrice > product.price && (
-                          <del style={{ color: '#888', fontSize: '0.85rem' }}>₹{product.originalPrice.toLocaleString('en-IN')}</del>
-                        )}
-                      </div>
+                      {(() => {
+                        const itemOriginalPrice = product.originalPrice && product.originalPrice > product.price
+                          ? product.originalPrice
+                          : Math.max(Math.ceil(((product.price || 499) * 1.8) / 50) * 50 - 1, (product.price || 499) + 200);
+                        return (
+                          <div className="cart-item-price-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 10px' }}>
+                            <span style={{ fontWeight: 600, fontSize: '0.98rem' }}>₹{(product.price || 0).toLocaleString('en-IN')}</span>
+                            <del style={{ color: '#888', fontSize: '0.85rem' }}>₹{itemOriginalPrice.toLocaleString('en-IN')}</del>
+                          </div>
+                        );
+                      })()}
                       <div className="cart-actions">
                         <div className="quantity">
                           <button onClick={() => updateQuantity(product.id, color, size, quantity - 1)} aria-label="Decrease quantity">
