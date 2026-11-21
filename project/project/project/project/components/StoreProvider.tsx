@@ -31,6 +31,7 @@ export type ToastNotification = {
 export type Store = {
   cart: CartItem[];
   wishlist: string[];
+  wishlistProducts: Product[];
   addToCart: (p: Product, quantity?: number, color?: string, size?: string) => void;
   removeFromCart: (id: string, color?: string, size?: string) => void;
   updateQuantity: (id: string, color: string | undefined, size: string | undefined, n: number) => void;
@@ -56,6 +57,7 @@ const StoreContext = createContext<Store | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [wishlistProducts, setWishlistProducts] = useState<Product[]>([]);
   
   // Auth State
   const [user, setUser] = useState<User | null>(null);
@@ -91,7 +93,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           }))
         : [];
       setCart(parsedCart);
-      setWishlist(JSON.parse(localStorage.getItem('riz-wishlist') || '[]'));
+      const rawWishlist = JSON.parse(localStorage.getItem('riz-wishlist') || '[]');
+      const rawWishlistProducts = JSON.parse(localStorage.getItem('riz-wishlist-products') || '[]');
+      setWishlist(Array.isArray(rawWishlist) ? rawWishlist : []);
+      setWishlistProducts(Array.isArray(rawWishlistProducts) ? rawWishlistProducts : []);
     } catch (e) {
       console.error('Failed to load local storage:', e);
     }
@@ -186,10 +191,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('riz-wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
+  // Sync wishlist products to local storage
+  useEffect(() => {
+    localStorage.setItem('riz-wishlist-products', JSON.stringify(wishlistProducts));
+  }, [wishlistProducts]);
+
   const value = useMemo<Store>(() => {
     return {
       cart,
       wishlist,
+      wishlistProducts,
       addToCart: (product: Product, quantity: number = 1, color?: string, size?: string) => {
         setCart((items) => {
           const targetColor = color || undefined;
@@ -241,6 +252,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             return [...items, id];
           }
         });
+
+        setWishlistProducts((prev) => {
+          const exists = prev.some((p) => p.id === id);
+          if (exists) {
+            return prev.filter((p) => p.id !== id);
+          } else if (product) {
+            return [...prev, product];
+          }
+          return prev;
+        });
       },
       clearCart: () => setCart([]),
       cartCount: cart.reduce((sum, item) => sum + item.quantity, 0),
@@ -265,7 +286,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       toast,
       closeToast: () => setToast(null),
     };
-  }, [cart, wishlist, user, isAuthenticated, loadingAuth, toast]);
+  }, [cart, wishlist, wishlistProducts, user, isAuthenticated, loadingAuth, toast]);
 
   return (
     <StoreContext.Provider value={value}>
