@@ -675,14 +675,20 @@ export function CheckoutPage() {
 
               {/* Country / Region: India Only */}
               <div className="shopify-field-wrap">
-                <select
-                  className="shopify-select"
-                  value="IN"
+                <input
+                  type="text"
+                  className="shopify-input"
+                  value="India"
+                  readOnly
                   disabled
-                  style={{ background: '#faf9f7', color: '#1a1a1a', opacity: 1, cursor: 'default' }}
-                >
-                  <option value="IN">India</option>
-                </select>
+                  style={{
+                    background: '#faf9f7',
+                    color: '#1a1a1a',
+                    cursor: 'default',
+                    userSelect: 'none',
+                    fontWeight: 500,
+                  }}
+                />
               </div>
 
               {/* First Name (Required) & Last Name (Optional) */}
