@@ -5576,6 +5576,19 @@ button.wishlist:active,
   box-shadow: 0 0 0 2px rgba(51, 76, 61, 0.15);
 }
 
+.shopify-input.shopify-input-error,
+.shopify-select.shopify-input-error {
+  border-color: #dc2626 !important;
+  background-color: #fffbfa !important;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.18) !important;
+}
+
+.shopify-input.shopify-input-error:focus,
+.shopify-select.shopify-input-error:focus {
+  border-color: #b91c1c !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.28) !important;
+}
+
 .shopify-field-icon {
   position: absolute;
   right: 12px;

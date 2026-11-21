@@ -64,6 +64,15 @@ export function CheckoutPage() {
   // Save address information for next time (enabled by default)
   const [saveInfo, setSaveInfo] = useState(true);
 
+  // Field error tracking for red-border indicators on unfilled columns
+  const [fieldErrors, setFieldErrors] = useState<{ [field: string]: boolean }>({});
+
+  const clearFieldError = (field: string) => {
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
@@ -367,64 +376,49 @@ export function CheckoutPage() {
   };
 
   const validateForm = () => {
-    const computedName = `${firstName} ${lastName}`.trim();
+    const newErrors: { [field: string]: boolean } = {};
+    const cleanFirstName = firstName.trim();
     const cleanPhone = phone.trim();
-    const cleanEmail = email.trim();
     const cleanAddress = addressLine.trim();
     const cleanCity = city.trim();
     const cleanState = state.trim();
+    const cleanPincode = pincode.trim();
 
-    if (!cleanEmail) {
-      setCheckoutError('Please enter a valid email address or phone number for order updates.');
-      return false;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      setCheckoutError('Please enter a valid email address (e.g., name@example.com).');
-      return false;
-    }
-
-    if (!lastName.trim() && !firstName.trim()) {
-      setCheckoutError('Please enter your name.');
-      return false;
+    if (!cleanFirstName) {
+      newErrors.firstName = true;
     }
 
     if (!cleanAddress) {
-      setCheckoutError('Please enter your delivery street address.');
-      return false;
+      newErrors.addressLine = true;
     }
 
     if (!cleanCity) {
-      setCheckoutError('Please enter your City.');
-      return false;
+      newErrors.city = true;
     }
 
     if (!cleanState) {
-      setCheckoutError('Please select or enter your State.');
-      return false;
+      newErrors.state = true;
     }
 
-    if (deliveryType === 'IN') {
-      if (pincode.trim().length !== 6 || isNaN(Number(pincode.trim()))) {
-        setCheckoutError('Please enter a valid 6-digit Indian PIN code.');
-        return false;
-      }
-    } else {
-      if (!postalCode.trim()) {
-        setCheckoutError('Please enter a valid Postal / ZIP code.');
-        return false;
-      }
-    }
-
-    if (!cleanPhone) {
-      setCheckoutError('Please enter your mobile phone number for courier delivery updates.');
-      return false;
+    if (!cleanPincode || cleanPincode.length !== 6 || isNaN(Number(cleanPincode))) {
+      newErrors.pincode = true;
     }
 
     const digitsOnly = cleanPhone.replace(/[^0-9]/g, '');
-    if (digitsOnly.length < 10) {
-      setCheckoutError('Please enter a valid 10-digit mobile phone number.');
+    if (!cleanPhone || digitsOnly.length < 10) {
+      newErrors.phone = true;
+    }
+
+    setFieldErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      if (newErrors.firstName) setCheckoutError('Please enter your First name.');
+      else if (newErrors.addressLine) setCheckoutError('Please enter your delivery street Address.');
+      else if (newErrors.city) setCheckoutError('Please enter your City.');
+      else if (newErrors.state) setCheckoutError('Please select or enter your State.');
+      else if (newErrors.pincode) setCheckoutError('Please enter a valid 6-digit PIN code.');
+      else if (newErrors.phone) setCheckoutError('Please enter a valid 10-digit mobile Phone number.');
+      else setCheckoutError('Please fill in the required fields highlighted in red.');
       return false;
     }
 
@@ -445,18 +439,20 @@ export function CheckoutPage() {
 
     setIsSubmitting(true);
 
-    const computedName = `${firstName} ${lastName}`.trim() || 'Customer';
+    const computedName = `${firstName} ${lastName}`.trim() || firstName.trim() || 'Customer';
+    const digitsOnly = phone.trim().replace(/[^0-9]/g, '');
+    const fallbackEmail = email.trim() || user?.email || `${digitsOnly || 'user'}@customer.rizbyshijiriju.com`;
 
     const shippingAddress = {
       name: computedName,
       phone: phone.trim(),
-      email: email.trim(),
+      email: fallbackEmail,
       addressLine: addressLine.trim(),
       city: city.trim(),
-      state: state.trim(),
-      pincode: deliveryType === 'IN' ? pincode.trim() : postalCode.trim(),
-      postalCode: deliveryType === 'IN' ? pincode.trim() : postalCode.trim(),
-      country: deliveryType === 'IN' ? 'India' : selectedCountryObj.name,
+      state: state.trim() || 'Kerala',
+      pincode: pincode.trim(),
+      postalCode: pincode.trim(),
+      country: 'India',
     };
 
     // Auto-save address details so customer never needs to enter again!
@@ -666,78 +662,47 @@ export function CheckoutPage() {
               </div>
             )}
 
-            {/* 1. Contact Section */}
+            {/* Delivery Section */}
             <div className="shopify-section">
               <div className="shopify-section-head">
-                <h2>Contact</h2>
+                <h2>Delivery</h2>
                 {!isAuthenticated && (
                   <Link href="/login?redirect=/checkout" className="shopify-signin-link">
                     Sign in
                   </Link>
                 )}
               </div>
-              <div className="shopify-field-wrap">
-                <input
-                  type="email"
-                  className="shopify-input"
-                  placeholder="Email or mobile phone number"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <div className="shopify-field-icon" title="Used for order confirmation receipts">
-                  <HelpCircle size={16} />
-                </div>
-              </div>
-            </div>
 
-            {/* 2. Delivery Section */}
-            <div className="shopify-section">
-              <h2>Delivery</h2>
-
-              {/* Country / Region */}
+              {/* Country / Region: India Only */}
               <div className="shopify-field-wrap">
                 <select
                   className="shopify-select"
-                  value={deliveryType === 'IN' ? 'IN' : selectedCountryCode}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === 'IN') {
-                      setDeliveryType('IN');
-                    } else {
-                      setDeliveryType('INTL');
-                      setSelectedCountryCode(val);
-                    }
-                    setShippingError('');
-                  }}
+                  value="IN"
+                  disabled
+                  style={{ background: '#faf9f7', color: '#1a1a1a', opacity: 1, cursor: 'default' }}
                 >
-                  <option value="IN">India 🇮🇳</option>
-                  <optgroup label="International Countries">
-                    {INTERNATIONAL_COUNTRIES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.name} {c.flag}
-                      </option>
-                    ))}
-                  </optgroup>
+                  <option value="IN">India</option>
                 </select>
               </div>
 
-              {/* First Name & Last Name */}
+              {/* First Name (Required) & Last Name (Optional) */}
               <div className="shopify-grid-2">
                 <input
                   type="text"
-                  className="shopify-input"
-                  placeholder="First name (optional)"
+                  className={`shopify-input ${fieldErrors.firstName ? 'shopify-input-error' : ''}`}
+                  placeholder="First name"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                    clearFieldError('firstName');
+                  }}
                 />
                 <input
                   type="text"
                   className="shopify-input"
-                  placeholder="Last name"
+                  placeholder="Last name (optional)"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  required
                 />
               </div>
 
@@ -745,11 +710,13 @@ export function CheckoutPage() {
               <div className="shopify-field-wrap">
                 <input
                   type="text"
-                  className="shopify-input"
+                  className={`shopify-input ${fieldErrors.addressLine ? 'shopify-input-error' : ''}`}
                   placeholder="Address"
                   value={addressLine}
-                  onChange={(e) => setAddressLine(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setAddressLine(e.target.value);
+                    clearFieldError('addressLine');
+                  }}
                 />
                 <div className="shopify-field-icon">
                   <Search size={16} />
@@ -760,69 +727,55 @@ export function CheckoutPage() {
               <div className="shopify-grid-3">
                 <input
                   type="text"
-                  className="shopify-input"
+                  className={`shopify-input ${fieldErrors.city ? 'shopify-input-error' : ''}`}
                   placeholder="City"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setCity(e.target.value);
+                    clearFieldError('city');
+                  }}
                 />
 
-                {deliveryType === 'IN' ? (
-                  <select
-                    className="shopify-select"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    required
-                  >
-                    {INDIAN_STATES.map((st) => (
-                      <option key={st} value={st}>
-                        {st}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    className="shopify-input"
-                    placeholder="State / Region"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    required
-                  />
-                )}
+                <select
+                  className={`shopify-select ${fieldErrors.state ? 'shopify-input-error' : ''}`}
+                  value={state}
+                  onChange={(e) => {
+                    setState(e.target.value);
+                    clearFieldError('state');
+                  }}
+                >
+                  {INDIAN_STATES.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
 
-                {deliveryType === 'IN' ? (
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    className="shopify-input"
-                    placeholder="PIN code"
-                    value={pincode}
-                    onChange={(e) => setPincode(e.target.value)}
-                    required
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    className="shopify-input"
-                    placeholder="ZIP / Postal code"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    required
-                  />
-                )}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className={`shopify-input ${fieldErrors.pincode ? 'shopify-input-error' : ''}`}
+                  placeholder="PIN code"
+                  value={pincode}
+                  onChange={(e) => {
+                    setPincode(e.target.value);
+                    clearFieldError('pincode');
+                  }}
+                />
               </div>
 
               {/* Phone number */}
               <div className="shopify-field-wrap">
                 <input
                   type="tel"
-                  className="shopify-input"
+                  className={`shopify-input ${fieldErrors.phone ? 'shopify-input-error' : ''}`}
                   placeholder="Phone"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    clearFieldError('phone');
+                  }}
                 />
                 <div className="shopify-field-icon" title="In case we need to contact you regarding delivery">
                   <HelpCircle size={16} />
@@ -916,7 +869,7 @@ export function CheckoutPage() {
             <button
               type="submit"
               className="shopify-pay-btn"
-              disabled={isSubmitting || isLocationAvailable === false}
+              disabled={isSubmitting}
             >
               {isSubmitting ? (
                 'Processing Order...'
