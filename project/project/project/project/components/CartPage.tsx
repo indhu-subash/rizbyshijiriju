@@ -14,7 +14,7 @@ export function CartPage() {
   const [discount, setDiscount] = useState(0);
   const [message, setMessage] = useState('');
 
-  const isFreeShipping = subtotal >= 2000 || subtotal === 0;
+  const isFreeShipping = subtotal >= 599 || subtotal === 0;
   const total = Math.max(0, subtotal - discount);
 
   async function apply() {
@@ -120,7 +120,7 @@ export function CartPage() {
               <Link href="/checkout" className="button add-button">
                 Proceed to checkout <ArrowRight size={15} />
               </Link>
-              <p className="summary-note">Free shipping on orders over ₹2,000 · Secure checkout</p>
+              <p className="summary-note">Free shipping on orders of ₹599 or above · Secure checkout</p>
             </aside>
           </>
         ) : (

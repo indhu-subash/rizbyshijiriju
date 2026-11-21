@@ -684,9 +684,9 @@ export function ProductDetail({ product }: { product: Product }) {
                     <p className="success">
                       ✓ Delivery Available! Estimated {pinResult.estimate || '3–5 working days'}.
                       {pinResult.shippingCharge !== undefined &&
-                        (pinResult.shippingCharge === 0
+                        (product.price * qty >= 599 || pinResult.shippingCharge === 0
                           ? ' (Free Shipping)'
-                          : ` (Shipping Charge: ₹${pinResult.shippingCharge})`)}
+                          : ` (Shipping Charge: ₹${pinResult.shippingCharge} · Free on ₹599+)`)}
                     </p>
                   )}
                 </div>

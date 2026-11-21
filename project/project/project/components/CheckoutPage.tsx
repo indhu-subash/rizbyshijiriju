@@ -229,8 +229,8 @@ export function CheckoutPage() {
                 baseCharge: resolvedCharge,
               });
 
-              // Free shipping for India orders of ₹2000 or above
-              if (discountedSubtotal >= 2000) {
+              // Free shipping for India orders of ₹599 or above
+              if (discountedSubtotal >= 599) {
                 setShippingCharge(0);
               } else {
                 setShippingCharge(resolvedCharge);
@@ -817,7 +817,7 @@ export function CheckoutPage() {
                     </small>
                   </div>
                   <div>
-                    {deliveryType === 'IN' && discountedSubtotal >= 2000 ? (
+                    {deliveryType === 'IN' && discountedSubtotal >= 599 ? (
                       <span style={{ background: '#334c3d', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
                         FREE
                       </span>
@@ -941,7 +941,7 @@ export function CheckoutPage() {
               <span>
                 {isLocationAvailable === false ? (
                   <span style={{ color: '#d32f2f' }}>Unavailable</span>
-                ) : deliveryType === 'IN' && discountedSubtotal >= 2000 ? (
+                ) : deliveryType === 'IN' && discountedSubtotal >= 599 ? (
                   <span style={{ color: '#2e7d32', fontWeight: 600 }}>Free</span>
                 ) : !isLocationAvailable ? (
                   <span style={{ color: '#b45309', fontWeight: 600 }}>Enter PIN code</span>
@@ -958,7 +958,7 @@ export function CheckoutPage() {
             <span>Total</span>
             <div style={{ textAlign: 'right' }}>
               <strong>₹{(totalAmount || 0).toLocaleString('en-IN')}</strong>
-              {!isLocationAvailable && (deliveryType !== 'IN' || discountedSubtotal < 2000) && (
+              {!isLocationAvailable && (deliveryType !== 'IN' || discountedSubtotal < 599) && (
                 <small style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#777' }}>
                   + shipping fee
                 </small>

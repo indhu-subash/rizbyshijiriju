@@ -161,8 +161,8 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     let shippingCharge = 0;
 
     if (isIndia) {
-      // Free shipping for India orders above ₹2000
-      if (discountedSubtotal >= 2000) {
+      // Free shipping for India orders greater than or equal to ₹599
+      if (discountedSubtotal >= 599) {
         shippingCharge = 0;
       } else {
         const shippingRes = await calculateShipping({

@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 
 export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { cart, removeFromCart, updateQuantity, subtotal, cartCount } = useStore();
-  const FREE_SHIPPING_THRESHOLD = 2000;
+  const FREE_SHIPPING_THRESHOLD = 599;
   const progressPercent = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
   const remainingForFreeShipping = FREE_SHIPPING_THRESHOLD - subtotal;
 
