@@ -5,9 +5,13 @@ import { Loader2 } from 'lucide-react';
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; collection?: string; query?: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
+  const category = typeof params.category === 'string' ? params.category : undefined;
+  const collection = typeof params.collection === 'string' ? params.collection : undefined;
+  const query = typeof params.query === 'string' ? params.query : typeof params.q === 'string' ? params.q : undefined;
+
   return (
     <Suspense
       fallback={
@@ -19,7 +23,7 @@ export default async function Page({
         </div>
       }
     >
-      <ShopPage initialCategory={params.category} initialCollection={params.collection} initialQuery={params.query} />
+      <ShopPage initialCategory={category} initialCollection={collection} initialQuery={query} />
     </Suspense>
   );
 }

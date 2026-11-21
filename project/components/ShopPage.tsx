@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, X, Loader2, Check } from 'lucide-react';
 import { products as fallbackProducts } from '@/data/products';
 import { ProductGrid } from './ProductCard';
@@ -79,32 +80,100 @@ export function ShopPage({
   initialCollection?: string;
   initialQuery?: string;
 }) {
-  const [query, setQuery] = useState(initialQuery || '');
-  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery || '');
-  const [category, setCategory] = useState(initialCategory || '');
-  const [collection, setCollection] = useState(initialCollection || '');
-  const [colors, setColors] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState('');
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [sort, setSort] = useState('Featured');
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Helper to read initial URL param safely
+  const getParam = (key: string) => (searchParams ? searchParams.get(key) : null);
+
+  const [category, setCategory] = useState<string>(() => {
+    return getParam('category') || initialCategory || '';
+  });
+  const [collection, setCollection] = useState<string>(() => {
+    return getParam('collection') || initialCollection || '';
+  });
+  const [query, setQuery] = useState<string>(() => {
+    return getParam('query') || getParam('q') || initialQuery || '';
+  });
+  const [debouncedQuery, setDebouncedQuery] = useState<string>(() => {
+    return getParam('query') || getParam('q') || initialQuery || '';
+  });
+  const [colors, setColors] = useState<string[]>(() => {
+    const c = getParam('color') || getParam('colors') || '';
+    return c ? c.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  });
+  const [priceRange, setPriceRange] = useState<string>(() => {
+    return getParam('priceRange') || getParam('price') || '';
+  });
+  const [inStockOnly, setInStockOnly] = useState<boolean>(() => {
+    return getParam('inStock') === 'true' || getParam('availability') === 'in-stock';
+  });
+  const [sort, setSort] = useState<string>(() => {
+    return getParam('sort') || 'Featured';
+  });
   const [filterOpen, setFilterOpen] = useState(false);
 
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Keep state synchronized with URL search parameter changes
+  // Keep state synchronized with prop changes if passed directly
   useEffect(() => {
-    setCategory(initialCategory || '');
+    if (initialCategory !== undefined) setCategory(initialCategory || '');
   }, [initialCategory]);
 
   useEffect(() => {
-    setCollection(initialCollection || '');
+    if (initialCollection !== undefined) setCollection(initialCollection || '');
   }, [initialCollection]);
 
   useEffect(() => {
-    setQuery(initialQuery || '');
-    setDebouncedQuery(initialQuery || '');
+    if (initialQuery !== undefined) {
+      setQuery(initialQuery || '');
+      setDebouncedQuery(initialQuery || '');
+    }
   }, [initialQuery]);
+
+  // Sync state if searchParams change externally (e.g., QuickCategoryStrip or header links)
+  useEffect(() => {
+    if (!searchParams) return;
+    const urlCategory = searchParams.get('category') || '';
+    const urlCollection = searchParams.get('collection') || '';
+    const urlQuery = searchParams.get('query') || searchParams.get('q') || '';
+    const urlColorStr = searchParams.get('color') || searchParams.get('colors') || '';
+    const urlColors = urlColorStr ? urlColorStr.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    const urlPrice = searchParams.get('priceRange') || searchParams.get('price') || '';
+    const urlInStock = searchParams.get('inStock') === 'true' || searchParams.get('availability') === 'in-stock';
+    const urlSort = searchParams.get('sort') || 'Featured';
+
+    setCategory((prev) => (prev !== urlCategory ? urlCategory : prev));
+    setCollection((prev) => (prev !== urlCollection ? urlCollection : prev));
+    setQuery((prev) => (prev !== urlQuery ? urlQuery : prev));
+    setDebouncedQuery((prev) => (prev !== urlQuery ? urlQuery : prev));
+    setColors((prev) => (prev.join(',') !== urlColors.join(',') ? urlColors : prev));
+    setPriceRange((prev) => (prev !== urlPrice ? urlPrice : prev));
+    setInStockOnly((prev) => (prev !== urlInStock ? urlInStock : prev));
+    setSort((prev) => (prev !== urlSort ? urlSort : prev));
+  }, [searchParams]);
+
+  // Handle browser back and forward button navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      setCategory(params.get('category') || '');
+      setCollection(params.get('collection') || '');
+      const c = params.get('color') || params.get('colors') || '';
+      setColors(c ? c.split(',').map((s) => s.trim()).filter(Boolean) : []);
+      setPriceRange(params.get('priceRange') || params.get('price') || '');
+      setInStockOnly(params.get('inStock') === 'true' || params.get('availability') === 'in-stock');
+      const q = params.get('query') || params.get('q') || '';
+      setQuery(q);
+      setDebouncedQuery(q);
+      setSort(params.get('sort') || 'Featured');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Debounce search query input
   useEffect(() => {
@@ -113,6 +182,29 @@ export function ShopPage({
     }, 300);
     return () => clearTimeout(handler);
   }, [query]);
+
+  // Reflect all active filters onto the browser URL
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams();
+    if (category) params.set('category', category);
+    if (collection) params.set('collection', collection);
+    if (colors.length > 0) params.set('color', colors.join(','));
+    if (priceRange) params.set('priceRange', priceRange);
+    if (inStockOnly) params.set('inStock', 'true');
+    if (debouncedQuery.trim()) params.set('query', debouncedQuery.trim());
+    if (sort && sort !== 'Featured') params.set('sort', sort);
+
+    const queryString = params.toString();
+    const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
+
+    // Only update if URL actually differs from current location
+    const currentQuery = window.location.search.replace(/^\?/, '');
+    if (currentQuery !== queryString) {
+      window.history.replaceState(null, '', targetUrl);
+    }
+  }, [category, collection, colors, priceRange, inStockOnly, debouncedQuery, sort, pathname]);
 
   const toggleColor = (c: string) => {
     setColors((prev) =>
@@ -187,7 +279,12 @@ export function ShopPage({
     setColors([]);
     setPriceRange('');
     setQuery('');
+    setDebouncedQuery('');
     setInStockOnly(false);
+    setSort('Featured');
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', pathname);
+    }
   }
 
   const activeFilterCount =
@@ -196,7 +293,8 @@ export function ShopPage({
     colors.length +
     (priceRange ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
-    (query ? 1 : 0);
+    (query ? 1 : 0) +
+    (sort && sort !== 'Featured' ? 1 : 0);
 
   return (
     <main>
@@ -335,6 +433,11 @@ export function ShopPage({
               {inStockOnly && (
                 <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--ivory)' }}>
                   In Stock Only <X size={12} onClick={() => setInStockOnly(false)} style={{ cursor: 'pointer' }} />
+                </span>
+              )}
+              {sort && sort !== 'Featured' && (
+                <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--ivory)' }}>
+                  Sort: {sort} <X size={12} onClick={() => setSort('Featured')} style={{ cursor: 'pointer' }} />
                 </span>
               )}
             </div>
