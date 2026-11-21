@@ -467,6 +467,27 @@ img {
 }
 
 /* CRO Enhancements from Marketing Report: Product Card Badges & Discounts */
+.product-badges-group {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.product-badges-group .product-badge-discount,
+.product-badges-group .product-badge-pill,
+.product-badges-group .product-badge-limited,
+.product-badges-group .product-tag-bottom {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+}
+
 .product-badge-discount {
   position: absolute;
   top: 12px;
@@ -481,6 +502,7 @@ img {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   z-index: 2;
   text-transform: uppercase;
+  line-height: 1.2;
 }
 
 .product-badge-pill {
@@ -497,12 +519,11 @@ img {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   z-index: 2;
   text-transform: uppercase;
+  line-height: 1.2;
 }
 
+.product-badge-limited,
 .product-tag-bottom {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
   background: rgba(255, 255, 255, 0.95);
   color: #2a2a2a;
   font-size: 9px;
@@ -512,7 +533,16 @@ img {
   border-radius: 4px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
   text-transform: uppercase;
-  z-index: 1;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  z-index: 2;
+  line-height: 1.2;
+}
+
+.product-image > .product-tag-bottom {
+  position: absolute;
+  top: 44px;
+  bottom: auto;
+  left: 12px;
 }
 
 .product-meta .current-price {
@@ -1407,6 +1437,28 @@ button.wishlist.active,
     left: 6px;
     font-size: 8px;
     padding: 4px 6px
+  }
+
+  .product-badges-group {
+    top: 6px;
+    left: 6px;
+    gap: 4px;
+  }
+
+  .product-badge-discount {
+    font-size: 9px;
+    padding: 3px 7px;
+  }
+
+  .product-badge-pill {
+    font-size: 8.5px;
+    padding: 3px 6px;
+  }
+
+  .product-badge-limited,
+  .product-tag-bottom {
+    font-size: 8px;
+    padding: 2px 6px;
   }
 
   button.wishlist,

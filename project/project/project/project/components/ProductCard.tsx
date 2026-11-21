@@ -92,17 +92,19 @@ export function ProductCard({ product }: { product: Product }) {
             unoptimized
           />
         </Link>
-        {sale > 0 ? (
-          <span className="product-badge-discount">{sale}% OFF</span>
-        ) : product.newArrival ? (
-          <span className="product-badge-pill">NEW</span>
-        ) : product.bestseller ? (
-          <span className="product-badge-pill">BESTSELLER</span>
-        ) : null}
+        <div className="product-badges-group">
+          {sale > 0 ? (
+            <span className="product-badge-discount">{sale}% OFF</span>
+          ) : product.newArrival ? (
+            <span className="product-badge-pill">NEW</span>
+          ) : product.bestseller ? (
+            <span className="product-badge-pill">BESTSELLER</span>
+          ) : null}
 
-        {(limited || (product.stock > 0 && product.stock <= 4)) && (
-          <span className="product-tag-bottom">LIMITED OFFER</span>
-        )}
+          {(limited || (product.stock > 0 && product.stock <= 4)) && (
+            <span className="product-badge-limited">LIMITED OFFER</span>
+          )}
+        </div>
 
         <button
           className={`wishlist ${wishlist.includes(product.id) ? 'active' : ''}`}
