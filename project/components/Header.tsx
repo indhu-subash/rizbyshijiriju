@@ -68,8 +68,33 @@ export function Header() {
 
   return (
     <>
-      <div className="announcement">
-        COMPLIMENTARY ANTI-TARNISH JEWELLERY CARE WITH EVERY ORDER <span>·</span> EXPRESS INSURED SHIPPING ACROSS INDIA
+      <div className="announcement" aria-label="Store Announcement">
+        <div className="announcement-marquee">
+          <span className="announcement-item">🎁 Free Gift with Every Order</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">✨ Complimentary Anti-Tarnish Jewellery Care</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">🎁 Free Gift with Every Order</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">✨ Complimentary Anti-Tarnish Jewellery Care</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">🎁 Free Gift with Every Order</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">✨ Complimentary Anti-Tarnish Jewellery Care</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">🎁 Free Gift with Every Order</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">✨ Complimentary Anti-Tarnish Jewellery Care</span>
+          <span className="announcement-sep">✦</span>
+        </div>
       </div>
       <header className="header">
         <div className="container header-inner">
@@ -96,6 +121,7 @@ export function Header() {
             <Link href="/best-sellers">Bestsellers</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
+            <Link href="/wholesale">Wholesale</Link>
           </nav>
 
           <div className="header-actions">
@@ -216,6 +242,9 @@ export function Header() {
               </Link>
               <Link href="/contact" onClick={() => setOpen(false)} className="mobile-nav-sub">
                 Contact
+              </Link>
+              <Link href="/wholesale" onClick={() => setOpen(false)} className="mobile-nav-sub">
+                Wholesale
               </Link>
             </nav>
 
