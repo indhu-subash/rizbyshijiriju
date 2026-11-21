@@ -74,25 +74,33 @@ export function Header() {
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
           <span className="announcement-sep">✦</span>
-          <span className="announcement-item">✨ Complimentary Anti-Tarnish Jewellery Care</span>
+          <span className="announcement-item">✨ Premium Anti-Tarnish & Water-Resistant</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">💫 Handcrafted Kerala Heritage Jewellery</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🎁 Free Gift with Every Order</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
           <span className="announcement-sep">✦</span>
-          <span className="announcement-item">✨ Complimentary Anti-Tarnish Jewellery Care</span>
+          <span className="announcement-item">✨ Premium Anti-Tarnish & Water-Resistant</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">💫 Handcrafted Kerala Heritage Jewellery</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🎁 Free Gift with Every Order</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
           <span className="announcement-sep">✦</span>
-          <span className="announcement-item">✨ Complimentary Anti-Tarnish Jewellery Care</span>
+          <span className="announcement-item">✨ Premium Anti-Tarnish & Water-Resistant</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">💫 Handcrafted Kerala Heritage Jewellery</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🎁 Free Gift with Every Order</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
           <span className="announcement-sep">✦</span>
-          <span className="announcement-item">✨ Complimentary Anti-Tarnish Jewellery Care</span>
+          <span className="announcement-item">✨ Premium Anti-Tarnish & Water-Resistant</span>
+          <span className="announcement-sep">✦</span>
+          <span className="announcement-item">💫 Handcrafted Kerala Heritage Jewellery</span>
           <span className="announcement-sep">✦</span>
         </div>
       </div>
