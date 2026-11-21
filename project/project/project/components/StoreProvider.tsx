@@ -297,14 +297,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         <Link
           href={toast.type === 'cart' ? '/cart' : '/wishlist'}
           onClick={() => setToast(null)}
-          className={`toast-notification ${toast.type}`}
-          style={{ textDecoration: 'none', cursor: 'pointer' }}
+          className={`toast-notification toast-${toast.type}`}
+          style={{
+            textDecoration: 'none',
+            cursor: 'pointer',
+            position: 'fixed',
+            top: '85px',
+            right: '24px',
+            zIndex: 999999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            maxWidth: '380px',
+            width: 'auto',
+            borderRadius: '8px',
+            boxSizing: 'border-box',
+          }}
           title={toast.type === 'cart' ? 'Go to shopping bag' : 'Go to wishlist'}
         >
           {toast.image && <img src={toast.image} alt={toast.productName || 'Product'} className="toast-img" />}
-          <div className="toast-text" style={{ flex: 1 }}>
+          <div className="toast-text" style={{ flex: 1, minWidth: 0 }}>
             <strong>{toast.type === 'cart' ? 'Shopping Bag' : 'Wishlist'}</strong>
-            <span>{toast.message}{toast.productName ? `: ${toast.productName}` : ''}</span>
+            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {toast.message}{toast.productName ? `: ${toast.productName}` : ''}
+            </span>
             <span style={{ fontSize: '0.74rem', color: '#d4af37', fontWeight: 600, marginTop: '2px', display: 'inline-block' }}>
               {toast.type === 'cart' ? 'View bag & checkout →' : 'View wishlist →'}
             </span>

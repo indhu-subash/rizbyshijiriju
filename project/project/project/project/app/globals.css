@@ -672,7 +672,8 @@ img {
   color: #22543d;
 }
 
-.wishlist {
+button.wishlist,
+.product-card .wishlist {
   position: absolute;
   right: 13px;
   top: 13px;
@@ -686,7 +687,8 @@ img {
   color: var(--brown)
 }
 
-.wishlist.active {
+button.wishlist.active,
+.product-card .wishlist.active {
   color: #a66b5e
 }
 
@@ -1407,7 +1409,8 @@ img {
     padding: 4px 6px
   }
 
-  .wishlist {
+  button.wishlist,
+  .product-card .wishlist {
     top: 6px;
     right: 6px;
     width: 28px;
@@ -3316,26 +3319,36 @@ img {
    GLOBAL TOAST NOTIFICATION POPUP STYLES
    ========================================================================== */
 .toast-notification {
-  position: fixed;
-  top: 85px;
-  right: 24px;
-  z-index: 99999;
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  position: fixed !important;
+  top: 85px !important;
+  right: 24px !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
   background: #2a3a2e;
   color: #ffffff;
-  padding: 12px 18px;
-  border-radius: 8px;
+  padding: 12px 18px !important;
+  border-radius: 8px !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(255, 255, 255, 0.15);
   animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  max-width: 380px;
+  max-width: 380px !important;
+  width: auto !important;
+  height: auto !important;
+  box-sizing: border-box !important;
 }
 
+.toast-notification.toast-wishlist,
 .toast-notification.wishlist {
-  background: #3e2723;
-  border-color: rgba(229, 115, 115, 0.3);
+  background: #3e2723 !important;
+  border-color: rgba(229, 115, 115, 0.3) !important;
+}
+
+.toast-notification.toast-cart,
+.toast-notification.cart {
+  background: #2a3a2e !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .toast-img {
@@ -4340,11 +4353,13 @@ img {
   opacity: 0;
 }
 
-.wishlist {
+button.wishlist,
+.product-card .wishlist {
   transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
 
-.wishlist:active {
+button.wishlist:active,
+.product-card .wishlist:active {
   transform: scale(1.22);
 }
 
