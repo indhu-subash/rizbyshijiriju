@@ -78,19 +78,33 @@ export function ProductCard({ product }: { product: Product }) {
   const rawImage = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : undefined;
   const imageUrl = getValidImageUrl(rawImage);
 
+  const rawSecondaryImage = Array.isArray(product.images) && product.images.length > 1 ? product.images[1] : undefined;
+  const secondaryImageUrl = rawSecondaryImage ? getValidImageUrl(rawSecondaryImage) : null;
+
   const inStock = product.stock === undefined || product.stock > 0;
 
   return (
     <article className="product-card">
       <div className="product-image">
-        <Link href={`/product/${productSlug}`}>
+        <Link href={`/product/${productSlug}`} className="product-image-link">
           <Image
             src={imageUrl}
             alt={product.name || 'Product Image'}
             fill
             sizes="(max-width:640px) 50vw, (max-width:1000px) 33vw, 25vw"
             unoptimized
+            className={`primary-img ${secondaryImageUrl ? 'has-secondary' : ''}`}
           />
+          {secondaryImageUrl && (
+            <Image
+              src={secondaryImageUrl}
+              alt={`${product.name || 'Product Image'} - Alternate Angle`}
+              fill
+              sizes="(max-width:640px) 50vw, (max-width:1000px) 33vw, 25vw"
+              unoptimized
+              className="secondary-img"
+            />
+          )}
         </Link>
         <div className="product-badges-group">
           {sale > 0 ? (
