@@ -1,15 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap');
 
 :root {
-  --ivory: #f7f3ed;
-  --paper: #fbfaf8;
-  --sand: #e9dfd1;
+  --ivory: #ffffff;
+  --paper: #ffffff;
+  --sand: #f5f0ea;
   --taupe: #b7a896;
   --brown: #334c3d;
   --muted: #756a61;
   --gold: #a9895b;
   --sage: #596759;
-  --line: #ddd3c7;
+  --line: #ede7de;
   --serif: 'Playfair Display', Georgia, serif;
   --sans: 'DM Sans', Arial, sans-serif
 }
@@ -26,7 +26,7 @@ html {
 
 body {
   margin: 0;
-  background: var(--paper);
+  background: #ffffff;
   color: var(--brown);
   font-family: var(--sans);
   font-size: 15px;
@@ -989,8 +989,9 @@ button.wishlist.active,
 }
 
 .footer {
-  background: var(--ivory);
-  padding: 70px 0 24px
+  background: #ffffff;
+  border-top: 1px solid var(--line);
+  padding: 70px 0 24px;
 }
 
 .footer-top {
@@ -2651,8 +2652,8 @@ button.wishlist.active,
 }
 
 .hero-editorial {
-  background: var(--ivory);
-  padding: 42px 0 70px
+  background: #ffffff;
+  padding: 42px 0 70px;
 }
 
 .hero-editorial-inner {
@@ -3093,7 +3094,7 @@ button.wishlist.active,
 
 /* Quick Category Navigation Strip */
 .quick-category-strip {
-  background: var(--ivory);
+  background: #ffffff;
   border-bottom: 1px solid var(--line);
   padding: 10px 0;
   position: relative;
@@ -4724,7 +4725,7 @@ button.wishlist:active,
   aspect-ratio: 16 / 7.5;
   min-height: 480px;
   max-height: 720px;
-  background-color: #f7f3ed;
+  background-color: #ffffff;
   overflow: hidden;
 }
 
@@ -4784,7 +4785,7 @@ button.wishlist:active,
   aspect-ratio: 16 / 7.2;
   min-height: 520px;
   max-height: 680px;
-  background-color: #f7f3ed;
+  background-color: #ffffff;
   overflow: hidden;
   display: flex;
   align-items: center;
