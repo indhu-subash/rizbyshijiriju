@@ -150,9 +150,77 @@ export function ProductDetail({ product }: { product: Product }) {
       </span>
     );
 
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  // Helper to extract strictly in-stock, genuinely related products
+  const getInStockRelated = (candidates: Product[]): Product[] => {
+    const norm = (s?: string) => (s || '').toLowerCase().trim();
+    const currCat = norm(product.category);
+    const currCol = norm(product.collection);
+
+    // Filter candidates: strictly in stock and not the current product
+    const valid = candidates.filter((p) => {
+      if (!p || p.id === product.id || p.slug === product.slug) return false;
+      // In-stock requirement: must not be sold out (stock > 0 or undefined)
+      const inStock = p.stock === undefined || p.stock > 0;
+      return inStock;
+    });
+
+    // Score based on relationship to the current product
+    const scored = valid
+      .map((p) => {
+        const pCat = norm(p.category);
+        const pCol = norm(p.collection);
+        let score = 0;
+        if (currCat && pCat === currCat) {
+          score += 10; // Exact category match
+        }
+        if (currCol && pCol === currCol) {
+          score += 5; // Same collection match
+        }
+        return { product: p, score };
+      })
+      .filter((item) => item.score > 0) // Only genuinely related products
+      .sort((a, b) => b.score - a.score);
+
+    // Deduplicate and take up to 4
+    const seen = new Set<string>();
+    const result: Product[] = [];
+    for (const item of scored) {
+      const key = item.product.id || item.product.slug;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(item.product);
+      }
+      if (result.length >= 4) break;
+    }
+    return result;
+  };
+
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>(() =>
+    getInStockRelated(products)
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveRelated() {
+      try {
+        const res = await api.products.list({ category: product.category });
+        const apiItems: Product[] = Array.isArray(res?.products) ? res.products : [];
+        if (isMounted && apiItems.length > 0) {
+          const combinedPool = [...apiItems, ...products];
+          const freshRelated = getInStockRelated(combinedPool);
+          if (freshRelated.length > 0) {
+            setRelatedProducts(freshRelated);
+          }
+        }
+      } catch (err) {
+        // Silently preserve current related products
+      }
+    }
+    fetchLiveRelated();
+    return () => {
+      isMounted = false;
+    };
+  }, [product.id, product.category, product.collection]);
 
   const rawImages = Array.isArray(product.images) && product.images.length > 0 ? product.images : [];
   const activeImgSrc = getValidImageUrl(rawImages[activeImage] || rawImages[0]);
