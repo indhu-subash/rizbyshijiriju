@@ -70,7 +70,7 @@ export function Header() {
     <>
       <div className="announcement" aria-label="Store Announcement">
         <div className="announcement-marquee">
-          <span className="announcement-item">🎁 Free Gift with Every Order</span>
+          <span className="announcement-item">🎁 Free Gift on Orders Above ₹249</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
           <span className="announcement-sep">✦</span>
@@ -78,7 +78,7 @@ export function Header() {
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">💫 Handcrafted Kerala Heritage Jewellery</span>
           <span className="announcement-sep">✦</span>
-          <span className="announcement-item">🎁 Free Gift with Every Order</span>
+          <span className="announcement-item">🎁 Free Gift on Orders Above ₹249</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
           <span className="announcement-sep">✦</span>
@@ -86,7 +86,7 @@ export function Header() {
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">💫 Handcrafted Kerala Heritage Jewellery</span>
           <span className="announcement-sep">✦</span>
-          <span className="announcement-item">🎁 Free Gift with Every Order</span>
+          <span className="announcement-item">🎁 Free Gift on Orders Above ₹249</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
           <span className="announcement-sep">✦</span>
@@ -94,7 +94,7 @@ export function Header() {
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">💫 Handcrafted Kerala Heritage Jewellery</span>
           <span className="announcement-sep">✦</span>
-          <span className="announcement-item">🎁 Free Gift with Every Order</span>
+          <span className="announcement-item">🎁 Free Gift on Orders Above ₹249</span>
           <span className="announcement-sep">✦</span>
           <span className="announcement-item">🚚 Free Delivery for Purchase Above ₹599</span>
           <span className="announcement-sep">✦</span>

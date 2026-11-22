@@ -930,6 +930,14 @@ export function CheckoutPage() {
               <span>Bag Subtotal</span>
               <span>₹{(subtotal || 0).toLocaleString('en-IN')}</span>
             </div>
+            {discountedSubtotal >= 249 && (
+              <div className="flex justify-between text-sm" style={{ color: '#2e7d32' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  🎁 Free Gift (Orders ₹249+)
+                </span>
+                <span style={{ fontWeight: 600 }}>Included</span>
+              </div>
+            )}
             {discountAmount > 0 && (
               <div className="flex justify-between text-sm text-green-600" style={{ color: '#2e7d32' }}>
                 <span>Coupon Discount ({appliedCoupon?.code})</span>

@@ -102,6 +102,18 @@ export function CartPage() {
                 <span>Shipping</span>
                 <b>{isFreeShipping ? 'Free' : 'Calculated at checkout'}</b>
               </div>
+              <div className="summary-line">
+                <span>Free Gift</span>
+                <b>
+                  {subtotal >= 249 ? (
+                    <span style={{ color: '#2e7d32', fontWeight: 600 }}>Unlocked 🎁</span>
+                  ) : (
+                    <span style={{ color: '#777', fontSize: '0.82rem', fontWeight: 400 }}>
+                      Add ₹{(249 - subtotal).toLocaleString('en-IN')} more
+                    </span>
+                  )}
+                </b>
+              </div>
               {discount > 0 && (
                 <div className="summary-line discount">
                   <span>Discount</span>
@@ -120,7 +132,7 @@ export function CartPage() {
               <Link href="/checkout" className="button add-button">
                 Proceed to checkout <ArrowRight size={15} />
               </Link>
-              <p className="summary-note">Free shipping on orders of ₹599 or above · Secure checkout</p>
+              <p className="summary-note">🎁 Free gift on orders of ₹249+ · Free shipping on orders of ₹599+ · Secure checkout</p>
             </aside>
           </>
         ) : (

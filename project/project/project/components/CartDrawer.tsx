@@ -63,10 +63,18 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                   Add <strong>₹{remainingForFreeShipping.toLocaleString('en-IN')}</strong> more for FREE SHIPPING
                 </span>
               )}
-              <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>₹{subtotal.toLocaleString('en-IN')} / ₹2,000</span>
+              <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>₹{subtotal.toLocaleString('en-IN')} / ₹599</span>
             </div>
             <div className="free-shipping-bar">
               <div className="free-shipping-fill" style={{ width: `${progressPercent}%` }} />
+            </div>
+
+            {/* Free Gift indicator */}
+            <div style={{ marginTop: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderRadius: '4px', background: subtotal >= 249 ? '#f0fdf4' : '#faf8f5', color: subtotal >= 249 ? '#166534' : 'var(--muted)', border: subtotal >= 249 ? '1px solid #bbf7d0' : '1px solid var(--line)' }}>
+              <span>🎁 Free Gift on Orders ₹249+</span>
+              <strong style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                {subtotal >= 249 ? '✓ Unlocked' : `Add ₹${(249 - subtotal).toLocaleString('en-IN')}`}
+              </strong>
             </div>
           </div>
 
