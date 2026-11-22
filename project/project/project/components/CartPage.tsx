@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { getValidImageUrl } from './ProductCard';
 import { useStore } from './StoreProvider';
 import { api } from '@/lib/api';
+import { CartGamification } from './CartGamification';
 
 export function CartPage() {
   const { cart, subtotal, updateQuantity, removeFromCart } = useStore();
@@ -45,6 +46,7 @@ export function CartPage() {
         {cart.length ? (
           <>
             <div className="cart-items">
+              <CartGamification subtotal={subtotal} />
               {cart.map(({ product, quantity, color, size }) => {
                 const productSlug = product.slug || product.id || encodeURIComponent(product.name);
                 const imageUrl = getValidImageUrl(product.images?.[0]);
