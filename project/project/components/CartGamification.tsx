@@ -103,10 +103,10 @@ export function CartGamification({
         /* Progress Bar Track */
         .gamification-bar-wrapper {
           position: relative;
-          margin: 18px 24px 34px 24px;
+          margin: 18px 28px 34px 28px;
         }
         .gamification-card.compact .gamification-bar-wrapper {
-          margin: 14px 20px 30px 20px;
+          margin: 14px 26px 30px 26px;
         }
         .gamification-track {
           height: 7px;
@@ -183,10 +183,11 @@ export function CartGamification({
           text-align: center;
         }
         .gamification-pin.shipping .gamification-pin-label {
-          right: 0;
+          right: 6px;
           left: auto;
           transform: none;
           text-align: right;
+          white-space: nowrap;
         }
         .gamification-card.compact .gamification-pin-label {
           font-size: 0.68rem;
