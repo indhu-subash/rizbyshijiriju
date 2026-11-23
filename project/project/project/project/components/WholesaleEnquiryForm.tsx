@@ -51,6 +51,14 @@ export function WholesaleEnquiryForm() {
     if (Object.keys(errs).length > 0) {
       setStatus('error');
       setFeedback('Please correct the highlighted fields.');
+      const firstKey = Object.keys(errs)[0];
+      const el = document.getElementById(`ws-${firstKey}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if ('focus' in el && typeof (el as any).focus === 'function') {
+          (el as any).focus({ preventScroll: true });
+        }
+      }
       return;
     }
     lock.current = true;
@@ -83,6 +91,7 @@ export function WholesaleEnquiryForm() {
     <label className="ws-field">
       <span>{label}</span>
       <input
+        id={`ws-${k}`}
         value={values[k]}
         onChange={set(k)}
         disabled={busy}

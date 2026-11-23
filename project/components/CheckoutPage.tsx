@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Lock, Globe, MapPin, HelpCircle, Search } from 'lucide-react';
+import { Check, Lock, Globe, MapPin, HelpCircle, Search, AlertCircle } from 'lucide-react';
 import { FormEvent, useState, useEffect, useMemo } from 'react';
 import { useStore } from './StoreProvider';
 import { api } from '@/lib/api';
@@ -375,6 +375,31 @@ export function CheckoutPage() {
     }
   };
 
+  const scrollToError = (targetFieldId?: string) => {
+    setTimeout(() => {
+      const fieldEl = targetFieldId ? document.getElementById(targetFieldId) : null;
+      const bannerEl = document.getElementById('checkout-error-banner');
+
+      const target = fieldEl || bannerEl;
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (fieldEl && typeof fieldEl.focus === 'function') {
+          fieldEl.focus({ preventScroll: true });
+        }
+
+        target.classList.remove('error-highlight-pulse');
+        void target.offsetWidth;
+        target.classList.add('error-highlight-pulse');
+      }
+
+      if (bannerEl && bannerEl !== target) {
+        bannerEl.classList.remove('error-highlight-pulse');
+        void bannerEl.offsetWidth;
+        bannerEl.classList.add('error-highlight-pulse');
+      }
+    }, 60);
+  };
+
   const validateForm = () => {
     const newErrors: { [field: string]: boolean } = {};
     const cleanFirstName = firstName.trim();
@@ -412,18 +437,36 @@ export function CheckoutPage() {
     setFieldErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) {
-      if (newErrors.firstName) setCheckoutError('Please enter your First name.');
-      else if (newErrors.addressLine) setCheckoutError('Please enter your delivery street Address.');
-      else if (newErrors.city) setCheckoutError('Please enter your City.');
-      else if (newErrors.state) setCheckoutError('Please select or enter your State.');
-      else if (newErrors.pincode) setCheckoutError('Please enter a valid 6-digit PIN code.');
-      else if (newErrors.phone) setCheckoutError('Please enter a valid 10-digit mobile Phone number.');
-      else setCheckoutError('Please fill in the required fields highlighted in red.');
+      let firstErrorId = '';
+      if (newErrors.firstName) {
+        setCheckoutError('Please enter your First name.');
+        firstErrorId = 'checkout-firstName';
+      } else if (newErrors.addressLine) {
+        setCheckoutError('Please enter your delivery street Address.');
+        firstErrorId = 'checkout-addressLine';
+      } else if (newErrors.city) {
+        setCheckoutError('Please enter your City.');
+        firstErrorId = 'checkout-city';
+      } else if (newErrors.state) {
+        setCheckoutError('Please select or enter your State.');
+        firstErrorId = 'checkout-state';
+      } else if (newErrors.pincode) {
+        setCheckoutError('Please enter a valid 6-digit PIN code.');
+        firstErrorId = 'checkout-pincode';
+      } else if (newErrors.phone) {
+        setCheckoutError('Please enter a valid 10-digit mobile Phone number.');
+        firstErrorId = 'checkout-phone';
+      } else {
+        setCheckoutError('Please fill in the required fields highlighted in red.');
+      }
+
+      scrollToError(firstErrorId);
       return false;
     }
 
     if (isLocationAvailable === false) {
       setCheckoutError(shippingError || 'Delivery is unavailable for the selected destination.');
+      scrollToError('checkout-pincode');
       return false;
     }
 
@@ -657,8 +700,24 @@ export function CheckoutPage() {
         <div>
           <form onSubmit={handlePlaceOrder} className="shopify-checkout-card">
             {checkoutError && (
-              <div className="error-banner" style={{ background: '#fdf2f2', color: '#d32f2f', padding: '12px 16px', borderRadius: '6px', fontSize: '0.88rem', border: '1px solid #f8d7da' }}>
-                {checkoutError}
+              <div
+                id="checkout-error-banner"
+                className="error-banner error-highlight-pulse"
+                style={{
+                  background: '#fdf2f2',
+                  color: '#d32f2f',
+                  padding: '12px 16px',
+                  borderRadius: '6px',
+                  fontSize: '0.88rem',
+                  border: '1px solid #f8d7da',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '16px',
+                }}
+              >
+                <AlertCircle size={16} style={{ flexShrink: 0, color: '#dc2626' }} />
+                <span>{checkoutError}</span>
               </div>
             )}
 
@@ -694,6 +753,7 @@ export function CheckoutPage() {
               {/* First Name (Required) & Last Name (Optional) */}
               <div className="shopify-grid-2">
                 <input
+                  id="checkout-firstName"
                   type="text"
                   className={`shopify-input ${fieldErrors.firstName ? 'shopify-input-error' : ''}`}
                   placeholder="First name"
@@ -704,6 +764,7 @@ export function CheckoutPage() {
                   }}
                 />
                 <input
+                  id="checkout-lastName"
                   type="text"
                   className="shopify-input"
                   placeholder="Last name (optional)"
@@ -715,6 +776,7 @@ export function CheckoutPage() {
               {/* Street Address */}
               <div className="shopify-field-wrap">
                 <input
+                  id="checkout-addressLine"
                   type="text"
                   className={`shopify-input ${fieldErrors.addressLine ? 'shopify-input-error' : ''}`}
                   placeholder="Address"
@@ -732,6 +794,7 @@ export function CheckoutPage() {
               {/* City, State, PIN code (3 columns) */}
               <div className="shopify-grid-3">
                 <input
+                  id="checkout-city"
                   type="text"
                   className={`shopify-input ${fieldErrors.city ? 'shopify-input-error' : ''}`}
                   placeholder="City"
@@ -743,6 +806,7 @@ export function CheckoutPage() {
                 />
 
                 <select
+                  id="checkout-state"
                   className={`shopify-select ${fieldErrors.state ? 'shopify-input-error' : ''}`}
                   value={state}
                   onChange={(e) => {
@@ -758,6 +822,7 @@ export function CheckoutPage() {
                 </select>
 
                 <input
+                  id="checkout-pincode"
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
@@ -774,6 +839,7 @@ export function CheckoutPage() {
               {/* Phone number */}
               <div className="shopify-field-wrap">
                 <input
+                  id="checkout-phone"
                   type="tel"
                   className={`shopify-input ${fieldErrors.phone ? 'shopify-input-error' : ''}`}
                   placeholder="Phone"

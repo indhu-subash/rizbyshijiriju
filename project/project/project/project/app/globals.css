@@ -5714,6 +5714,31 @@ button.wishlist:active,
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.28) !important;
 }
 
+@keyframes errorHighlightPulse {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.35) !important;
+  }
+  40% {
+    transform: scale(0.99);
+  }
+  60% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.25) !important;
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important;
+  }
+}
+
+.error-highlight-pulse {
+  animation: errorHighlightPulse 0.55s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
 .shopify-field-icon {
   position: absolute;
   right: 12px;
