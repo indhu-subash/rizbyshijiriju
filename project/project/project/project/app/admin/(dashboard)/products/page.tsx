@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { Plus, Edit, Trash2, RotateCcw, Search, Filter, Sparkles, Download, FileSpreadsheet } from 'lucide-react';
+import { Plus, Edit, Trash2, RotateCcw, Search, Filter, Sparkles, FileSpreadsheet } from 'lucide-react';
 
 type ProductVariant = {
   id: string;
@@ -304,22 +304,6 @@ export default function AdminProducts() {
     }
   };
 
-  const downloadTemplate = () => {
-    const csvContent =
-      'Id,Product Code,Product Title,Description,Availability,Product URL,Image URL,Category,Subcategory,Original Price,Selling Price\n' +
-      'TA2A7A07FE,HMG00136,Elegant Diamond Floral Star Drop Earrings,Elegant Diamond Floral Star Drop Earrings with IGI Certicate,In Stock,https://www.tajvigold.com/diamond-jewellery/elegant-diamond-floral-star-drop-earrings?P=880,https://www.tajvigoldmedia.com/product/TA2A7A07FE/6a96e19a-7600-4370-8a73-feb7b330f703_original.jpg,Diamond,Earring,3500,3500\n';
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'product_template.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div>
       {/* Header */}
@@ -361,23 +345,6 @@ export default function AdminProducts() {
             title="Download full live product catalog in Excel (.xlsx) format"
           >
             <FileSpreadsheet size={16} /> {exporting ? 'Generating XLSX...' : 'Download Products (XLSX)'}
-          </button>
-          <button
-            type="button"
-            onClick={downloadTemplate}
-            className="button outline flex items-center gap-2"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '0.82rem',
-              borderColor: '#334c3d',
-              color: '#334c3d',
-              background: '#fff',
-            }}
-            title="Download CSV Product Template / Model"
-          >
-            <Download size={16} /> Download Template (CSV)
           </button>
           <button
             onClick={handleSeedProducts}
