@@ -188,6 +188,18 @@ export function ProductDetail({ product }: { product: Product }) {
       ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
       : null;
 
+  // Check if product genuinely belongs to the Anti-Tarnish collection
+  const isAntiTarnish = (() => {
+    const col = (product.collection || '').trim().toLowerCase();
+    if (col === 'anti-tarnish' || col === 'antitarnish' || col.includes('anti-tarnish')) {
+      return true;
+    }
+    if (Array.isArray(product.tags) && product.tags.some((t) => typeof t === 'string' && t.toLowerCase().includes('anti-tarnish'))) {
+      return true;
+    }
+    return false;
+  })();
+
   // Stock status text & styling
   const stockBadge =
     product.stock > 5 ? (
@@ -318,7 +330,7 @@ export function ProductDetail({ product }: { product: Product }) {
             <div className="pdp-gallery-main">
               {/* Badges Overlay */}
               <div className="pdp-badges">
-                <span className="pdp-badge highlight">ANTI-TARNISH</span>
+                {isAntiTarnish && <span className="pdp-badge highlight">ANTI-TARNISH</span>}
                 {product.newArrival && <span className="pdp-badge">NEW</span>}
                 {!product.newArrival && product.bestseller && <span className="pdp-badge">BESTSELLER</span>}
                 {discountPercent && <span className="pdp-badge sale">{discountPercent}% OFF</span>}
@@ -424,11 +436,11 @@ export function ProductDetail({ product }: { product: Product }) {
             <div className="pdp-trust-bar">
               <div className="pdp-trust-item">
                 <Sparkles size={16} className="pdp-trust-icon" />
-                <span>Anti-Tarnish & Waterproof</span>
+                <span>{isAntiTarnish ? 'Anti-Tarnish & Waterproof' : 'Handcrafted Heritage Finish'}</span>
               </div>
               <div className="pdp-trust-item">
                 <ShieldCheck size={16} className="pdp-trust-icon" />
-                <span>Hypoallergenic Steel</span>
+                <span>{isAntiTarnish ? 'Hypoallergenic Steel' : 'Skin-Friendly & Safe'}</span>
               </div>
               <div className="pdp-trust-item">
                 <RotateCcw size={16} className="pdp-trust-icon" />
@@ -697,7 +709,7 @@ export function ProductDetail({ product }: { product: Product }) {
             <div className="pdp-accordions">
               {[
                 { id: 'DETAILS', label: 'PRODUCT DETAILS & SPECIFICATIONS' },
-                { id: 'ANTI_TARNISH', label: 'ANTI-TARNISH & CARE GUIDE' },
+                { id: 'ANTI_TARNISH', label: isAntiTarnish ? 'ANTI-TARNISH & CARE GUIDE' : 'JEWELLERY CARE GUIDE' },
                 { id: 'SHIPPING', label: 'SHIPPING & FAST DELIVERY' },
                 { id: 'RETURNS', label: 'EASY 7-DAY RETURNS' },
               ].map((acc) => {
@@ -719,11 +731,11 @@ export function ProductDetail({ product }: { product: Product }) {
                           <div className="pdp-spec-table">
                             <div className="pdp-spec-row">
                               <span>Material</span>
-                              <strong>{product.material || 'Premium Stainless Steel / 18K Gold Plated'}</strong>
+                              <strong>{product.material || (isAntiTarnish ? 'Premium Stainless Steel / 18K Gold Plated' : 'Premium Traditional Brass Alloy / Gold Plated')}</strong>
                             </div>
                             <div className="pdp-spec-row">
                               <span>Finish</span>
-                              <strong>{product.finish || 'Anti-Tarnish High Polish'}</strong>
+                              <strong>{product.finish || (isAntiTarnish ? 'Anti-Tarnish High Polish' : 'Traditional Antique Gold Polish')}</strong>
                             </div>
                             <div className="pdp-spec-row">
                               <span>Category</span>
@@ -744,12 +756,26 @@ export function ProductDetail({ product }: { product: Product }) {
 
                         {acc.id === 'ANTI_TARNISH' && (
                           <div className="pdp-accordion-text">
-                            <p>✨ <strong>Crafted for Longevity:</strong> RIZ BY SHIJIRIJU jewellery is engineered with a multi-layer anti-tarnish protective coating that resists water, sweat, and daily humidity.</p>
-                            <ul>
-                              <li>Wipe gently with a soft microfibre cloth after wearing.</li>
-                              <li>Avoid direct prolonged exposure to harsh perfumes, hairsprays, or alcohol sanitizers.</li>
-                              <li>Store individually in the signature RIZ soft velvet pouch.</li>
-                            </ul>
+                            {isAntiTarnish ? (
+                              <>
+                                <p>✨ <strong>Crafted for Longevity:</strong> RIZ BY SHIJIRIJU jewellery is engineered with a multi-layer anti-tarnish protective coating that resists water, sweat, and daily humidity.</p>
+                                <ul>
+                                  <li>Wipe gently with a soft microfibre cloth after wearing.</li>
+                                  <li>Avoid direct prolonged exposure to harsh perfumes, hairsprays, or alcohol sanitizers.</li>
+                                  <li>Store individually in the signature RIZ soft velvet pouch.</li>
+                                </ul>
+                              </>
+                            ) : (
+                              <>
+                                <p>✨ <strong>Crafted for Longevity:</strong> RIZ BY SHIJIRIJU handcrafted heritage jewellery is made with care to ensure enduring elegance and shine.</p>
+                                <ul>
+                                  <li>Keep dry and avoid direct contact with water, sweat, or moisture.</li>
+                                  <li>Put on jewellery after applying perfumes, lotions, or hairspray.</li>
+                                  <li>Wipe gently with a dry, soft microfibre cloth after each wear.</li>
+                                  <li>Store individually in an airtight pouch or box to preserve polish.</li>
+                                </ul>
+                              </>
+                            )}
                           </div>
                         )}
 
