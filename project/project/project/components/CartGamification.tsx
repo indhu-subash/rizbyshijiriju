@@ -47,7 +47,6 @@ export function CartGamification({
           margin-bottom: 20px;
           box-shadow: 0 4px 16px rgba(51, 76, 61, 0.04);
           position: relative;
-          overflow: hidden;
         }
         .gamification-card.compact {
           padding: 12px 14px;
@@ -58,14 +57,17 @@ export function CartGamification({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 12px;
-          gap: 10px;
+          margin-bottom: 14px;
+          flex-wrap: wrap;
+          gap: 8px;
         }
         .gamification-message {
           font-size: 0.88rem;
           color: #2b2520;
           line-height: 1.4;
           font-weight: 500;
+          flex: 1;
+          min-width: 200px;
         }
         .gamification-card.compact .gamification-message {
           font-size: 0.82rem;
@@ -85,6 +87,7 @@ export function CartGamification({
           padding: 3px 8px;
           border-radius: 20px;
           white-space: nowrap;
+          flex-shrink: 0;
         }
         .gamification-badge.complete {
           background: #dcfce7;
@@ -100,10 +103,10 @@ export function CartGamification({
         /* Progress Bar Track */
         .gamification-bar-wrapper {
           position: relative;
-          margin: 18px 12px 28px 12px;
+          margin: 18px 24px 34px 24px;
         }
         .gamification-card.compact .gamification-bar-wrapper {
-          margin: 14px 10px 24px 10px;
+          margin: 14px 20px 30px 20px;
         }
         .gamification-track {
           height: 7px;
@@ -158,15 +161,14 @@ export function CartGamification({
           color: #ffffff;
           box-shadow: 0 0 0 3px rgba(51, 76, 61, 0.15);
         }
-        .gamification-pin.start {
-          left: 0%;
-        }
         .gamification-pin.gift {
           left: 50%;
         }
         .gamification-pin.shipping {
           left: 100%;
         }
+
+        /* Milestone Labels - Centered for Gift, Right-anchored for Shipping to prevent clipping */
         .gamification-pin-label {
           position: absolute;
           top: 30px;
@@ -174,7 +176,17 @@ export function CartGamification({
           font-weight: 600;
           color: #716558;
           white-space: nowrap;
+        }
+        .gamification-pin.gift .gamification-pin-label {
+          left: 50%;
+          transform: translateX(-50%);
           text-align: center;
+        }
+        .gamification-pin.shipping .gamification-pin-label {
+          right: 0;
+          left: auto;
+          transform: none;
+          text-align: right;
         }
         .gamification-card.compact .gamification-pin-label {
           font-size: 0.68rem;
@@ -185,26 +197,34 @@ export function CartGamification({
           font-weight: 700;
         }
 
-        /* Rewards Mini Badges Strip */
+        /* Rewards Mini Badges Strip - Stacked on Mobile/Compact to prevent text cut-off */
         .gamification-perks {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-top: 10px;
-          padding-top: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 12px;
+          padding-top: 12px;
           border-top: 1px dashed #e9dfd1;
+        }
+        @media (min-width: 600px) {
+          .gamification-card:not(.compact) .gamification-perks {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
         }
         .gamification-perk {
           display: flex;
           align-items: center;
           gap: 8px;
           font-size: 0.8rem;
-          padding: 6px 10px;
+          padding: 8px 12px;
           border-radius: 6px;
           background: #faf8f5;
           border: 1px solid #f0e9df;
           color: #716558;
           transition: all 0.25s ease;
+          min-width: 0;
         }
         .gamification-perk.unlocked {
           background: #f0fdf4;
@@ -213,8 +233,8 @@ export function CartGamification({
           font-weight: 600;
         }
         .gamification-perk-check {
-          width: 16px;
-          height: 16px;
+          width: 18px;
+          height: 18px;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -222,10 +242,16 @@ export function CartGamification({
           font-size: 0.65rem;
           background: #e5ded4;
           color: #716558;
+          flex-shrink: 0;
         }
         .gamification-perk.unlocked .gamification-perk-check {
           background: #16a34a;
           color: #ffffff;
+        }
+        .gamification-perk span:last-child {
+          white-space: normal;
+          line-height: 1.35;
+          word-break: break-word;
         }
       `}</style>
 
@@ -278,7 +304,7 @@ export function CartGamification({
             {hasGift ? <Check size={14} strokeWidth={3} /> : <Gift size={12} />}
           </div>
           <span className="gamification-pin-label">
-            {hasGift ? '✓ Free Gift' : '₹249 Gift'}
+            {hasGift ? '✓ Free Gift' : '₹249 Free Gift'}
           </span>
         </div>
 
@@ -288,7 +314,7 @@ export function CartGamification({
             {hasShipping ? <Check size={14} strokeWidth={3} /> : <Truck size={12} />}
           </div>
           <span className="gamification-pin-label">
-            {hasShipping ? '✓ Free Delivery' : '₹599 Delivery'}
+            {hasShipping ? '✓ Free Delivery' : '₹599 Free Delivery'}
           </span>
         </div>
       </div>
@@ -299,13 +325,13 @@ export function CartGamification({
           <span className="gamification-perk-check">
             {hasGift ? '✓' : '•'}
           </span>
-          <span>🎁 Free Surprise Gift (₹249+)</span>
+          <span>🎁 Free Surprise Gift on orders ₹249+</span>
         </div>
         <div className={`gamification-perk ${hasShipping ? 'unlocked' : ''}`}>
           <span className="gamification-perk-check">
             {hasShipping ? '✓' : '•'}
           </span>
-          <span>🚚 Free Express Shipping (₹599+)</span>
+          <span>🚚 Free Express Delivery on orders ₹599+</span>
         </div>
       </div>
     </div>

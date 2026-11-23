@@ -1088,17 +1088,76 @@ button.wishlist.active,
   position: fixed;
   right: 24px;
   bottom: 24px;
-  z-index: 15;
+  z-index: 999;
   background: var(--sage);
   color: #fff;
   border-radius: 30px;
-  padding: 12px 16px;
-  display: flex;
+  padding: 10px 18px;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  box-shadow: 0 8px 25px rgba(40, 40, 30, .15);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  box-shadow: 0 8px 25px rgba(40, 40, 30, .18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  text-decoration: none;
+}
+
+.whatsapp:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(40, 40, 30, .28);
+  background: #2b3e32;
+  color: #fff;
+}
+
+.whatsapp .whatsapp-icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+/* Coupon Entry in Checkout */
+.coupon-entry-wrapper {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.coupon-entry-wrapper .eyebrow {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.coupon-entry-wrapper form {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.coupon-entry-wrapper input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid #d5c7b7;
+  border-radius: 6px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  background: #fff;
+  color: var(--brown);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.coupon-entry-wrapper input:focus {
+  outline: none;
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px rgba(51, 76, 61, 0.1);
+}
+.coupon-entry-wrapper button {
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 18px;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
