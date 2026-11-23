@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { Plus, Edit, Trash2, RotateCcw, Search, Filter, Sparkles, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, RotateCcw, Search, Filter, Sparkles, Download, FileSpreadsheet } from 'lucide-react';
 
 type ProductVariant = {
   id: string;
@@ -16,10 +16,13 @@ type ProductVariant = {
 type Product = {
   id: string;
   name: string;
+  slug?: string | null;
   productCode?: string | null;
+  description?: string | null;
   category: string;
   collection: string;
   price: number;
+  originalPrice?: number | null;
   stock: number;
   unitsSold?: number;
   images: string[];
@@ -221,6 +224,86 @@ export default function AdminProducts() {
     );
   });
 
+  const [exporting, setExporting] = useState(false);
+
+  const exportProductsXlsx = async () => {
+    try {
+      setExporting(true);
+      let allProducts = products;
+      try {
+        const res = await api.admin.getProducts({ status: 'all' });
+        if (Array.isArray(res.products) && res.products.length > 0) {
+          allProducts = res.products;
+        }
+      } catch (e) {
+        console.warn('Using current products list for export:', e);
+      }
+
+      const XLSX = await import('xlsx');
+
+      const rows = allProducts.map((p) => {
+        const isAvail = p.stock > 0 && p.isActive !== false ? 'In Stock' : 'Out of Stock';
+        const slug = p.slug || p.id;
+        const productUrl = 'https://rizbyshijiriju.com/product/' + slug;
+        const rawImage = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : '';
+        const originalPrice = p.originalPrice || (p.price ? Math.max(Math.round(p.price * 1.5), p.price + 200) : '');
+
+        return {
+          Id: p.id || '',
+          'Product Code': p.productCode || '',
+          'Product Title': p.name || '',
+          Description: p.description || '',
+          Availability: isAvail,
+          'Product URL': productUrl,
+          'Image URL': rawImage,
+          Category: p.category || '',
+          Subcategory: p.collection || '',
+          'Original Price': originalPrice,
+          'Selling Price': p.price ?? '',
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows, {
+        header: [
+          'Id',
+          'Product Code',
+          'Product Title',
+          'Description',
+          'Availability',
+          'Product URL',
+          'Image URL',
+          'Category',
+          'Subcategory',
+          'Original Price',
+          'Selling Price',
+        ],
+      });
+
+      ws['!cols'] = [
+        { wch: 38 },
+        { wch: 15 },
+        { wch: 35 },
+        { wch: 45 },
+        { wch: 14 },
+        { wch: 50 },
+        { wch: 60 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 15 },
+        { wch: 15 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Products');
+
+      XLSX.writeFile(wb, `riz_products_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export products XLSX file.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const downloadTemplate = () => {
     const csvContent =
       'Id,Product Code,Product Title,Description,Availability,Product URL,Image URL,Category,Subcategory,Original Price,Selling Price\n' +
@@ -263,6 +346,24 @@ export default function AdminProducts() {
           </button>
           <button
             type="button"
+            onClick={exportProductsXlsx}
+            disabled={exporting}
+            className="button outline flex items-center gap-2"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.82rem',
+              borderColor: '#1e7e34',
+              color: '#1e7e34',
+              background: '#f4fbf5',
+            }}
+            title="Download full live product catalog in Excel (.xlsx) format"
+          >
+            <FileSpreadsheet size={16} /> {exporting ? 'Generating XLSX...' : 'Download Products (XLSX)'}
+          </button>
+          <button
+            type="button"
             onClick={downloadTemplate}
             className="button outline flex items-center gap-2"
             style={{
@@ -276,7 +377,7 @@ export default function AdminProducts() {
             }}
             title="Download CSV Product Template / Model"
           >
-            <Download size={16} /> Download Template
+            <Download size={16} /> Download Template (CSV)
           </button>
           <button
             onClick={handleSeedProducts}

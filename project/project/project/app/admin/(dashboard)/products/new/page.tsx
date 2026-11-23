@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { ArrowLeft, Upload, Loader2, Plus, X, Download } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Plus, X, Download, FileSpreadsheet } from 'lucide-react';
 
 const presetColors = [
   { name: 'Gold', hex: '#d4af37' },
@@ -391,23 +391,43 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
         <Link href="/admin/products" className="flex items-center gap-2 text-sm muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <ArrowLeft size={16} /> Back to Products
         </Link>
-        <button
-          type="button"
-          onClick={downloadTemplate}
-          className="button outline flex items-center gap-2"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '0.82rem',
-            borderColor: '#334c3d',
-            color: '#334c3d',
-            background: '#fff',
-          }}
-          title="Download CSV Product Template / Model"
-        >
-          <Download size={15} /> Download CSV Template
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <a
+            href="/products_catalog.xlsx"
+            download="products_catalog.xlsx"
+            className="button outline flex items-center gap-2"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.82rem',
+              borderColor: '#1e7e34',
+              color: '#1e7e34',
+              background: '#f4fbf5',
+              textDecoration: 'none',
+            }}
+            title="Download full product catalog Excel (.xlsx)"
+          >
+            <FileSpreadsheet size={15} /> All Products (XLSX)
+          </a>
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="button outline flex items-center gap-2"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.82rem',
+              borderColor: '#334c3d',
+              color: '#334c3d',
+              background: '#fff',
+            }}
+            title="Download CSV Product Template / Model"
+          >
+            <Download size={15} /> Sample Template (CSV)
+          </button>
+        </div>
       </div>
 
       <div className="mb-8">
