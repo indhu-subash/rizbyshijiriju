@@ -1214,4 +1214,14 @@ export async function seedProducts(req: AuthenticatedRequest, res: Response): Pr
   }
 }
 
+export async function getProductTemplate(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const csv =
+    'Id,Product Code,Product Title,Description,Availability,Product URL,Image URL,Category,Subcategory,Original Price,Selling Price\n' +
+    'TA2A7A07FE,HMG00136,Elegant Diamond Floral Star Drop Earrings,Elegant Diamond Floral Star Drop Earrings with IGI Certicate,In Stock,https://www.tajvigold.com/diamond-jewellery/elegant-diamond-floral-star-drop-earrings?P=880,https://www.tajvigoldmedia.com/product/TA2A7A07FE/6a96e19a-7600-4370-8a73-feb7b330f703_original.jpg,Diamond,Earring,3500,3500\n';
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="product_template.csv"');
+  res.status(200).send(csv);
+}
+
 

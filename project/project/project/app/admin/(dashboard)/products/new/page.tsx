@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { ArrowLeft, Upload, Loader2, Plus, X } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Plus, X, Download } from 'lucide-react';
 
 const presetColors = [
   { name: 'Gold', hex: '#d4af37' },
@@ -30,10 +30,11 @@ export default function NewProductPage() {
   const [category, setCategory] = useState('Bangles');
   const [categoryId, setCategoryId] = useState('');
 
-  const getProductTypeFromCategory = (catName: string): 'bangle' | 'ring' | 'regular' => {
+  const getProductTypeFromCategory = (catName: string): 'bangle' | 'ring' | 'nosepin' | 'regular' => {
     const norm = (catName || '').toLowerCase().trim();
     if (norm === 'bangles' || norm === 'bangle') return 'bangle';
     if (norm === 'rings' || norm === 'ring') return 'ring';
+    if (norm === 'nose pins' || norm === 'nose pin' || norm === 'nose rings' || norm === 'nose ring' || norm === 'nosepins' || norm === 'nosepin') return 'nosepin';
     return 'regular';
   };
 
@@ -59,14 +60,16 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
 });
 
   const [colorStocks, setColorStocks] = useState<{ [color: string]: number }>({ Gold: 10 });
- const [colorSizeStocks, setColorSizeStocks] = useState<{ [key: string]: number }>({
-  'Gold_2.2': 10,
-  'Gold_2.4': 5,
-  'Gold_2.6': 0,
-  'Gold_2.8': 3,
-  'Gold_2.10': 7,
-  'Gold_Free Size': 0,
-});
+  const [colorSizeStocks, setColorSizeStocks] = useState<{ [key: string]: number }>({
+    'Gold_2.2': 10,
+    'Gold_2.4': 5,
+    'Gold_2.6': 0,
+    'Gold_2.8': 3,
+    'Gold_2.10': 7,
+    'Gold_Free Size': 0,
+  });
+
+  const [customSizeInput, setCustomSizeInput] = useState('');
 
   const [collection, setCollection] = useState('Anti-Tarnish');
   const [colors, setColors] = useState<string[]>(['Gold']);
@@ -111,16 +114,41 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
     setCategory(newCat);
     const matched = dbCategories.find((c) => c.name === newCat);
     if (matched) setCategoryId(matched.id);
-const newType = getProductTypeFromCategory(newCat);
 
-if (newType === 'bangle') {
-  setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']);
-} else if (newType === 'ring') {
-  setSelectedSizes(['6', '7', '8', '9', '16', '17', '18']);
-} else {
-  setSelectedSizes([]);
-}
-};
+    const newType = getProductTypeFromCategory(newCat);
+    if (newType === 'bangle') {
+      setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']);
+    } else if (newType === 'ring') {
+      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18', 'Free Size']);
+    } else if (newType === 'nosepin') {
+      setSelectedSizes([]);
+    } else {
+      setSelectedSizes([]);
+    }
+  };
+
+  const addCustomSize = () => {
+    const trimmed = customSizeInput.trim();
+    if (trimmed && !selectedSizes.includes(trimmed)) {
+      setSelectedSizes([...selectedSizes, trimmed]);
+      setSizeStocks((prev) => ({ ...prev, [trimmed]: 0 }));
+      setCustomSizeInput('');
+    }
+  };
+
+  const removeCustomSize = (sz: string) => {
+    const hasSizeStock = (sizeStocks[sz] || 0) > 0;
+    const hasMatrixStock = Object.keys(colorSizeStocks).some(
+      (key) => key.endsWith(`_${sz}`) && (colorSizeStocks[key] || 0) > 0
+    );
+    if (hasSizeStock || hasMatrixStock) {
+      const confirmed = window.confirm(
+        `Removing size "${sz}" will discard its recorded stock quantity. Are you sure?`
+      );
+      if (!confirmed) return;
+    }
+    setSelectedSizes(selectedSizes.filter((s) => s !== sz));
+  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -195,7 +223,7 @@ if (newType === 'bangle') {
     setUploading(true);
     setError('');
     setSuccess('');
-    
+
     try {
       const res = await api.admin.uploadImage(file);
       const uploadedUrl = res?.url || res?.imageUrl;
@@ -210,11 +238,15 @@ if (newType === 'bangle') {
       setUploading(false);
     }
   };
-const activeAvailableSizes = productType === 'bangle'
-  ? ['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']
-  : productType === 'ring'
-  ? ['6', '7', '8', '9', '16', '17', '18']
-  : [];
+
+  const activeAvailableSizes = productType === 'bangle'
+    ? ['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']
+    : productType === 'ring'
+    ? ['6', '7', '8', '9', '16', '17', '18', 'Free Size']
+    : productType === 'nosepin'
+    ? [] // nosepin uses manual entry, no predefined sizes
+    : [];
+
   const totalCalculatedStock = productType !== 'regular'
     ? colors.length > 1
       ? selectedSizes.reduce((acc, sz) => {
@@ -337,11 +369,46 @@ const activeAvailableSizes = productType === 'bangle'
     }
   };
 
+  const downloadTemplate = () => {
+    const csvContent =
+      'Id,Product Code,Product Title,Description,Availability,Product URL,Image URL,Category,Subcategory,Original Price,Selling Price\n' +
+      'TA2A7A07FE,HMG00136,Elegant Diamond Floral Star Drop Earrings,Elegant Diamond Floral Star Drop Earrings with IGI Certicate,In Stock,https://www.tajvigold.com/diamond-jewellery/elegant-diamond-floral-star-drop-earrings?P=880,https://www.tajvigoldmedia.com/product/TA2A7A07FE/6a96e19a-7600-4370-8a73-feb7b330f703_original.jpg,Diamond,Earring,3500,3500\n';
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'product_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
-      <Link href="/admin/products" className="flex items-center gap-2 text-sm muted mb-6" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <ArrowLeft size={16} /> Back to Products
-      </Link>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <Link href="/admin/products" className="flex items-center gap-2 text-sm muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ArrowLeft size={16} /> Back to Products
+        </Link>
+        <button
+          type="button"
+          onClick={downloadTemplate}
+          className="button outline flex items-center gap-2"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '0.82rem',
+            borderColor: '#334c3d',
+            color: '#334c3d',
+            background: '#fff',
+          }}
+          title="Download CSV Product Template / Model"
+        >
+          <Download size={15} /> Download CSV Template
+        </button>
+      </div>
 
       <div className="mb-8">
         <span className="eyebrow">Inventory Catalog</span>
@@ -383,7 +450,7 @@ const activeAvailableSizes = productType === 'bangle'
                 ))}
               </select>
             </label>
-            
+
             <label>
               Product Name *
               <input
@@ -438,41 +505,88 @@ const activeAvailableSizes = productType === 'bangle'
                     Size & Stock Configuration ({category})
                   </span>
                   <span style={{ fontSize: '0.8rem', color: '#666' }}>
-                    Check active sizes and set stock quantity for each size variant.
+                    {productType === 'nosepin' ? 'Add custom sizes and set stock quantity for each.' : 'Check active sizes and set stock quantity for each size variant.'}
                   </span>
                 </div>
 
-                {/* Size checkboxes */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
-                  {activeAvailableSizes.map((sz) => {
-                    const isChecked = selectedSizes.includes(sz);
-                    return (
-                      <label
-                        key={sz}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          border: isChecked ? '1px solid #c9b097' : '1px solid #e5e5e5',
-                          background: isChecked ? '#fff' : '#f5f5f5',
-                          cursor: 'pointer',
-                          fontWeight: isChecked ? 600 : 400,
-                          fontSize: '0.88rem',
-                        }}
+                {/* Nosepin: Manual size entry */}
+                {productType === 'nosepin' ? (
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                      <input
+                        type="text"
+                        placeholder="Enter size (e.g. 6mm, 8mm, Small)"
+                        value={customSizeInput}
+                        onChange={(e) => setCustomSizeInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomSize(); } }}
+                        style={{ flex: 1, padding: '8px 12px', fontSize: '0.88rem', border: '1px solid #ccc', borderRadius: '6px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={addCustomSize}
+                        className="button secondary"
+                        style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSize(sz)}
-                          style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                        />
-                        Size {sz}
-                      </label>
-                    );
-                  })}
-                </div>
+                        <Plus size={14} /> Add Size
+                      </button>
+                    </div>
+                    {selectedSizes.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {selectedSizes.map((sz) => (
+                          <span
+                            key={sz}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '5px 12px',
+                              borderRadius: '16px',
+                              background: '#fff',
+                              border: '1px solid #c9b097',
+                              fontSize: '0.86rem',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {sz}
+                            <X size={12} style={{ cursor: 'pointer', color: '#999' }} onClick={() => removeCustomSize(sz)} />
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Bangle/Ring: Predefined size checkboxes */
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+                    {activeAvailableSizes.map((sz) => {
+                      const isChecked = selectedSizes.includes(sz);
+                      return (
+                        <label
+                          key={sz}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            border: isChecked ? '1px solid #c9b097' : '1px solid #e5e5e5',
+                            background: isChecked ? '#fff' : '#f5f5f5',
+                            cursor: 'pointer',
+                            fontWeight: isChecked ? 600 : 400,
+                            fontSize: '0.88rem',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSize(sz)}
+                            style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                          />
+                          Size {sz}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* If multiple colours are selected: show Colour × Size Matrix */}
                 {colors.length > 1 ? (
@@ -817,16 +931,21 @@ const activeAvailableSizes = productType === 'bangle'
                   <option value="All Ages">All Ages</option>
                 </select>
               </label>
+            <label>
+              Base Metal / Material
+              <select
+                value={metal}
+                onChange={(e) => setMetal(e.target.value)}
+              >
+                <option value="">Select material</option>
+                <option value="Brass">Brass</option>
+                <option value="Stainless Steel">Stainless Steel</option>
+                <option value="Silver">Silver</option>
+                <option value="Alloy">Alloy</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
 
-              <label>
-                Base Metal / Material
-                <input
-                  type="text"
-                  placeholder="e.g. Brass, Silver, Alloy"
-                  value={metal}
-                  onChange={(e) => setMetal(e.target.value)}
-                />
-              </label>
             </div>
 
             <label>
