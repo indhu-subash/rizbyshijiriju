@@ -24,7 +24,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Product, products } from '@/data/products';
 import { useStore } from './StoreProvider';
-import { ProductGrid, getValidImageUrl } from './ProductCard';
+import { ProductGrid, getValidImageUrl, getEffectiveOriginalPrice } from './ProductCard';
 import { api } from '@/lib/api';
 
 export function ProductDetail({ product }: { product: Product }) {
@@ -182,10 +182,11 @@ export function ProductDetail({ product }: { product: Product }) {
     }
   };
 
-  // Calculate discount percentage if valid original price exists
+  // Calculate effective original price and discount percentage
+  const effectiveOriginalPrice = getEffectiveOriginalPrice(product);
   const discountPercent =
-    product.originalPrice && product.originalPrice > product.price
-      ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    effectiveOriginalPrice > product.price
+      ? Math.round(((effectiveOriginalPrice - product.price) / effectiveOriginalPrice) * 100)
       : null;
 
   // Check if product genuinely belongs to the Anti-Tarnish collection
@@ -496,13 +497,13 @@ export function ProductDetail({ product }: { product: Product }) {
             {/* Price Box */}
             <div className="pdp-price-box">
               <span className="pdp-price">₹{(product.price || 0).toLocaleString('en-IN')}</span>
-              {product.originalPrice && product.originalPrice > product.price && (
+              {effectiveOriginalPrice > product.price && (
                 <>
-                  <del className="pdp-original-price">₹{product.originalPrice.toLocaleString('en-IN')}</del>
-                  <span className="pdp-save-badge">Save ₹{(product.originalPrice - product.price).toLocaleString('en-IN')} ({discountPercent}%)</span>
+                  <del className="pdp-original-price">₹{effectiveOriginalPrice.toLocaleString('en-IN')}</del>
+                  <span className="pdp-save-badge">Save ₹{(effectiveOriginalPrice - product.price).toLocaleString('en-IN')} ({discountPercent}%)</span>
                 </>
               )}
-              <div className="pdp-tax-note">Inclusive of all taxes. Free express shipping on orders over ₹999</div>
+              <div className="pdp-tax-note">Inclusive of all taxes. Free express shipping on orders over ₹599</div>
             </div>
 
             {/* Short Description */}
@@ -861,7 +862,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
                         {acc.id === 'SHIPPING' && (
                           <div className="pdp-accordion-text">
-                            <p>🚚 <strong>Express Shipping across India:</strong> Orders are processed within 24 hours. Delivery usually takes 3–5 working days depending on your pincode.</p>
+                            <p>🚚 <strong>Express Shipping across India:</strong> Orders are processed within 24 hours. Free delivery on all orders above ₹599. Delivery usually takes 3–5 working days depending on your pincode.</p>
                             <p>✈️ <strong>International Shipping Available:</strong> We ship worldwide with full end-to-end tracking.</p>
                           </div>
                         )}
@@ -945,6 +946,9 @@ export function ProductDetail({ product }: { product: Product }) {
             <span className="sticky-purchase-title">{product.name}</span>
             {selectedColor && <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>({selectedColor})</span>}
             <span className="sticky-purchase-price">₹{(product.price || 0).toLocaleString('en-IN')}</span>
+            {effectiveOriginalPrice > product.price && (
+              <del style={{ fontSize: '0.82rem', color: '#888', marginLeft: '6px' }}>₹{effectiveOriginalPrice.toLocaleString('en-IN')}</del>
+            )}
           </div>
           <button
             className="button"

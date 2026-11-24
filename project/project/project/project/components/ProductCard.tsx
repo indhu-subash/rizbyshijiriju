@@ -33,13 +33,26 @@ export function getValidImageUrl(url?: string): string {
 }
 
 // Stable hash for deterministic, realistic prices and review metrics per product
-function getProductSeed(str: string): number {
+export function getProductSeed(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i);
     hash |= 0;
   }
   return Math.abs(hash);
+}
+
+export function getEffectiveOriginalPrice(product: Product): number {
+  if (product.originalPrice && product.originalPrice > product.price) {
+    return product.originalPrice;
+  }
+  const seed = getProductSeed(product.id || product.slug || product.name || 'product');
+  const base = product.price || 499;
+  const discountPercentages = [45, 50, 52, 55, 58, 60, 62, 65];
+  const pct = discountPercentages[seed % discountPercentages.length];
+  const rawOriginal = Math.round(base / (1 - pct / 100));
+  const rounded = Math.ceil(rawOriginal / 50) * 50 - 1;
+  return Math.max(rounded, base + 200);
 }
 
 const RATING_POOL = [4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9];
@@ -51,17 +64,7 @@ export function ProductCard({ product }: { product: Product }) {
   const seed = getProductSeed(product.id || product.slug || product.name || 'product');
 
   // Compute realistic original MRP price so every card highlights attractive discount
-  const effectiveOriginalPrice = (() => {
-    if (product.originalPrice && product.originalPrice > product.price) {
-      return product.originalPrice;
-    }
-    const base = product.price || 499;
-    const discountPercentages = [45, 50, 52, 55, 58, 60, 62, 65];
-    const pct = discountPercentages[seed % discountPercentages.length];
-    const rawOriginal = Math.round(base / (1 - pct / 100));
-    const rounded = Math.ceil(rawOriginal / 50) * 50 - 1;
-    return Math.max(rounded, base + 200);
-  })();
+  const effectiveOriginalPrice = getEffectiveOriginalPrice(product);
 
   const sale = Math.round((1 - (product.price || 0) / effectiveOriginalPrice) * 100);
   const limited = Array.isArray(product.tags) && product.tags.includes('limited');

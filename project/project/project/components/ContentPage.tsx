@@ -72,7 +72,7 @@ const pages: Record<
     sections: [
       ['Dispatch', 'Orders are packed and dispatched within 1–2 working days. You will receive tracking details via email or SMS as soon as your order leaves us.'],
       ['Delivery times', 'Standard delivery across India usually takes 3–5 working days. Remote locations or international shipping times may vary based on local logistics.'],
-      ['Free shipping', 'Free shipping is available on eligible Indian orders with a subtotal of ₹2,000 or more. Standard shipping rates apply for orders below ₹2,000.'],
+      ['Free shipping', 'Free shipping is available on eligible Indian orders with a subtotal of ₹599 or more. Standard shipping rates apply for orders below ₹599.'],
       ['Need help?', 'Message us on WhatsApp (+91 9072308686) or email rizbyshijiriju@gmail.com for any assistance with your delivery status.'],
     ],
   },
@@ -108,7 +108,7 @@ const pages: Record<
       ['Orders & Availability', 'All orders placed on our website are subject to product availability and acceptance. We reserve the right to cancel or limit orders if an item becomes unavailable.'],
       ['Product Information', 'We make every effort to display product colors, details, and finishes accurately. Small variations may occur due to screen settings or handcrafted material characteristics.'],
       ['Pricing & Payment', 'Prices are displayed in Indian Rupees (INR). Payments must be completed online via Razorpay (Instant UPI or Credit/Debit Cards).'],
-      ['Shipping & Delivery', 'Delivery timelines and shipping charges are governed by our Shipping Policy. Free shipping applies to eligible Indian orders of ₹2,000 or more.'],
+      ['Shipping & Delivery', 'Delivery timelines and shipping charges are governed by our Shipping Policy. Free shipping applies to eligible Indian orders of ₹599 or more.'],
       ['Returns & Refunds', 'Return and refund requests are handled according to our 7-day Return & Refund Policy for eligible order issues.'],
       ['Customer Support', 'If you have any questions regarding these terms, please email us at rizbyshijiriju@gmail.com or WhatsApp +91 9072308686.'],
     ],
