@@ -3828,30 +3828,48 @@ button.wishlist.active,
   margin-bottom: 22px;
 }
 
+.pdp-price-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .pdp-price {
-  font-family: var(--serif);
+  font-family: var(--sans);
   font-size: 1.85rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--brown);
+  line-height: 1;
+  display: inline-flex;
+  align-items: baseline;
+  letter-spacing: -0.01em;
 }
 
 .pdp-original-price {
-  font-size: 1.05rem;
+  font-family: var(--sans);
+  font-size: 1.15rem;
   color: var(--taupe);
-  margin-left: 12px;
+  margin-left: 0;
   text-decoration: line-through;
+  line-height: 1;
+  display: inline-flex;
+  align-items: baseline;
 }
 
 .pdp-save-badge {
-  display: inline-block;
-  margin-left: 12px;
-  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--sans);
+  font-size: 0.8rem;
   font-weight: 600;
   color: #2e7d32;
   background: #e8f5e9;
   padding: 3px 8px;
   border-radius: 4px;
   border: 1px solid #c8e6c9;
+  line-height: 1;
+  align-self: center;
 }
 
 .pdp-tax-note {
@@ -4728,9 +4746,44 @@ button.wishlist:active,
   color: var(--brown);
 }
 
+.sticky-price-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .sticky-purchase-price {
-  font-weight: 600;
+  font-family: var(--sans);
+  font-weight: 700;
   color: var(--brown);
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.sticky-purchase-original {
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: #888;
+  text-decoration: line-through;
+}
+
+/* Universal Currency & Rupee Symbol Typography Alignment */
+.pdp-price,
+.pdp-original-price,
+.pdp-save-badge,
+.product-meta .current-price,
+.product-meta .original-price,
+.product-meta del,
+.sticky-purchase-price,
+.sticky-purchase-original,
+.detail-price,
+.summary-line b,
+.summary-total strong,
+.shopify-pay-btn,
+.orders-table td {
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* 7. Search Overlay Modal */

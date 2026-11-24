@@ -285,14 +285,14 @@ export function AccountPage() {
                               <p className="muted text-sm">Qty: {item.quantity}</p>
                             </div>
                           </div>
-                          <p className="serif font-medium">₹{item.price * item.quantity}</p>
+                          <p className="font-semibold" style={{ fontSize: '15px' }}>₹{item.price * item.quantity}</p>
                         </div>
                       ))}
                     </div>
 
                     <div className="text-right">
                       <span className="muted">Total Paid</span>
-                      <p className="serif text-xl font-semibold">₹{selectedOrder.total}</p>
+                      <p className="text-xl font-bold" style={{ color: 'var(--brown)' }}>₹{selectedOrder.total}</p>
                     </div>
                   </div>
                 ) : (

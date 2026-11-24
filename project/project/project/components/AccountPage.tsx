@@ -30,6 +30,7 @@ type Order = {
   items: {
     id: string;
     name: string;
+    productCode?: string | null;
     price: number;
     quantity: number;
     image: string;
@@ -276,17 +277,22 @@ export function AccountPage() {
                             )}
                             <div>
                               <p className="serif font-medium">{item.name}</p>
+                              {item.productCode && (
+                                <p style={{ fontSize: '11px', fontFamily: 'monospace', color: '#555', margin: '2px 0' }}>
+                                  SKU: {item.productCode}
+                                </p>
+                              )}
                               <p className="muted text-sm">Qty: {item.quantity}</p>
                             </div>
                           </div>
-                          <p className="serif font-medium">₹{item.price * item.quantity}</p>
+                          <p className="font-semibold" style={{ fontSize: '15px' }}>₹{item.price * item.quantity}</p>
                         </div>
                       ))}
                     </div>
 
                     <div className="text-right">
                       <span className="muted">Total Paid</span>
-                      <p className="serif text-xl font-semibold">₹{selectedOrder.total}</p>
+                      <p className="text-xl font-bold" style={{ color: 'var(--brown)' }}>₹{selectedOrder.total}</p>
                     </div>
                   </div>
                 ) : (

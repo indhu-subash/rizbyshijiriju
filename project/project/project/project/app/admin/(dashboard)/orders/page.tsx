@@ -359,7 +359,7 @@ export default function AdminOrders() {
               </div>
               <div className="text-right">
                 <span className="muted">Total Order Value</span>
-                <p className="serif text-xl font-bold">₹{selectedOrder.total}</p>
+                <p className="text-xl font-bold" style={{ color: 'var(--brown)' }}>₹{selectedOrder.total}</p>
               </div>
             </div>
 

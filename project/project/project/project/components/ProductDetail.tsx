@@ -496,13 +496,15 @@ export function ProductDetail({ product }: { product: Product }) {
 
             {/* Price Box */}
             <div className="pdp-price-box">
-              <span className="pdp-price">₹{(product.price || 0).toLocaleString('en-IN')}</span>
-              {effectiveOriginalPrice > product.price && (
-                <>
-                  <del className="pdp-original-price">₹{effectiveOriginalPrice.toLocaleString('en-IN')}</del>
-                  <span className="pdp-save-badge">Save ₹{(effectiveOriginalPrice - product.price).toLocaleString('en-IN')} ({discountPercent}%)</span>
-                </>
-              )}
+              <div className="pdp-price-row">
+                <span className="pdp-price">₹{(product.price || 0).toLocaleString('en-IN')}</span>
+                {effectiveOriginalPrice > product.price && (
+                  <>
+                    <del className="pdp-original-price">₹{effectiveOriginalPrice.toLocaleString('en-IN')}</del>
+                    <span className="pdp-save-badge">Save ₹{(effectiveOriginalPrice - product.price).toLocaleString('en-IN')} ({discountPercent}%)</span>
+                  </>
+                )}
+              </div>
               <div className="pdp-tax-note">Inclusive of all taxes. Free express shipping on orders over ₹599</div>
             </div>
 
@@ -945,10 +947,12 @@ export function ProductDetail({ product }: { product: Product }) {
           <div className="sticky-purchase-info">
             <span className="sticky-purchase-title">{product.name}</span>
             {selectedColor && <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>({selectedColor})</span>}
-            <span className="sticky-purchase-price">₹{(product.price || 0).toLocaleString('en-IN')}</span>
-            {effectiveOriginalPrice > product.price && (
-              <del style={{ fontSize: '0.82rem', color: '#888', marginLeft: '6px' }}>₹{effectiveOriginalPrice.toLocaleString('en-IN')}</del>
-            )}
+            <div className="sticky-price-wrap">
+              <span className="sticky-purchase-price">₹{(product.price || 0).toLocaleString('en-IN')}</span>
+              {effectiveOriginalPrice > product.price && (
+                <del className="sticky-purchase-original">₹{effectiveOriginalPrice.toLocaleString('en-IN')}</del>
+              )}
+            </div>
           </div>
           <button
             className="button"
