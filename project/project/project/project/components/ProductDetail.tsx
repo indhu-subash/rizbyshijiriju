@@ -288,16 +288,86 @@ export function ProductDetail({ product }: { product: Product }) {
     };
   }, [product.id, product.category, product.collection]);
 
-  // Helper function for color swatch hex codes
-  const getColorHex = (colorName: string) => {
-    const lower = colorName.toLowerCase();
+  // Enhanced helper function for color swatch backgrounds (solid hex or gradients)
+  const getColorBackground = (colorName: string): string => {
+    const lower = colorName.toLowerCase().trim();
+    if (lower.includes('rainbow')) {
+      return 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #a855f7 100%)';
+    }
+    if (lower.includes('multi')) {
+      return 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 33%, #06b6d4 66%, #10b981 100%)';
+    }
+    if (lower.includes('combo')) {
+      return 'linear-gradient(135deg, #d4af37 50%, #334c3d 50%)';
+    }
     if (lower.includes('rose')) return '#d8a499';
     if (lower.includes('gold')) return '#e5c158';
     if (lower.includes('silver')) return '#d1d5db';
     if (lower.includes('black')) return '#1a1a1a';
     if (lower.includes('white') || lower.includes('pearl')) return '#f8f9fa';
+    if (lower.includes('ruby') || lower.includes('red')) return '#b91c1c';
+    if (lower.includes('emerald') || lower.includes('green')) return '#15803d';
+    if (lower.includes('sapphire') || lower.includes('blue')) return '#1d4ed8';
+    if (lower.includes('violet') || lower.includes('purple')) return '#7c3aed';
+    if (lower.includes('pink')) return '#f472b6';
+    if (lower.includes('yellow')) return '#facc15';
+    if (lower.includes('oval')) return '#d4af37';
     return '#a9895b';
   };
+
+  // Helper to find the corresponding image index for a selected color
+  const getImageIndexForColor = (colorName: string): number => {
+    if (!colorName || !Array.isArray(product.images) || product.images.length === 0) {
+      return 0;
+    }
+    const cleanColor = colorName.trim().toLowerCase();
+
+    // 1. Direct match on image URL / filename (e.g. filename containing "rainbow", "ruby", etc.)
+    const nameMatchIdx = product.images.findIndex((imgUrl) => {
+      if (typeof imgUrl !== 'string') return false;
+      const lowerUrl = imgUrl.toLowerCase();
+      const colorSlug = cleanColor.replace(/\s+/g, '-');
+      const colorWords = cleanColor.split(/[\s_-]+/).filter((w) => w.length > 2);
+      if (lowerUrl.includes(cleanColor) || lowerUrl.includes(colorSlug)) return true;
+      if (colorWords.length > 0 && colorWords.some((w) => lowerUrl.includes(w))) return true;
+      return false;
+    });
+    if (nameMatchIdx !== -1) {
+      return nameMatchIdx;
+    }
+
+    // 2. Check if product.variants has an image URL for this color
+    if (Array.isArray(product.variants)) {
+      const variantWithImg = product.variants.find(
+        (v) => (v.color || '').trim().toLowerCase() === cleanColor && ((v as any).imageUrl || (v as any).image)
+      );
+      const imgTarget = (variantWithImg as any)?.imageUrl || (variantWithImg as any)?.image;
+      if (imgTarget) {
+        const vImgIdx = product.images.findIndex((img) => img === imgTarget);
+        if (vImgIdx !== -1) return vImgIdx;
+      }
+    }
+
+    // 3. Positional / 1-to-1 index mapping (e.g. colors[1] 'rainbow' -> images[1])
+    const colorIdx = productColors.findIndex(
+      (c) => c.trim().toLowerCase() === cleanColor
+    );
+    if (colorIdx !== -1 && colorIdx < product.images.length) {
+      return colorIdx;
+    }
+
+    return 0;
+  };
+
+  // Keep main gallery image synchronized when a color is selected
+  useEffect(() => {
+    if (selectedColor && Array.isArray(product.images) && product.images.length > 1) {
+      const targetIdx = getImageIndexForColor(selectedColor);
+      if (targetIdx >= 0 && targetIdx < product.images.length) {
+        setActiveImage(targetIdx);
+      }
+    }
+  }, [selectedColor]);
 
   const [showStickyBar, setShowStickyBar] = useState(false);
 
@@ -364,7 +434,13 @@ export function ProductDetail({ product }: { product: Product }) {
                     <button
                       key={image + i}
                       className={`pdp-thumb-btn ${activeImage === i ? 'active' : ''}`}
-                      onClick={() => setActiveImage(i)}
+                      onClick={() => {
+                        setActiveImage(i);
+                        if (hasColors && i < productColors.length) {
+                          setSelectedColor(productColors[i]);
+                          setColorError('');
+                        }
+                      }}
                       aria-label={`View product image ${i + 1}`}
                     >
                       
@@ -465,7 +541,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 <div className="pdp-swatches">
                   {product.colors.map((c) => {
                     const isSelected = selectedColor === c;
-                    const hexColor = getColorHex(c);
+                    const bgStyle = getColorBackground(c);
                     return (
                       <button
                         key={c}
@@ -474,10 +550,14 @@ export function ProductDetail({ product }: { product: Product }) {
                         onClick={() => {
                           setSelectedColor(c);
                           setColorError('');
+                          const targetIdx = getImageIndexForColor(c);
+                          if (targetIdx >= 0 && targetIdx < (product.images?.length || 0)) {
+                            setActiveImage(targetIdx);
+                          }
                         }}
                         aria-label={`Select ${c} colour`}
                       >
-                        <span className="pdp-swatch-circle" style={{ backgroundColor: hexColor }} />
+                        <span className="pdp-swatch-circle" style={{ background: bgStyle }} />
                         <span className="pdp-swatch-name">{c}</span>
                         {isSelected && <Check size={13} className="pdp-swatch-check" />}
                       </button>
