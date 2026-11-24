@@ -5,19 +5,30 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
   try {
     const { category, collection, query, priceRange, sort, color, colors } = req.query;
 
-    const whereClause: any = { isActive: true };
+    const whereClause: any = { isActive: true, stock: { gt: 0 } };
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     if (category) {
       const catStr = String(category).trim();
-      const singularCat = catStr.endsWith('s') ? catStr.slice(0, -1) : catStr;
+      const catNorm = catStr.toLowerCase();
+      const unhyphenated = catStr.replace(/-/g, ' ').trim();
+      const unhyphenatedNorm = unhyphenated.toLowerCase();
+
+      const singularCat = catNorm.endsWith('s') ? catNorm.slice(0, -1) : catNorm;
+      const pluralCat = catNorm.endsWith('s') ? catNorm : catNorm + 's';
+      const singularUnhyphenated = unhyphenatedNorm.endsWith('s') ? unhyphenatedNorm.slice(0, -1) : unhyphenatedNorm;
+      const pluralUnhyphenated = unhyphenatedNorm.endsWith('s') ? unhyphenatedNorm : unhyphenatedNorm + 's';
+
       whereClause.OR = [
-        { category: { contains: catStr, mode: 'insensitive' } },
-        { category: { contains: singularCat, mode: 'insensitive' } },
-        { name: { contains: catStr, mode: 'insensitive' } },
-        { tags: { has: catStr.toLowerCase() } },
-        { tags: { has: singularCat.toLowerCase() } },
+        { category: { equals: catStr, mode: 'insensitive' } },
+        { category: { equals: catNorm, mode: 'insensitive' } },
+        { category: { equals: unhyphenated, mode: 'insensitive' } },
+        { category: { equals: unhyphenatedNorm, mode: 'insensitive' } },
+        { category: { equals: singularCat, mode: 'insensitive' } },
+        { category: { equals: pluralCat, mode: 'insensitive' } },
+        { category: { equals: singularUnhyphenated, mode: 'insensitive' } },
+        { category: { equals: pluralUnhyphenated, mode: 'insensitive' } },
       ];
     }
 
@@ -31,11 +42,32 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
           { newArrival: true },
         ];
       } else {
-        const colConditions: any[] = [
-          { collection: { contains: colStr, mode: 'insensitive' } },
-          { name: { contains: colStr, mode: 'insensitive' } },
-          { tags: { has: colStr.toLowerCase() } },
-        ];
+        const slugified = lowerCol.replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+        const unhyphenated = colStr.replace(/-/g, ' ').trim();
+
+        const targetCollection = await prisma.collection.findFirst({
+          where: {
+            OR: [
+              { id: colStr },
+              { slug: slugified },
+              { name: { equals: colStr, mode: 'insensitive' } },
+              { name: { equals: unhyphenated, mode: 'insensitive' } },
+            ],
+          },
+        });
+
+        const colConditions: any[] = [];
+
+        if (targetCollection) {
+          colConditions.push({ collectionId: targetCollection.id });
+          colConditions.push({ collection: { equals: targetCollection.name, mode: 'insensitive' } });
+        }
+
+        colConditions.push({ collection: { equals: colStr, mode: 'insensitive' } });
+        colConditions.push({ collection: { equals: unhyphenated, mode: 'insensitive' } });
+        colConditions.push({ tags: { has: colStr.toLowerCase() } });
+        colConditions.push({ tags: { has: unhyphenated.toLowerCase() } });
+
         if (whereClause.OR) {
           whereClause.AND = [{ OR: whereClause.OR }, { OR: colConditions }];
           delete whereClause.OR;
@@ -87,7 +119,13 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
           };
         });
 
-        whereClause.AND = tokenConditions;
+        if (whereClause.AND && Array.isArray(whereClause.AND)) {
+          whereClause.AND.push(...tokenConditions);
+        } else if (whereClause.AND) {
+          whereClause.AND = [whereClause.AND, ...tokenConditions];
+        } else {
+          whereClause.AND = tokenConditions;
+        }
       }
     }
 
@@ -104,20 +142,22 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       }
     }
 
-    let orderBy: any = [{ featured: 'desc' }, { createdAt: 'desc' }];
+    let orderBy: any = [{ featured: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
     const isBestsellerSort = sort && (String(sort).toLowerCase().includes('best') || String(sort).toLowerCase().includes('bestseller'));
 
     if (sort) {
       const sortVal = String(sort);
       if (sortVal === 'Price Low to High') {
-        orderBy = [{ price: 'asc' }, { createdAt: 'desc' }];
+        orderBy = [{ price: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }];
       } else if (sortVal === 'Price High to Low') {
-        orderBy = [{ price: 'desc' }, { createdAt: 'desc' }];
+        orderBy = [{ price: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
       } else if (sortVal === 'Newest') {
-        orderBy = [{ createdAt: 'desc' }];
+        orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
       } else if (!isBestsellerSort) {
-        orderBy = [{ featured: 'desc' }, { createdAt: 'desc' }];
+        orderBy = [{ featured: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
       }
+    } else if (collection && (String(collection).toLowerCase().includes('new arrival') || String(collection).toLowerCase().includes('new-arrival'))) {
+      orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
     }
 
     const PRODUCT_SELECT_FIELDS = {
@@ -152,18 +192,13 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       products = await prisma.product.findMany({
         where: whereClause,
         orderBy: isBestsellerSort ? undefined : orderBy,
-        include: {
-          sizes: true,
-        },
       });
     } catch (findErr) {
       console.warn('findMany default query failed, falling back to explicit select fields:', findErr);
       products = await prisma.product.findMany({
         where: whereClause,
         orderBy: isBestsellerSort ? undefined : orderBy,
-        include: {
-          sizes: true,
-        },
+        select: PRODUCT_SELECT_FIELDS,
       });
     }
 
@@ -175,6 +210,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
           productId: { not: null },
           order: {
             orderStatus: { notIn: ['Cancelled', 'cancelled', 'FAILED', 'failed'] },
+            paymentStatus: { in: ['paid', 'Paid', 'PAID', 'SUCCESS', 'success', 'COMPLETED', 'completed'] },
           },
         },
         select: {
@@ -198,7 +234,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       const unitsSold = salesMap.get(p.id) || 0;
       const isNew = p.createdAt ? (new Date(p.createdAt).getTime() >= thirtyDaysAgo.getTime()) : !!p.newArrival;
       // BESTSELLER badge ONLY for products with actual sales > 0
-      const isBestseller = unitsSold > 0 || p.bestseller;
+      const isBestseller = unitsSold > 0;
 
       return {
         ...p,
@@ -209,6 +245,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     });
 
     if (isBestsellerSort) {
+      mappedProducts = mappedProducts.filter((p) => p.unitsSold > 0);
       mappedProducts.sort((a, b) => {
         if (b.unitsSold !== a.unitsSold) {
           return b.unitsSold - a.unitsSold;
@@ -256,39 +293,44 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   const normalized = normalizeSlug(decoded);
   const unhyphenated = decoded.replace(/-/g, ' ').trim();
   const activeCondition = mustBeActive ? { isActive: true } : {};
+  const includeVariantsAndSizes = {
+    variants: true,
+    sizes: true,
+    categoryRel: true,
+  };
 
   // 1. Try exact ID match (whether UUID or custom string ID)
   let product = await prisma.product.findFirst({
     where: { id: decoded, ...activeCondition },
-    include: { sizes: true },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
   // 2. Try case-insensitive ID match
   product = await prisma.product.findFirst({
     where: { id: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
-    include: { sizes: true },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
   // 3. Try exact slug match
   product = await prisma.product.findFirst({
     where: { slug: decoded, ...activeCondition },
-    include: { sizes: true },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
   // 4. Try case-insensitive slug match
   product = await prisma.product.findFirst({
     where: { slug: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
-    include: { sizes: true },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
   // 5. Try exact case-insensitive name match
   product = await prisma.product.findFirst({
     where: { name: { equals: decoded, mode: 'insensitive' }, ...activeCondition },
-    include: { sizes: true },
+    include: includeVariantsAndSizes,
   });
   if (product) return product;
 
@@ -296,7 +338,7 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   if (unhyphenated) {
     product = await prisma.product.findFirst({
       where: { name: { equals: unhyphenated, mode: 'insensitive' }, ...activeCondition },
-      include: { sizes: true },
+      include: includeVariantsAndSizes,
     });
     if (product) return product;
   }
@@ -305,7 +347,7 @@ export async function findProductBySlugOrId(identifier: string, mustBeActive = t
   if (normalized) {
     product = await prisma.product.findFirst({
       where: { slug: { equals: normalized, mode: 'insensitive' }, ...activeCondition },
-      include: { sizes: true },
+      include: includeVariantsAndSizes,
     });
     if (product) return product;
   }

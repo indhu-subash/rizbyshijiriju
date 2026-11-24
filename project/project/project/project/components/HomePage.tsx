@@ -106,7 +106,7 @@ export function HomePage() {
       .then((res) => {
         if (isMounted) {
           if (res && Array.isArray(res.products)) {
-            const qualifying = res.products.filter((p: any) => (p.unitsSold || 0) > 0).slice(0, 4);
+            const qualifying = res.products.filter((p: any) => (p.unitsSold || 0) > 0 && (p.stock || 0) > 0).slice(0, 4);
             setBestsellerItems(qualifying);
             setBestsellerLoaded(true);
             setBestsellerError(false);
@@ -127,7 +127,7 @@ export function HomePage() {
       .then((res) => {
         if (isMounted) {
           if (res && Array.isArray(res.products)) {
-            setAntiTarnishItems(res.products.slice(0, 4));
+            setAntiTarnishItems(res.products.filter((p: any) => (p.stock || 0) > 0).slice(0, 4));
             setAntiTarnishLoaded(true);
             setAntiTarnishError(false);
           } else {
@@ -148,7 +148,7 @@ export function HomePage() {
       .then((res) => {
         if (isMounted) {
           if (res && Array.isArray(res.products)) {
-            setNewArrivalsItems(res.products.slice(0, 4));
+            setNewArrivalsItems(res.products.filter((p: any) => (p.stock || 0) > 0).slice(0, 4));
             setNewArrivalsLoaded(true);
             setNewArrivalsError(false);
           } else {
@@ -172,7 +172,7 @@ export function HomePage() {
           const catMap = new Map<string, { originalName: string; products: any[] }>();
 
           res.products.forEach((p: any) => {
-            if (p.isActive === false) return;
+            if (p.isActive === false || (p.stock || 0) <= 0) return;
             const catRaw = (p.category || '').trim();
             if (!catRaw) return;
 
@@ -282,11 +282,11 @@ export function HomePage() {
 
   const displayedAntiTarnish = antiTarnishLoaded && antiTarnishItems.length > 0
     ? antiTarnishItems
-    : products.filter((p) => p.collection === 'Anti-Tarnish').slice(0, 4);
+    : products.filter((p) => p.collection === 'Anti-Tarnish' && (p.stock || 0) > 0).slice(0, 4);
 
   const newArrivals = newArrivalsLoaded && newArrivalsItems.length > 0
     ? newArrivalsItems
-    : products.filter((p) => Boolean(p.newArrival)).slice(0, 4);
+    : products.filter((p) => Boolean(p.newArrival) && (p.stock || 0) > 0).slice(0, 4);
 
   const bestsellers = bestsellerLoaded && bestsellerItems.length > 0
     ? bestsellerItems

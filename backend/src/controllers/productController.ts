@@ -5,7 +5,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
   try {
     const { category, collection, query, priceRange, sort, color, colors } = req.query;
 
-    const whereClause: any = { isActive: true };
+    const whereClause: any = { isActive: true, stock: { gt: 0 } };
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 

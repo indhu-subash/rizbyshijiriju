@@ -55,7 +55,7 @@ export function CollectionPage({
       .then((res) => {
         if (isMounted) {
           if (res && Array.isArray(res.products)) {
-            setFetchedItems(res.products);
+            setFetchedItems(res.products.filter((p: any) => (p.stock ?? 0) > 0));
             setApiLoaded(true);
             setApiError(false);
           } else {
@@ -82,6 +82,7 @@ export function CollectionPage({
 
   const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const fallbackFilter = (p: typeof localProducts[number]) => {
+    if ((p.stock ?? 0) <= 0) return false;
     if (category) {
       const c = category.toLowerCase().trim();
       const pCat = (p.category || '').toLowerCase();
@@ -101,9 +102,10 @@ export function CollectionPage({
     return true;
   };
 
-  const displayItems = (apiLoaded && !apiError)
+  const displayItems = ((apiLoaded && !apiError)
     ? fetchedItems
-    : (apiError ? localProducts.filter(fallbackFilter) : []);
+    : (apiError ? localProducts.filter(fallbackFilter) : []))
+    .filter((p) => (p.stock ?? 0) > 0);
 
   return (
     <main>

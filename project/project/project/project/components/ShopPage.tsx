@@ -229,9 +229,10 @@ export function ShopPage({
       .then((res) => {
         if (isMounted) {
           if (res && Array.isArray(res.products)) {
-            const strictFiltered = category
+            const strictFiltered = (category
               ? res.products.filter((p: any) => isStrictCategoryMatch(p.category, category))
-              : res.products;
+              : res.products
+            ).filter((p: any) => (p.stock ?? 0) > 0);
             setItems(strictFiltered);
           } else {
             setItems([]);
@@ -251,6 +252,7 @@ export function ShopPage({
           };
 
           const filteredFallback = fallbackProducts.filter((p) => {
+            if ((p.stock ?? 0) <= 0) return false;
             if (category && !isStrictCategoryMatch(p.category, category)) return false;
             if (collection && !matchesCollection(p, collection)) return false;
             return true;
@@ -267,11 +269,10 @@ export function ShopPage({
     };
   }, [category, collection, colors, debouncedQuery, priceRange, sort]);
 
-  // Client-side availability filter
+  // Exclude out of stock products from the store
   const displayedItems = useMemo(() => {
-    if (!inStockOnly) return items;
-    return items.filter((p) => p.stock > 0);
-  }, [items, inStockOnly]);
+    return items.filter((p) => (p.stock ?? 0) > 0);
+  }, [items]);
 
   function clear() {
     setCategory('');
