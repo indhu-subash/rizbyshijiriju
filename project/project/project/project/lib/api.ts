@@ -191,7 +191,7 @@ export const api = {
       const str = q.toString();
       return request(`/admin/orders${str ? `?${str}` : ''}`);
     },
-    updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) =>
+    updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string; paymentStatus?: string }) =>
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteOrder: (id: string) => request(`/admin/orders/${id}`, { method: 'DELETE' }),
     getProducts: (params: { category?: string; collection?: string; query?: string; status?: string } = {}) => {

@@ -325,20 +325,27 @@ export async function cancelOrder(req: AuthenticatedRequest, res: Response): Pro
       return;
     }
 
-    // Only cancel if payment is still pending/unpaid
-    if (order.paymentStatus === 'pending' || order.orderStatus === 'Pending') {
+    // STRICT: NEVER cancel an order that is already paid, confirmed, or has an active payment ID!
+    if (order.paymentStatus === 'paid' || order.orderStatus === 'Confirmed' || order.paymentId) {
+      res.status(400).json({ error: 'Cannot cancel a verified and paid order.', orderId: order.orderId });
+      return;
+    }
+
+    // Only cancel if order is genuinely Pending and unpaid
+    if (order.paymentStatus === 'pending' && order.orderStatus === 'Pending') {
       await prisma.$transaction(async (tx: any) => {
-        // Mark order as cancelled
-        await tx.order.update({
-          where: { id: order.id },
+        const updateResult = await tx.order.updateMany({
+          where: { id: order.id, orderStatus: 'Pending', paymentStatus: 'pending' },
           data: {
             paymentStatus: 'cancelled',
             orderStatus: 'Cancelled',
           },
         });
 
-        // Restore product and variant stock atomically and idempotently
-        await restoreOrderInventory(tx, order.id, { reason: 'Customer Cancelled' });
+        if (updateResult.count > 0) {
+          // Restore product and variant stock atomically and idempotently
+          await restoreOrderInventory(tx, order.id, { reason: 'Customer Cancelled' });
+        }
       });
 
       console.log(`[Order Cancelled] Order #${order.orderId} marked as Cancelled and inventory restored.`);
@@ -346,7 +353,7 @@ export async function cancelOrder(req: AuthenticatedRequest, res: Response): Pro
       return;
     }
 
-    res.status(200).json({ message: 'Order is already processed.', orderId: order.orderId });
+    res.status(200).json({ message: 'Order is already processed or cancelled.', orderId: order.orderId });
   } catch (error: any) {
     console.error('Cancel order error:', error);
     res.status(500).json({ error: 'Failed to cancel order.' });
@@ -372,18 +379,12 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    // STRICT GUARD: Rejects verification if order is already Cancelled
-    if (order.orderStatus === 'Cancelled' || order.paymentStatus === 'cancelled') {
-      res.status(400).json({ error: 'Order has already been cancelled and cannot be confirmed.' });
-      return;
-    }
-
     // Helper to confirm order atomically and trigger Email + WhatsApp notifications
     const confirmAndNotifyOrder = async (payId: string, rzpOrdId?: string) => {
       const updateResult = await prisma.order.updateMany({
         where: {
           id: order.id,
-          orderStatus: 'Pending',
+          orderStatus: { in: ['Pending', 'Cancelled'] },
         },
         data: {
           paymentStatus: 'paid',
@@ -413,7 +414,15 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
           return existingOrder;
         }
 
-        throw new Error('Order is not in pending status and cannot be confirmed.');
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: 'paid',
+            orderStatus: 'Confirmed',
+            paymentId: payId,
+            ...(rzpOrdId ? { razorpayOrderId: rzpOrdId } : {}),
+          },
+        });
       }
 
       const updatedOrder = await prisma.order.findUnique({
@@ -536,10 +545,11 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
           include: { items: true },
         });
 
-        if (order && order.orderStatus !== 'Cancelled' && order.paymentStatus !== 'cancelled') {
-          if (order.orderStatus === 'Pending') {
-            const updateResult = await prisma.order.updateMany({
-              where: { id: order.id, orderStatus: 'Pending' },
+        if (order) {
+          // Authoritative Webhook Confirmation: If Razorpay captured the payment, confirm the order
+          if (order.orderStatus !== 'Confirmed' || order.paymentStatus !== 'paid') {
+            await prisma.order.update({
+              where: { id: order.id },
               data: {
                 paymentStatus: 'paid',
                 orderStatus: 'Confirmed',
@@ -548,18 +558,16 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
               },
             });
 
-            if (updateResult.count > 0) {
-              const updated = await prisma.order.findUnique({
-                where: { id: order.id },
-                include: { items: true },
-              });
-              if (updated) {
-                sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
-                sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
-                await notifyOrderConfirmed(updated);
-              }
+            const updated = await prisma.order.findUnique({
+              where: { id: order.id },
+              include: { items: true },
+            });
+            if (updated) {
+              sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
+              sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
+              await notifyOrderConfirmed(updated);
             }
-          } else if (order.orderStatus === 'Confirmed' || order.paymentStatus === 'paid') {
+          } else {
             // Idempotent webhook receipt for already confirmed order
             if (!order.paymentId && razorpayPaymentId) {
               await prisma.order.update({
@@ -567,7 +575,6 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
                 data: { paymentId: razorpayPaymentId, razorpayOrderId: razorpayOrderId },
               });
             }
-            // Idempotent: guarantees the admin notification rows exist if an earlier attempt crashed.
             await notifyOrderConfirmed(order);
           }
         }
@@ -600,8 +607,8 @@ export async function cancelPayment(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    // Rejects cancellation if order was already confirmed / paid
-    if (order.paymentStatus === 'paid' || order.orderStatus === 'Confirmed') {
+    // Rejects cancellation if order was already confirmed / paid or has paymentId
+    if (order.paymentStatus === 'paid' || order.orderStatus === 'Confirmed' || order.paymentId) {
       res.status(400).json({ error: 'Cannot cancel a verified and paid order.' });
       return;
     }

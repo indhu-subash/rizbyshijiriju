@@ -3,12 +3,13 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { uploadImage, deleteImage } from '../services/uploadService';
 import { INITIAL_PRODUCTS } from '../config/initialProducts';
+import { restoreOrderInventory } from '../services/inventoryService';
 
 // 1. Dashboard Analytics
 export async function getDashboardStats(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const totalOrders = await prisma.order.count();
-    
+
     const paidOrders = await prisma.order.findMany({
       where: { paymentStatus: 'paid' },
       select: { total: true },
@@ -95,7 +96,7 @@ export async function getAdminOrders(req: AuthenticatedRequest, res: Response): 
 export async function updateOrderStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { orderStatus, trackingNumber } = req.body;
+    const { orderStatus, trackingNumber, paymentStatus } = req.body;
 
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) {
@@ -103,18 +104,93 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
       return;
     }
 
-    const updated = await prisma.order.update({
-      where: { id },
-      data: {
-        orderStatus: orderStatus || order.orderStatus,
-        trackingNumber: trackingNumber !== undefined ? trackingNumber : order.trackingNumber,
-      },
-    });
+    let updated;
+    const shouldRestore = (orderStatus === 'Cancelled' || orderStatus === 'Refunded') &&
+      order.orderStatus !== 'Cancelled' && order.orderStatus !== 'Refunded';
+
+    const targetPaymentStatus = paymentStatus !== undefined
+      ? paymentStatus
+      : (orderStatus === 'Confirmed' && order.paymentStatus !== 'paid' ? 'paid' : order.paymentStatus);
+
+    if (shouldRestore) {
+      await prisma.$transaction(async (tx: any) => {
+        updated = await tx.order.update({
+          where: { id },
+          data: {
+            orderStatus,
+            paymentStatus: targetPaymentStatus,
+            trackingNumber: trackingNumber !== undefined ? trackingNumber : order.trackingNumber,
+          },
+        });
+        await restoreOrderInventory(tx, id, { reason: `Admin set status to ${orderStatus}` });
+      });
+    } else {
+      updated = await prisma.order.update({
+        where: { id },
+        data: {
+          orderStatus: orderStatus || order.orderStatus,
+          paymentStatus: targetPaymentStatus,
+          trackingNumber: trackingNumber !== undefined ? trackingNumber : order.trackingNumber,
+        },
+      });
+    }
 
     res.status(200).json({ message: 'Order status updated successfully.', order: updated });
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({ error: 'Failed to update order.' });
+  }
+}
+
+export async function deleteAdminOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (!id || typeof id !== 'string') {
+      res.status(400).json({ error: 'Valid order ID is required.' });
+      return;
+    }
+
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) {
+      res.status(404).json({ error: 'Order not found.' });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({ where: { orderId: id } });
+      await tx.order.delete({ where: { id } });
+    });
+
+    res.status(200).json({ message: 'Order deleted successfully.', deletedOrderId: order.orderId });
+  } catch (error: any) {
+    console.error('Delete order error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to delete order.' });
+  }
+}
+
+async function safeCleanupUnreferencedR2Images(removedUrls: string[]): Promise<void> {
+  const publicUrlPrefix = process.env.R2_PUBLIC_URL || 'https://pub-522048b574af4e7aa4d991056322b29a.r2.dev';
+
+  for (const url of removedUrls) {
+    if (!url || typeof url !== 'string' || !url.startsWith(publicUrlPrefix)) {
+      continue;
+    }
+    try {
+      const referencingProduct = await prisma.product.findFirst({
+        where: {
+          images: { has: url },
+        },
+      });
+
+      if (!referencingProduct) {
+        await deleteImage(url);
+      } else {
+        console.log(`[R2 SAFE DELETION SKIPPED] Image URL ${url} is still referenced by product ${referencingProduct.id}`);
+      }
+    } catch (err: any) {
+      console.error(`[R2 SAFE DELETION ERROR] Failed to clean up removed image ${url}:`, err);
+    }
   }
 }
 
@@ -130,6 +206,9 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       category,
       collection,
       categoryId,
+      productType,
+      variants,
+      sizes,
       colors,
       gender,
       ageGroup,
@@ -152,9 +231,12 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    const normalizedCode = productCode && typeof productCode === 'string' && productCode.trim().length > 0
-      ? productCode.trim().toUpperCase()
-      : null;
+    if (!productCode || typeof productCode !== 'string' || !productCode.trim()) {
+      res.status(400).json({ error: 'Product Code is required.' });
+      return;
+    }
+
+    const normalizedCode = productCode.trim().toUpperCase();
 
     if (normalizedCode) {
       const existingCode = await prisma.product.findFirst({
@@ -176,7 +258,10 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : [];
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : [];
     const rawImages = images ? (Array.isArray(images) ? images : [images]) : [];
-    const imagesArr = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+    const imagesArr = rawImages
+      .filter((img: any) => typeof img === 'string' && img.trim().length > 0)
+      .map((img: string) => img.trim())
+      .filter((img: string) => !img.startsWith('data:') && !img.startsWith('blob:'));
 
     let validCategoryId: string | null = null;
     if (categoryId && typeof categoryId === 'string' && categoryId.trim().length > 0) {
@@ -185,6 +270,52 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
         validCategoryId = catExists.id;
       }
     }
+
+    const rawColId = req.body.collectionId;
+    const rawColStr = collection ? String(collection).trim() : '';
+    let validCollectionId: string | null = null;
+    let finalCollectionName: string = rawColStr;
+
+    if (rawColId && typeof rawColId === 'string' && rawColId.trim().length > 0) {
+      const colById = await prisma.collection.findUnique({ where: { id: rawColId.trim() } });
+      if (colById) {
+        validCollectionId = colById.id;
+        finalCollectionName = colById.name;
+      } else {
+        res.status(400).json({ error: 'Selected collection ID is invalid or does not exist.' });
+        return;
+      }
+    } else if (rawColStr) {
+      const slugified = rawColStr.toLowerCase().replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+      const unhyphenated = rawColStr.replace(/-/g, ' ').trim();
+      const colByName = await prisma.collection.findFirst({
+        where: {
+          OR: [
+            { id: rawColStr },
+            { slug: slugified },
+            { name: { equals: rawColStr, mode: 'insensitive' } },
+            { name: { equals: unhyphenated, mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (colByName) {
+        validCollectionId = colByName.id;
+        finalCollectionName = colByName.name;
+      }
+    }
+
+    const rawVariants = Array.isArray(variants) ? variants : [];
+    const rawSizes = Array.isArray(sizes) ? sizes : [];
+
+    let hasVariants = false;
+    let finalStock = parseInt(stock) || 0;
+
+    if (rawVariants.length > 0) {
+      hasVariants = true;
+      finalStock = rawVariants.reduce((sum: number, v: any) => sum + (parseInt(v.stock) || 0), 0);
+    }
+
+    const resolvedProductType = productType || (rawSizes.length > 0 ? (category.toLowerCase().includes('bangle') ? 'bangle' : 'ring') : 'regular');
 
     const product = await prisma.product.create({
       data: {
@@ -195,15 +326,18 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
         price: parseFloat(price),
         originalPrice: originalPrice ? parseFloat(originalPrice) : null,
         category,
-        collection,
+        collection: finalCollectionName,
         categoryId: validCategoryId,
+        collectionId: validCollectionId,
         colors: colorsArr,
+        productType: resolvedProductType,
+        hasVariants,
         gender: gender || 'Women',
         ageGroup: ageGroup || 'Adult',
         images: imagesArr,
         material: actualMaterial,
         finish: actualFinish,
-        stock: parseInt(stock) || 0,
+        stock: finalStock,
         tags: tagsArr,
         featured: !!featured,
         bestseller: !!bestseller,
@@ -211,7 +345,48 @@ export async function createProduct(req: AuthenticatedRequest, res: Response): P
       },
     });
 
-    res.status(201).json({ message: 'Product created successfully.', product });
+    if (hasVariants && rawVariants.length > 0) {
+      for (const v of rawVariants) {
+        const vColor = v.color ? String(v.color).trim() : null;
+        const vSize = v.size !== undefined && v.size !== null && String(v.size).trim() !== '' ? String(v.size).trim() : null;
+        const normColor = (vColor || '').toLowerCase();
+        const normSize = (vSize || '').toLowerCase();
+        const variantKey = `${product.id}:${normColor}:${normSize}`;
+        const vStock = Math.max(0, parseInt(v.stock) || 0);
+
+        await prisma.productVariant.create({
+          data: {
+            productId: product.id,
+            color: vColor,
+            size: vSize,
+            variantKey,
+            sku: v.sku ? String(v.sku).trim() : null,
+            stock: vStock,
+          },
+        });
+      }
+    }
+
+    if (rawSizes.length > 0) {
+      for (const s of rawSizes) {
+        const sSize = String(s.size).trim();
+        const sStock = Math.max(0, parseInt(s.stock) || 0);
+        await prisma.productSize.create({
+          data: {
+            productId: product.id,
+            size: sSize,
+            stock: sStock,
+          },
+        });
+      }
+    }
+
+    const createdWithVariants = await prisma.product.findUnique({
+      where: { id: product.id },
+      include: { variants: true, sizes: true, categoryRel: true },
+    });
+
+    res.status(201).json({ message: 'Product created successfully.', product: createdWithVariants || product });
   } catch (error: any) {
     if (error?.code === 'P2002' && (error.meta?.target?.includes('productCode') || error.message?.includes('productCode'))) {
       res.status(400).json({ error: 'A product with this Product Code already exists.' });
@@ -234,6 +409,10 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       category,
       collection,
       categoryId,
+      collectionId,
+      productType,
+      variants,
+      sizes,
       colors,
       gender,
       ageGroup,
@@ -248,7 +427,10 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       isActive,
     } = req.body;
 
-    const product = await prisma.product.findUnique({ where: { id } });
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: { variants: true, sizes: true },
+    });
     if (!product) {
       res.status(404).json({ error: 'Product not found.' });
       return;
@@ -277,11 +459,14 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
 
     const tagsArr = tags ? (Array.isArray(tags) ? tags : String(tags).split(',').map((t) => t.trim())) : product.tags;
     const colorsArr = colors ? (Array.isArray(colors) ? colors : String(colors).split(',').map((c) => c.trim())) : product.colors;
-    
+
     let imagesArr = product.images;
     if (images !== undefined) {
       const rawImages = Array.isArray(images) ? images : [images];
-      const validImages = rawImages.filter((img: any) => typeof img === 'string' && img.trim().length > 0).map((img: string) => img.trim());
+      const validImages = rawImages
+        .filter((img: any) => typeof img === 'string' && img.trim().length > 0)
+        .map((img: string) => img.trim())
+        .filter((img: string) => !img.startsWith('data:') && !img.startsWith('blob:'));
       if (validImages.length > 0) {
         imagesArr = validImages;
       }
@@ -309,8 +494,50 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       }
     }
 
+    // Resolve collection & collectionId safely
+    let validCollectionId: string | null = product.collectionId;
+    let finalCollectionName: string = collection !== undefined ? String(collection).trim() : product.collection;
+
+    const candidateColId = collectionId !== undefined ? collectionId : undefined;
+    if (candidateColId !== undefined && candidateColId !== null && typeof candidateColId === 'string' && candidateColId.trim().length > 0) {
+      const colById = await prisma.collection.findUnique({ where: { id: candidateColId.trim() } });
+      if (colById) {
+        validCollectionId = colById.id;
+        finalCollectionName = colById.name;
+      } else {
+        res.status(400).json({ error: 'Selected collection ID is invalid or does not exist.' });
+        return;
+      }
+    } else if (collection !== undefined) {
+      const cleanCol = String(collection).trim();
+      if (!cleanCol) {
+        validCollectionId = null;
+        finalCollectionName = '';
+      } else {
+        const slugified = cleanCol.toLowerCase().replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+        const unhyphenated = cleanCol.replace(/-/g, ' ').trim();
+        const colByName = await prisma.collection.findFirst({
+          where: {
+            OR: [
+              { id: cleanCol },
+              { slug: slugified },
+              { name: { equals: cleanCol, mode: 'insensitive' } },
+              { name: { equals: unhyphenated, mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (colByName) {
+          validCollectionId = colByName.id;
+          finalCollectionName = colByName.name;
+        } else {
+          validCollectionId = null;
+          finalCollectionName = cleanCol;
+        }
+      }
+    }
+
     const parsedPrice = price !== undefined && !isNaN(parseFloat(price)) ? parseFloat(price) : product.price;
-    
+
     let parsedOriginalPrice: number | null = product.originalPrice;
     if (originalPrice !== undefined) {
       parsedOriginalPrice = originalPrice && !isNaN(parseFloat(originalPrice)) ? parseFloat(originalPrice) : null;
@@ -319,6 +546,20 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
     const parsedStock = stock !== undefined && !isNaN(parseInt(stock)) ? parseInt(stock) : product.stock;
     const itemMaterial = material || req.body.metal || product.material || 'Silver';
     const itemFinish = finish || product.finish || 'Polished';
+
+    const oldImages = product.images || [];
+    const removedImages = oldImages.filter((img) => !imagesArr.includes(img));
+
+    const rawVariants = Array.isArray(variants) ? variants : undefined;
+    const rawSizes = Array.isArray(sizes) ? sizes : undefined;
+
+    let updateHasVariants = product.hasVariants;
+    let finalParsedStock = parsedStock;
+
+    if (rawVariants !== undefined && rawVariants.length > 0) {
+      updateHasVariants = true;
+      finalParsedStock = rawVariants.reduce((sum: number, v: any) => sum + (parseInt(v.stock) || 0), 0);
+    }
 
     const updated = await prisma.product.update({
       where: { id },
@@ -330,15 +571,18 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
         price: parsedPrice,
         originalPrice: parsedOriginalPrice,
         category: category ? String(category).trim() : product.category,
-        collection: collection ? String(collection).trim() : product.collection,
+        collection: finalCollectionName,
         categoryId: validCategoryId,
+        collectionId: validCollectionId,
         colors: colorsArr,
+        productType: productType !== undefined ? productType : product.productType,
+        hasVariants: updateHasVariants,
         gender: gender || product.gender,
         ageGroup: ageGroup || product.ageGroup,
         images: imagesArr,
         material: itemMaterial,
         finish: itemFinish,
-        stock: parsedStock,
+        stock: finalParsedStock,
         tags: tagsArr,
         featured: featured !== undefined ? !!featured : product.featured,
         bestseller: bestseller !== undefined ? !!bestseller : product.bestseller,
@@ -347,7 +591,94 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
       },
     });
 
-    res.status(200).json({ message: 'Product updated successfully.', product: updated });
+    if (rawVariants !== undefined && rawVariants.length > 0) {
+      const existingVariants = await prisma.productVariant.findMany({ where: { productId: id } });
+      const submittedKeys = new Set<string>();
+
+      for (const v of rawVariants) {
+        const vColor = v.color ? String(v.color).trim() : null;
+        const vSize = v.size !== undefined && v.size !== null && String(v.size).trim() !== '' ? String(v.size).trim() : null;
+        const normColor = (vColor || '').toLowerCase();
+        const normSize = (vSize || '').toLowerCase();
+        const variantKey = `${id}:${normColor}:${normSize}`;
+        submittedKeys.add(variantKey);
+        const vStock = Math.max(0, parseInt(v.stock) || 0);
+
+        const existingV = existingVariants.find((ev) => ev.variantKey === variantKey);
+        if (existingV) {
+          await prisma.productVariant.update({
+            where: { id: existingV.id },
+            data: {
+              color: vColor,
+              size: vSize,
+              stock: vStock,
+              sku: v.sku ? String(v.sku).trim() : existingV.sku,
+            },
+          });
+        } else {
+          await prisma.productVariant.create({
+            data: {
+              productId: id,
+              color: vColor,
+              size: vSize,
+              variantKey,
+              sku: v.sku ? String(v.sku).trim() : null,
+              stock: vStock,
+            },
+          });
+        }
+      }
+
+      for (const ev of existingVariants) {
+        if (!submittedKeys.has(ev.variantKey)) {
+          const orderItemCount = await prisma.orderItem.count({ where: { variantId: ev.id } });
+          if (orderItemCount > 0) {
+            await prisma.productVariant.update({
+              where: { id: ev.id },
+              data: { stock: 0 },
+            });
+          } else {
+            await prisma.productVariant.delete({ where: { id: ev.id } });
+          }
+        }
+      }
+    }
+
+    if (rawSizes !== undefined && rawSizes.length > 0) {
+      const existingSizes = await prisma.productSize.findMany({ where: { productId: id } });
+      for (const s of rawSizes) {
+        const sSize = String(s.size).trim();
+        const sStock = Math.max(0, parseInt(s.stock) || 0);
+        const existingS = existingSizes.find((es) => es.size === sSize);
+        if (existingS) {
+          await prisma.productSize.update({
+            where: { id: existingS.id },
+            data: { stock: sStock },
+          });
+        } else {
+          await prisma.productSize.create({
+            data: {
+              productId: id,
+              size: sSize,
+              stock: sStock,
+            },
+          });
+        }
+      }
+    }
+
+    if (removedImages.length > 0) {
+      safeCleanupUnreferencedR2Images(removedImages).catch((err) =>
+        console.error('Background R2 image cleanup error:', err)
+      );
+    }
+
+    const refreshed = await prisma.product.findUnique({
+      where: { id },
+      include: { variants: true, sizes: true, categoryRel: true },
+    });
+
+    res.status(200).json({ message: 'Product updated successfully.', product: refreshed || updated });
   } catch (error: any) {
     if (error?.code === 'P2002' && (error.meta?.target?.includes('productCode') || error.message?.includes('productCode'))) {
       res.status(400).json({ error: 'A product with this Product Code already exists.' });
@@ -358,7 +689,105 @@ export async function editProduct(req: AuthenticatedRequest, res: Response): Pro
   }
 }
 
+export async function updateProductStock(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { stock } = req.body;
+
+    const parsedStock = typeof stock === 'number' ? stock : parseInt(stock, 10);
+
+    if (isNaN(parsedStock) || !Number.isInteger(parsedStock) || parsedStock < 0) {
+      res.status(400).json({ error: 'Stock must be a non-negative integer.' });
+      return;
+    }
+
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { stock: parsedStock },
+    });
+
+    res.status(200).json({
+      message: 'Product stock updated successfully.',
+      id: updated.id,
+      stock: updated.stock,
+      product: updated,
+    });
+  } catch (error: any) {
+    console.error('Update product stock error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to update product stock.' });
+  }
+}
+
+
 export async function deleteProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { permanent } = req.query;
+
+    const product = await prisma.product.findUnique({ where: { id } });
+
+    if (!product) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    // If permanent deletion requested:
+    if (permanent === 'true') {
+      const orderItemCount = await prisma.orderItem.count({
+        where: { productId: id },
+      });
+
+      if (orderItemCount > 0) {
+        res.status(400).json({
+          error: `Cannot permanently delete product "${product.name}" because it is referenced in ${orderItemCount} historical customer order(s). Please use deactivation instead to hide it while preserving order records.`,
+          cannotDelete: true,
+          orderCount: orderItemCount,
+        });
+        return;
+      }
+
+      // Zero customer orders: safe to permanently delete transactionally
+      await prisma.$transaction([
+        prisma.cartItem.deleteMany({ where: { productId: id } }),
+        prisma.wishlistItem.deleteMany({ where: { productId: id } }),
+        prisma.productVariant.deleteMany({ where: { productId: id } }),
+        prisma.productSize.deleteMany({ where: { productId: id } }),
+        prisma.product.delete({ where: { id } }),
+      ]);
+
+      res.status(200).json({
+        message: `Product "${product.name}" permanently deleted successfully.`,
+        id: product.id,
+        permanent: true,
+        deleted: true,
+      });
+      return;
+    }
+
+    // Default safe behaviour: Deactivate (soft-delete) regardless of order history
+    await prisma.product.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    res.status(200).json({
+      message: `Product "${product.name}" deactivated successfully and hidden from shop.`,
+      id: product.id,
+      isActive: false,
+    });
+  } catch (error: any) {
+    console.error('Delete/deactivate product error:', error);
+    res.status(500).json({ error: error?.message || 'Failed to process product deletion/deactivation.' });
+  }
+}
+
+export async function reactivateProduct(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
     const product = await prisma.product.findUnique({ where: { id } });
@@ -368,16 +797,58 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    // Soft delete/deactivate so existing orders don't break
-    await prisma.product.update({
+    const updated = await prisma.product.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: true },
+      include: { variants: true, sizes: true, categoryRel: true },
     });
 
-    res.status(200).json({ message: 'Product deactivated successfully.' });
+    res.status(200).json({ message: 'Product reactivated successfully.', product: updated, id: updated.id, isActive: true });
   } catch (error) {
-    console.error('Delete product error:', error);
-    res.status(500).json({ error: 'Failed to delete product.' });
+    console.error('Reactivate product error:', error);
+    res.status(500).json({ error: 'Failed to reactivate product.' });
+  }
+}
+
+export async function getAdminProductById(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ error: 'Product ID is required.' });
+      return;
+    }
+
+    let decoded = id.trim();
+    try {
+      decoded = decodeURIComponent(id).trim();
+    } catch {
+      decoded = id.trim();
+    }
+
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { id: decoded },
+          { slug: decoded.toLowerCase() },
+          { productCode: { equals: decoded, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        variants: true,
+        sizes: true,
+        categoryRel: true,
+      },
+    });
+
+    if (!product) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    res.status(200).json({ product });
+  } catch (error) {
+    console.error('Fetch admin product by ID error:', error);
+    res.status(500).json({ error: 'Failed to fetch product.' });
   }
 }
 
@@ -385,7 +856,14 @@ export async function deleteProduct(req: AuthenticatedRequest, res: Response): P
 export async function getAdminCoupons(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
-    res.status(200).json({ coupons });
+    const mapped = coupons.map((c) => ({
+      ...c,
+      type: c.discountType,
+      value: c.discountValue,
+      minPurchase: c.minOrderValue,
+      usageCount: c.usedCount || 0,
+    }));
+    res.status(200).json({ coupons: mapped });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch coupons.' });
   }
@@ -393,14 +871,21 @@ export async function getAdminCoupons(req: AuthenticatedRequest, res: Response):
 
 export async function createCoupon(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { code, discountType, discountValue, minOrderValue, maxDiscount, expiryDate, usageLimit } = req.body;
+    const { code, discountType, discountValue, minOrderValue, maxDiscount, expiryDate, usageLimit, type, value, minPurchase } = req.body;
 
-    if (!code || !discountType || !discountValue) {
+    const actualCode = (code || '').trim().toUpperCase();
+    const actualDiscountType = discountType || type || 'percentage';
+    const rawVal = discountValue !== undefined ? discountValue : value;
+    const actualDiscountValue = rawVal !== undefined && rawVal !== null ? parseFloat(rawVal) : NaN;
+    const rawMin = minOrderValue !== undefined ? minOrderValue : minPurchase;
+    const actualMinOrder = rawMin !== undefined && rawMin !== null ? parseFloat(rawMin) : 0;
+
+    if (!actualCode || !actualDiscountType || isNaN(actualDiscountValue)) {
       res.status(400).json({ error: 'Code, discount type, and discount value are required.' });
       return;
     }
 
-    const existing = await prisma.coupon.findUnique({ where: { code: code.toUpperCase() } });
+    const existing = await prisma.coupon.findUnique({ where: { code: actualCode } });
     if (existing) {
       res.status(400).json({ error: 'Coupon code already exists.' });
       return;
@@ -408,10 +893,10 @@ export async function createCoupon(req: AuthenticatedRequest, res: Response): Pr
 
     const coupon = await prisma.coupon.create({
       data: {
-        code: code.toUpperCase(),
-        discountType,
-        discountValue: parseFloat(discountValue),
-        minOrderValue: parseFloat(minOrderValue) || 0,
+        code: actualCode,
+        discountType: actualDiscountType,
+        discountValue: actualDiscountValue,
+        minOrderValue: actualMinOrder || 0,
         maxDiscount: maxDiscount ? parseFloat(maxDiscount) : null,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
         usageLimit: usageLimit ? parseInt(usageLimit) : null,
@@ -627,11 +1112,16 @@ export async function deleteShippingRule(req: AuthenticatedRequest, res: Respons
 
 export async function getAdminProducts(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { category, collection, query } = req.query;
+    const { category, collection, query, status } = req.query;
 
     const where: any = {};
     if (category) where.category = String(category);
     if (collection) where.collection = String(collection);
+    if (status === 'active') {
+      where.isActive = true;
+    } else if (status === 'inactive') {
+      where.isActive = false;
+    }
     if (query) {
       const q = String(query).trim();
       where.OR = [
@@ -647,6 +1137,8 @@ export async function getAdminProducts(req: AuthenticatedRequest, res: Response)
       orderBy: { createdAt: 'desc' },
       include: {
         categoryRel: true,
+        variants: true,
+        sizes: true,
       },
     });
 
@@ -726,6 +1218,16 @@ export async function seedProducts(req: AuthenticatedRequest, res: Response): Pr
     console.error('Seed products error:', error);
     res.status(500).json({ error: 'Failed to seed products.' });
   }
+}
+
+export async function getProductTemplate(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const csv =
+    'Id,Product Code,Product Title,Description,Availability,Product URL,Image URL,Category,Subcategory,Original Price,Selling Price\n' +
+    'TA2A7A07FE,HMG00136,Elegant Diamond Floral Star Drop Earrings,Elegant Diamond Floral Star Drop Earrings with IGI Certicate,In Stock,https://www.tajvigold.com/diamond-jewellery/elegant-diamond-floral-star-drop-earrings?P=880,https://www.tajvigoldmedia.com/product/TA2A7A07FE/6a96e19a-7600-4370-8a73-feb7b330f703_original.jpg,Diamond,Earring,3500,3500\n';
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="product_template.csv"');
+  res.status(200).send(csv);
 }
 
 

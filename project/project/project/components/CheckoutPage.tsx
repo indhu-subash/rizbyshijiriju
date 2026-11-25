@@ -549,14 +549,16 @@ export function CheckoutPage() {
           throw new Error('Failed to load payment gateway SDK. Please check your internet connection.');
         }
 
+        let paymentCaptured = false;
         const options = {
           key: res.razorpayKeyId,
           amount: Math.round(dbOrder.total * 100),
           currency: 'INR',
           name: 'RIZ by Shijiriju',
-          description: 'E-commerce Purchase',
+          description: `Order #${dbOrder.orderId}`,
           order_id: res.razorpayOrderId,
           handler: async function (response: any) {
+            paymentCaptured = true;
             try {
               setIsSubmitting(true);
               const verification = await api.payments.verify({
@@ -572,20 +574,20 @@ export function CheckoutPage() {
               setPlaced(true);
               router.push(`/thankyou?orderId=${encodeURIComponent(confirmedId)}`);
             } catch (err: any) {
-              alert(err.message || 'Payment verification failed.');
-              await api.payments.cancel({ orderId: dbOrder.orderId });
+              console.warn('Payment verification network response delayed:', err);
+              // Payment was captured by Razorpay; route to Thank You page where server/webhook confirms it
+              clearCart();
+              setPlacedOrderId(dbOrder.orderId);
+              setPlaced(true);
+              router.push(`/thankyou?orderId=${encodeURIComponent(dbOrder.orderId)}`);
             } finally {
               setIsSubmitting(false);
             }
           },
           modal: {
-            ondismiss: async function () {
-              try {
-                await api.payments.cancel({ orderId: dbOrder.orderId });
-              } catch (e) {
-                console.error('Failed to mark unpaid order as cancelled:', e);
-              }
-              setCheckoutError('Payment was not completed or was cancelled. Your order has been marked as cancelled.');
+            ondismiss: function () {
+              if (paymentCaptured) return;
+              setCheckoutError('Payment window was closed. You can complete your order anytime.');
               setIsSubmitting(false);
             },
           },
@@ -600,11 +602,9 @@ export function CheckoutPage() {
         };
 
         const rzp = new (window as any).Razorpay(options);
-        rzp.on('payment.failed', async function (resp: any) {
-          try {
-            await api.payments.cancel({ orderId: dbOrder.orderId });
-          } catch (e) {}
-          setCheckoutError(resp.error?.description || 'Payment failed. Please try again.');
+        rzp.on('payment.failed', function (resp: any) {
+          if (paymentCaptured) return;
+          setCheckoutError(resp.error?.description || 'Payment was not completed. Please try again with another UPI or card.');
           setIsSubmitting(false);
         });
         rzp.open();

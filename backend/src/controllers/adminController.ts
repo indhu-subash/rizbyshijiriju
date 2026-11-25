@@ -96,7 +96,7 @@ export async function getAdminOrders(req: AuthenticatedRequest, res: Response): 
 export async function updateOrderStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { orderStatus, trackingNumber } = req.body;
+    const { orderStatus, trackingNumber, paymentStatus } = req.body;
 
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) {
@@ -108,12 +108,17 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
     const shouldRestore = (orderStatus === 'Cancelled' || orderStatus === 'Refunded') &&
       order.orderStatus !== 'Cancelled' && order.orderStatus !== 'Refunded';
 
+    const targetPaymentStatus = paymentStatus !== undefined
+      ? paymentStatus
+      : (orderStatus === 'Confirmed' && order.paymentStatus !== 'paid' ? 'paid' : order.paymentStatus);
+
     if (shouldRestore) {
       await prisma.$transaction(async (tx: any) => {
         updated = await tx.order.update({
           where: { id },
           data: {
             orderStatus,
+            paymentStatus: targetPaymentStatus,
             trackingNumber: trackingNumber !== undefined ? trackingNumber : order.trackingNumber,
           },
         });
@@ -124,6 +129,7 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
         where: { id },
         data: {
           orderStatus: orderStatus || order.orderStatus,
+          paymentStatus: targetPaymentStatus,
           trackingNumber: trackingNumber !== undefined ? trackingNumber : order.trackingNumber,
         },
       });

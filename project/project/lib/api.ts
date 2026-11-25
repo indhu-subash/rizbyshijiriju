@@ -32,7 +32,11 @@ export function setStoredToken(token: string | null): void {
 
 async function request(endpoint: string, options: RequestInit = {}) {
   const cleanBase = API_URL.replace(/\/+$/, '');
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  // Prevent duplicate /api prefix if cleanBase already ends with /api
+  if (cleanBase.endsWith('/api') && cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = cleanEndpoint.slice(4);
+  }
   const url = `${cleanBase}${cleanEndpoint}`;
 
   // Ensure cookies are sent and received
@@ -162,12 +166,22 @@ export const api = {
       request('/payments/checkout', { method: 'POST', body: JSON.stringify(body) }),
     verify: (body: { orderId: string; razorpayPaymentId?: string; razorpayOrderId?: string; razorpaySignature?: string }) =>
       request('/payments/verify', { method: 'POST', body: JSON.stringify(body) }),
-    cancel: (body: { orderId: string }) =>
-      request('/payments/cancel', { method: 'POST', body: JSON.stringify(body) }),
+    cancel: (body: { orderId: string }) => request('/payments/cancel', { method: 'POST', body: JSON.stringify(body) }),
+    validateCoupon: (body: { couponCode: string; subtotal: number }) => request('/payments/validate-coupon', { method: 'POST', body: JSON.stringify(body) }),
+  },
+
+  // Public Coupons / Offers
+  coupons: {
+    public: () => request('/coupons/public'),
   },
 
 
   // Admin Operations
+  // Wholesale (public)
+  wholesale: {
+    submitEnquiry: (body: any) => request('/wholesale/enquiries', { method: 'POST', body: JSON.stringify(body) }),
+  },
+
   admin: {
     getStats: () => request('/admin/stats'),
     getOrders: (status?: string, query?: string) => {
@@ -177,14 +191,15 @@ export const api = {
       const str = q.toString();
       return request(`/admin/orders${str ? `?${str}` : ''}`);
     },
-    updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string }) =>
+    updateOrderStatus: (id: string, body: { orderStatus: string; trackingNumber?: string; paymentStatus?: string }) =>
       request(`/admin/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteOrder: (id: string) => request(`/admin/orders/${id}`, { method: 'DELETE' }),
-    getProducts: (params: { category?: string; collection?: string; query?: string } = {}) => {
+    getProducts: (params: { category?: string; collection?: string; query?: string; status?: string } = {}) => {
       const q = new URLSearchParams();
       if (params.category) q.append('category', params.category);
       if (params.collection) q.append('collection', params.collection);
       if (params.query) q.append('query', params.query);
+      if (params.status) q.append('status', params.status);
       const str = q.toString();
       return request(`/admin/products${str ? `?${str}` : ''}`);
     },
@@ -210,7 +225,9 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ stock }),
       }),
-    deleteProduct: (id: string) => request(`/admin/products/${id}`, { method: 'DELETE' }),
+    deleteProduct: (id: string, permanent = false) =>
+      request(`/admin/products/${id}${permanent ? '?permanent=true' : ''}`, { method: 'DELETE' }),
+    reactivateProduct: (id: string) => request(`/admin/products/${id}/reactivate`, { method: 'PATCH' }),
 
     uploadImage: (file: File) => {
       const formData = new FormData();
@@ -278,6 +295,19 @@ export const api = {
     editCoupon: (id: string, body: any) => request(`/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     deleteCoupon: (id: string) => request(`/admin/coupons/${id}`, { method: 'DELETE' }),
     getCustomers: () => request('/admin/customers'),
+    getOrderNotifications: (params?: Record<string, string>) => {
+      const str = params ? new URLSearchParams(params).toString() : '';
+      return request(`/admin/order-notifications${str ? `?${str}` : ''}`);
+    },
+    retryOrderNotification: (id: string) => request(`/admin/order-notifications/${encodeURIComponent(id)}/retry`, { method: 'POST' }),
+    getWholesaleEnquiries: (params?: Record<string, string>) => {
+      const str = params ? new URLSearchParams(params).toString() : '';
+      return request(`/admin/wholesale-enquiries${str ? `?${str}` : ''}`);
+    },
+    updateWholesaleEnquiryStatus: (id: string, status: string) =>
+      request(`/admin/wholesale-enquiries/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    retryWholesaleNotification: (id: string) =>
+      request(`/admin/wholesale-enquiries/notifications/${encodeURIComponent(id)}/retry`, { method: 'POST' }),
     getShippingRules: () => request('/admin/shipping-rules'),
     createShippingRule: (body: any) => request('/admin/shipping-rules', { method: 'POST', body: JSON.stringify(body) }),
     editShippingRule: (id: string, body: any) => request(`/admin/shipping-rules/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

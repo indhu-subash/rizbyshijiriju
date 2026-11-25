@@ -49,6 +49,7 @@ export default function AdminOrders() {
   // Edit Status State
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState('');
+  const [newPaymentStatus, setNewPaymentStatus] = useState('paid');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [updating, setUpdating] = useState(false);
 
@@ -88,6 +89,7 @@ export default function AdminOrders() {
     try {
       await api.admin.updateOrderStatus(editingOrder.id, {
         orderStatus: newStatus,
+        paymentStatus: newPaymentStatus,
         trackingNumber: trackingNumber || undefined,
       });
       setEditingOrder(null);
@@ -251,6 +253,7 @@ export default function AdminOrders() {
                         onClick={() => {
                           setEditingOrder(o);
                           setNewStatus(o.orderStatus);
+                          setNewPaymentStatus(o.paymentStatus || 'paid');
                           setTrackingNumber(o.trackingNumber || '');
                         }}
                       >
@@ -418,7 +421,12 @@ export default function AdminOrders() {
             <form onSubmit={handleUpdateStatus} style={{ display: 'grid', gap: '15px' }}>
               <label>
                 Fulfillment Status
-                <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
+                <select value={newStatus} onChange={(e) => {
+                  setNewStatus(e.target.value);
+                  if (e.target.value === 'Confirmed' && newPaymentStatus !== 'paid') {
+                    setNewPaymentStatus('paid');
+                  }
+                }}>
                   <option value="Pending">Pending Payment</option>
                   <option value="Confirmed">Confirmed</option>
                   <option value="Processing">Processing</option>
@@ -427,6 +435,17 @@ export default function AdminOrders() {
                   <option value="Out for Delivery">Out for Delivery</option>
                   <option value="Delivered">Delivered</option>
                   <option value="Cancelled">Cancelled</option>
+                </select>
+              </label>
+
+              <label>
+                Payment Status
+                <select value={newPaymentStatus} onChange={(e) => setNewPaymentStatus(e.target.value)}>
+                  <option value="paid">PAID (Confirmed)</option>
+                  <option value="pending">PENDING</option>
+                  <option value="refunded">REFUNDED</option>
+                  <option value="failed">FAILED</option>
+                  <option value="cancelled">CANCELLED</option>
                 </select>
               </label>
 
