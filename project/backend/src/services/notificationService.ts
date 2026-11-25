@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import * as nodemailer from 'nodemailer';
 
 const STORE_NAME = 'RIZ by Shijiriju';
 const STORE_EMAIL = process.env.EMAIL_FROM || process.env.MAIL_FROM || 'rizbyshijiriju@gmail.com';
@@ -64,7 +64,9 @@ export async function sendOrderConfirmationEmail(order: any): Promise<void> {
         (item: any) => `
         <tr>
           <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">
-            <strong>${item.name}</strong> ${item.color ? `<span style="color: #666; font-size: 12px;">(Color: ${item.color})</span>` : ''}
+            <strong>${item.name}</strong>
+            ${item.color ? `<span style="color: #666; font-size: 12px; margin-left: 6px;">(Color: ${item.color})</span>` : ''}
+            ${item.size ? `<span style="color: #666; font-size: 12px; margin-left: 6px;">(Size: ${item.size})</span>` : ''}
           </td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: right;">₹${(item.price * item.quantity).toLocaleString('en-IN')}</td>
@@ -153,23 +155,61 @@ export async function sendOrderConfirmationEmail(order: any): Promise<void> {
       </div>
     `;
 
-    if (!creds.pass) {
-      console.log(`[EMAIL] Warning: SMTP password not set in environment. Email notification for order=${order.orderId} skipped. Set SMTP_PASS or EMAIL_PASS environment variable.`);
+    const subject = `Order Confirmation #${order.orderId} — ${STORE_NAME}`;
+    const textContent = `Order Confirmation #${order.orderId}\n\nDear ${order.shippingName},\nThank you for your purchase from ${STORE_NAME}! Your order #${order.orderId} has been confirmed.\n\nTotal Paid: ₹${(order.total || 0).toLocaleString('en-IN')}\nShipping Address: ${order.shippingAddressLine}, ${order.shippingCity}, ${order.shippingState} - ${order.shippingPincode}\n\nQuestions? Contact us on WhatsApp (${STORE_WHATSAPP}) or email ${STORE_EMAIL}.\n\n© ${new Date().getFullYear()} ${STORE_NAME}. All rights reserved.`;
+
+    // 1. Try Resend API if configured
+    const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+    const resendFrom = (process.env.RESEND_EMAIL_FROM || process.env.EMAIL_FROM || 'orders@rizbyshijiriju.com').trim();
+
+    if (resendApiKey) {
+      try {
+        console.log(`[EMAIL] Attempting delivery via Resend API to ${customerEmail}`);
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: resendFrom.includes('<') ? resendFrom : `"${STORE_NAME}" <${resendFrom}>`,
+            to: [customerEmail],
+            bcc: ADMIN_EMAIL ? [ADMIN_EMAIL] : undefined,
+            subject,
+            html: emailHtml,
+            text: textContent,
+          }),
+        });
+
+        const json: any = await res.json().catch(() => ({}));
+        if (res.ok) {
+          console.log(`[EMAIL] Resend send succeeded for order=${order.orderId} | id=${json?.id || 'OK'} | customer=${customerEmail}`);
+          return;
+        } else {
+          console.warn(`[EMAIL] Resend API returned ${res.status}: ${json?.message || res.statusText}. Trying SMTP fallback if available.`);
+        }
+      } catch (resendErr: any) {
+        console.warn(`[EMAIL] Resend API error: ${resendErr?.message || resendErr}. Trying SMTP fallback if available.`);
+      }
+    }
+
+    // 2. Try Nodemailer SMTP if configured
+    if (creds.pass) {
+      const transporter = createSmtpTransporter();
+      const mailInfo = await transporter.sendMail({
+        from: `"${STORE_NAME}" <${creds.user}>`,
+        to: customerEmail,
+        bcc: ADMIN_EMAIL,
+        subject,
+        html: emailHtml,
+        text: textContent,
+      });
+
+      console.log(`[EMAIL] SMTP send succeeded order=${order.orderId} | messageId=${mailInfo.messageId || 'SENT'} | customer=${customerEmail} | bcc=${ADMIN_EMAIL}`);
       return;
     }
 
-    const transporter = createSmtpTransporter();
-
-    // Send email to customer & store owner copy
-    const mailInfo = await transporter.sendMail({
-      from: `"${STORE_NAME}" <${creds.user}>`,
-      to: customerEmail,
-      bcc: ADMIN_EMAIL,
-      subject: `Order Confirmation #${order.orderId} — ${STORE_NAME}`,
-      html: emailHtml,
-    });
-
-    console.log(`[EMAIL] Send succeeded order=${order.orderId} | messageId=${mailInfo.messageId || 'SENT'} | customer=${customerEmail} | bcc=${ADMIN_EMAIL}`);
+    console.log(`[EMAIL] Notice: Neither Resend (RESEND_API_KEY) nor SMTP (SMTP_PASS) is configured. Email for order=${order.orderId} was prepared for recipient=${customerEmail}.`);
   } catch (err: any) {
     // Non-blocking error logging: Email failure MUST NOT throw or reverse order confirmation
     console.error(`[EMAIL] Send failed order=${order.orderId} error=${err?.message || err}`);

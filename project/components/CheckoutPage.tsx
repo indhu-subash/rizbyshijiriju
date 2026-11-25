@@ -403,6 +403,7 @@ export function CheckoutPage() {
   const validateForm = () => {
     const newErrors: { [field: string]: boolean } = {};
     const cleanFirstName = firstName.trim();
+    const cleanEmail = email.trim();
     const cleanPhone = phone.trim();
     const cleanAddress = addressLine.trim();
     const cleanCity = city.trim();
@@ -411,6 +412,11 @@ export function CheckoutPage() {
 
     if (!cleanFirstName) {
       newErrors.firstName = true;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      newErrors.email = true;
     }
 
     if (!cleanAddress) {
@@ -441,6 +447,9 @@ export function CheckoutPage() {
       if (newErrors.firstName) {
         setCheckoutError('Please enter your First name.');
         firstErrorId = 'checkout-firstName';
+      } else if (newErrors.email) {
+        setCheckoutError('Please enter a valid Email address to receive your order confirmation.');
+        firstErrorId = 'checkout-email';
       } else if (newErrors.addressLine) {
         setCheckoutError('Please enter your delivery street Address.');
         firstErrorId = 'checkout-addressLine';
@@ -484,12 +493,13 @@ export function CheckoutPage() {
 
     const computedName = `${firstName} ${lastName}`.trim() || firstName.trim() || 'Customer';
     const digitsOnly = phone.trim().replace(/[^0-9]/g, '');
-    const fallbackEmail = email.trim() || user?.email || `${digitsOnly || 'user'}@customer.rizbyshijiriju.com`;
+    const cleanEmail = email.trim() || user?.email || '';
+    const fallbackEmail = cleanEmail || `${digitsOnly || 'user'}@customer.rizbyshijiriju.com`;
 
     const shippingAddress = {
       name: computedName,
       phone: phone.trim(),
-      email: fallbackEmail,
+      email: cleanEmail || fallbackEmail,
       addressLine: addressLine.trim(),
       city: city.trim(),
       state: state.trim() || 'Kerala',
@@ -770,6 +780,22 @@ export function CheckoutPage() {
                   placeholder="Last name (optional)"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+
+              {/* Email Address */}
+              <div className="shopify-field-wrap">
+                <input
+                  id="checkout-email"
+                  type="email"
+                  autoComplete="email"
+                  className={`shopify-input ${fieldErrors.email ? 'shopify-input-error' : ''}`}
+                  placeholder="Email address (for order confirmation & tracking)"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearFieldError('email');
+                  }}
                 />
               </div>
 
