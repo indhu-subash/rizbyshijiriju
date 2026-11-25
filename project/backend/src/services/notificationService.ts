@@ -219,24 +219,44 @@ export async function sendOrderConfirmationEmail(order: any): Promise<void> {
 export async function sendOrderConfirmationWhatsApp(order: any): Promise<void> {
   try {
     const phone = order.shippingPhone;
-    if (!phone) return;
+    const adminPhone = (process.env.ADMIN_WHATSAPP_NUMBER || '919072308686').replace(/\D/g, '');
 
     const message = `✨ *${STORE_NAME} — Order Confirmed* ✨\n\nHi *${order.shippingName}*,\nThank you for your order *#${order.orderId}*!\n\n📦 *Order Total:* ₹${(order.total || 0).toLocaleString('en-IN')}\n📍 *Destination:* ${order.shippingCity}, ${order.shippingState}\n\nWe are preparing your items with love. Need quick support? Reply here or email ${STORE_EMAIL}.`;
 
-    console.log(`[WhatsApp Notification Log] Receiver: ${phone} | Message: ${message.replace(/\n/g, ' ')}`);
+    console.log(`[WhatsApp Notification Log] Customer Receiver: ${phone || 'NONE'} | Message: ${message.replace(/\n/g, ' ')}`);
+
+    const adminMessage = `🔔 *NEW ORDER CONFIRMED!* 🔔\n\n*Order ID:* #${order.orderId}\n*Customer:* ${order.shippingName} (${order.shippingPhone})\n*Email:* ${order.shippingEmail || 'N/A'}\n*Amount:* ₹${(order.total || 0).toLocaleString('en-IN')}\n*Payment Method:* ${order.paymentMethod || 'Online'}\n*Address:* ${order.shippingAddressLine}, ${order.shippingCity}, ${order.shippingState} - ${order.shippingPincode}\n\nPlease check admin dashboard for details.`;
+
+    console.log(`[Admin WhatsApp Notification Log] Admin Receiver: ${adminPhone} | Order: #${order.orderId}`);
 
     if (process.env.WHATSAPP_API_URL && process.env.WHATSAPP_API_KEY) {
-      await fetch(process.env.WHATSAPP_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.WHATSAPP_API_KEY}`,
-        },
-        body: JSON.stringify({
-          to: phone,
-          message,
-        }),
-      });
+      if (phone) {
+        await fetch(process.env.WHATSAPP_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.WHATSAPP_API_KEY}`,
+          },
+          body: JSON.stringify({
+            to: phone,
+            message,
+          }),
+        }).catch((e) => console.error('[WhatsApp Customer Error]:', e));
+      }
+
+      if (adminPhone) {
+        await fetch(process.env.WHATSAPP_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.WHATSAPP_API_KEY}`,
+          },
+          body: JSON.stringify({
+            to: adminPhone,
+            message: adminMessage,
+          }),
+        }).catch((e) => console.error('[WhatsApp Admin Error]:', e));
+      }
     }
   } catch (err: any) {
     console.error(`[NotificationService Error] WhatsApp alert error for order ${order.orderId}:`, err?.message || err);

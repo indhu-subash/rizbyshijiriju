@@ -295,8 +295,9 @@ export function ThankYouPage() {
   }
 
   // 6. Confirmed Order Success View
+  const itemsSummary = (order.items || []).map((i) => `${i.name} (x${i.quantity})`).join(', ');
   const waMessage = encodeURIComponent(
-    `Hi RIZ by Shijiriju, I have placed Order #${order.orderId}. Please process my order!`
+    `Hi RIZ by Shijiriju, I have placed Order #${order.orderId} for ₹${(order.total || 0).toLocaleString('en-IN')}.\nCustomer: ${order.shippingName || ''}\nItems: ${itemsSummary || 'Jewellery'}\nPlease process my order!`
   );
 
   return (

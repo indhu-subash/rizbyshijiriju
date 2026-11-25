@@ -303,7 +303,11 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     // 6. Cash on Delivery (COD) fallback
     // COD orders are created directly in the existing 'Confirmed' state: record the admin notifications
     // (a single fast DB insert; the actual WhatsApp/email sending runs asynchronously and cannot fail the order).
-    if (paymentMethod === 'cod') await notifyOrderConfirmed(result);
+    if (paymentMethod === 'cod') {
+      sendOrderConfirmationEmail(result).catch((e) => console.error('Email error:', e));
+      sendOrderConfirmationWhatsApp(result).catch((e) => console.error('WhatsApp error:', e));
+      await notifyOrderConfirmed(result);
+    }
 
     res.status(201).json({
       message: 'Order placed successfully.',

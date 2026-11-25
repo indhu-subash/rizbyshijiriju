@@ -19,9 +19,9 @@ export interface EmailConfig { apiKey: string; from: string; to: string[] }
 
 export function getWhatsAppConfig(): { ok: true; cfg: WhatsAppConfig } | { ok: false; missing: string[] } {
   const e = process.env;
-  const missing = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_API_VERSION', 'ADMIN_WHATSAPP_NUMBER'].filter((k) => !(e[k] || '').trim());
-  const to = (e.ADMIN_WHATSAPP_NUMBER || '').replace(/\D/g, '');
-  if (!missing.includes('ADMIN_WHATSAPP_NUMBER') && (to.length < 8 || to.length > 15)) missing.push('ADMIN_WHATSAPP_NUMBER (invalid format)');
+  const to = (e.ADMIN_WHATSAPP_NUMBER || '919072308686').replace(/\D/g, '');
+  const missing = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_API_VERSION'].filter((k) => !(e[k] || '').trim());
+  if (!to || to.length < 8 || to.length > 15) missing.push('ADMIN_WHATSAPP_NUMBER (invalid format)');
   if (missing.length) return { ok: false, missing };
   return {
     ok: true,
