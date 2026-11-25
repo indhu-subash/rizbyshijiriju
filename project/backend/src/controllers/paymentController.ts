@@ -162,23 +162,26 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     let shippingCharge = 0;
 
     if (isIndia) {
-      // Free shipping for India orders greater than or equal to ₹599
-      if (discountedSubtotal >= 599) {
+      const shippingRes = await calculateShipping({
+        country: 'IN',
+        pincode: postalOrPincode,
+        state: shippingAddress.state,
+      });
+
+      if (!shippingRes.available) {
+        res.status(400).json({
+          error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
+        });
+        return;
+      }
+
+      // If admin explicitly set a custom rate for this specific pincode, apply the admin rate directly.
+      // Otherwise, standard India orders of ₹599 or above receive free express shipping.
+      if (shippingRes.source === 'admin') {
+        shippingCharge = shippingRes.shippingCharge;
+      } else if (discountedSubtotal >= 599) {
         shippingCharge = 0;
       } else {
-        const shippingRes = await calculateShipping({
-          country: 'IN',
-          pincode: postalOrPincode,
-          state: shippingAddress.state,
-        });
-
-        if (!shippingRes.available) {
-          res.status(400).json({
-            error: shippingRes.error || `Delivery is unavailable for pincode ${postalOrPincode}.`,
-          });
-          return;
-        }
-
         shippingCharge = shippingRes.shippingCharge;
       }
     } else {

@@ -121,6 +121,29 @@ export async function calculateIndiaShipping(pincode: string, providedState?: st
   });
 
   if (rule) {
+    const prefix2 = Number(cleanPincode.substring(0, 2));
+    let state = providedState || (prefix2 === 67 || prefix2 === 68 || prefix2 === 69 ? 'Kerala' : 'India');
+    let city = '';
+    let district = '';
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`https://api.postalpincode.in/pincode/${cleanPincode}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data[0]?.Status === 'Success' && data[0]?.PostOffice?.length > 0) {
+          const po = data[0].PostOffice[0];
+          city = po.Name || po.Block || po.District || '';
+          district = po.District || '';
+          state = po.State || state;
+        }
+      }
+    } catch (e) {
+      // Gracefully ignore external postal api lookup errors
+    }
+
     return {
       available: true,
       country: 'IN',
@@ -129,6 +152,9 @@ export async function calculateIndiaShipping(pincode: string, providedState?: st
       estimate: '2–4 working days',
       destination: {
         country: 'India',
+        city,
+        district,
+        state,
         postalCode: cleanPincode,
       },
       source: 'admin',

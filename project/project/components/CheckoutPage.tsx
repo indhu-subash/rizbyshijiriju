@@ -210,13 +210,15 @@ export function CheckoutPage() {
               if (res.destination?.city && !city) setCity(res.destination.city);
               if (res.destination?.state && !state) setState(res.destination.state);
 
-              // Inside Kerala rate: ₹60 (Kerala pin prefixes: 67, 68, 69 or selected/fetched state)
+              // Check if destination is in Kerala
               const isKerala =
                 res.destination?.state?.toLowerCase().includes('kerala') ||
                 state?.toLowerCase().includes('kerala') ||
                 ['67', '68', '69'].includes(cleanPincode.substring(0, 2));
 
-              const resolvedCharge = isKerala ? 60 : res.shippingCharge;
+              // If admin explicitly set a custom shipping charge for this specific pincode, respect the admin rate!
+              const hasAdminRule = res.source === 'admin';
+              const resolvedCharge = hasAdminRule ? res.shippingCharge : (isKerala ? 60 : res.shippingCharge);
               const resolvedEstimate = isKerala ? '2–4 working days' : (res.estimate || '3–5 working days');
 
               setShippingMeta({
@@ -229,8 +231,11 @@ export function CheckoutPage() {
                 baseCharge: resolvedCharge,
               });
 
-              // Free shipping for India orders of ₹599 or above
-              if (discountedSubtotal >= 599) {
+              // When an admin sets an amount for a specific pincode, apply the admin rate directly.
+              // Otherwise, standard India orders of ₹599 or above receive free express shipping.
+              if (hasAdminRule) {
+                setShippingCharge(res.shippingCharge);
+              } else if (discountedSubtotal >= 599) {
                 setShippingCharge(0);
               } else {
                 setShippingCharge(resolvedCharge);
@@ -900,7 +905,11 @@ export function CheckoutPage() {
                     </small>
                   </div>
                   <div>
-                    {deliveryType === 'IN' && discountedSubtotal >= 599 ? (
+                    {deliveryType === 'IN' && shippingMeta?.source !== 'admin' && discountedSubtotal >= 599 ? (
+                      <span style={{ background: '#334c3d', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                        FREE
+                      </span>
+                    ) : shippingCharge === 0 ? (
                       <span style={{ background: '#334c3d', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
                         FREE
                       </span>
@@ -1032,7 +1041,7 @@ export function CheckoutPage() {
               <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
                 {isLocationAvailable === false ? (
                   <span style={{ color: '#d32f2f' }}>Unavailable</span>
-                ) : deliveryType === 'IN' && discountedSubtotal >= 599 ? (
+                ) : deliveryType === 'IN' && shippingMeta?.source !== 'admin' && discountedSubtotal >= 599 ? (
                   <span style={{ color: '#2e7d32', fontWeight: 600 }}>Free</span>
                 ) : !isLocationAvailable ? (
                   <span style={{ color: '#b45309', fontWeight: 600 }}>Enter PIN code</span>
