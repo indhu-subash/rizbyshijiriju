@@ -975,46 +975,46 @@ export function CheckoutPage() {
         <aside className="summary checkout-summary">
           <h2 className="serif">Your order</h2>
           {cart.map(({ product, quantity, color, size }) => (
-            <div className="mini-item" key={`${product.id}-${color || 'default'}-${size || 'default'}`}>
-              <span>
-                {product.name}
+            <div className="mini-item" key={`${product.id}-${color || 'default'}-${size || 'default'}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--line)' }}>
+              <span style={{ flex: 1, paddingRight: '12px' }}>
+                <span style={{ fontWeight: 500 }}>{product.name}</span>
                 {(color || size) && (
-                  <small style={{ display: 'block', color: '#666', fontSize: '0.8rem' }}>
+                  <small style={{ display: 'block', color: '#666', fontSize: '0.8rem', marginTop: '2px' }}>
                     {[color ? `Colour: ${color}` : null, size ? `Size: ${size}` : null].filter(Boolean).join(' | ')}
                   </small>
                 )}
-                <small>× {quantity}</small>
+                <small style={{ display: 'inline-block', color: '#777', fontSize: '0.8rem', marginTop: '2px' }}>× {quantity}</small>
               </span>
-              <b>₹{((product.price || 0) * quantity).toLocaleString('en-IN')}</b>
+              <b style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right', fontWeight: 600 }}>₹{((product.price || 0) * quantity).toLocaleString('en-IN')}</b>
             </div>
           ))}
 
           {/* Coupon Entry */}
-          <div className="coupon-entry-wrapper border-t pt-4 mt-4">
-            <span className="eyebrow">Apply Coupon</span>
-            <form onSubmit={applyCoupon} className="flex gap-2 mt-1">
+          <div className="coupon-entry-wrapper" style={{ borderTop: '1px solid var(--line)', paddingTop: '16px', marginTop: '16px' }}>
+            <span className="eyebrow" style={{ display: 'block', marginBottom: '8px' }}>Apply Coupon</span>
+            <form onSubmit={applyCoupon} style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
                 placeholder="PROMO CODE"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value)}
-                style={{ textTransform: 'uppercase' }}
+                style={{ textTransform: 'uppercase', flex: 1 }}
               />
-              <button type="submit" className="button secondary" style={{ padding: '0 15px' }}>
+              <button type="submit" className="button secondary" style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
                 Apply
               </button>
             </form>
-            {couponError && <p className="text-xs text-red-500 mt-1" style={{ color: '#d32f2f' }}>{couponError}</p>}
-            {couponSuccess && <p className="text-xs text-green-600 mt-1" style={{ color: '#2e7d32' }}>{couponSuccess}</p>}
+            {couponError && <p className="text-xs" style={{ color: '#d32f2f', marginTop: '6px', fontSize: '0.8rem' }}>{couponError}</p>}
+            {couponSuccess && <p className="text-xs" style={{ color: '#2e7d32', marginTop: '6px', fontSize: '0.8rem' }}>{couponSuccess}</p>}
           </div>
 
-          <div className="price-lines border-t pt-4 mt-4" style={{ display: 'grid', gap: '8px' }}>
-            <div className="flex justify-between text-sm">
-              <span>Bag Subtotal</span>
-              <span>₹{(subtotal || 0).toLocaleString('en-IN')}</span>
+          <div className="price-lines" style={{ borderTop: '1px solid var(--line)', paddingTop: '16px', marginTop: '16px', display: 'grid', gap: '10px' }}>
+            <div className="summary-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
+              <span style={{ color: '#555' }}>Bag Subtotal</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>₹{(subtotal || 0).toLocaleString('en-IN')}</span>
             </div>
             {discountedSubtotal >= 249 && (
-              <div className="flex justify-between text-sm" style={{ color: '#2e7d32' }}>
+              <div className="summary-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', color: '#2e7d32' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                   🎁 Free Gift (Orders ₹249+)
                 </span>
@@ -1022,14 +1022,14 @@ export function CheckoutPage() {
               </div>
             )}
             {discountAmount > 0 && (
-              <div className="flex justify-between text-sm text-green-600" style={{ color: '#2e7d32' }}>
+              <div className="summary-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', color: '#2e7d32' }}>
                 <span>Coupon Discount ({appliedCoupon?.code})</span>
-                <span>- ₹{(discountAmount || 0).toLocaleString('en-IN')}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>- ₹{(discountAmount || 0).toLocaleString('en-IN')}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm">
-              <span>Shipping Fee ({deliveryType === 'IN' ? 'India' : selectedCountryObj.name})</span>
-              <span>
+            <div className="summary-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
+              <span style={{ color: '#555' }}>Shipping Fee ({deliveryType === 'IN' ? 'India' : selectedCountryObj.name})</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
                 {isLocationAvailable === false ? (
                   <span style={{ color: '#d32f2f' }}>Unavailable</span>
                 ) : deliveryType === 'IN' && discountedSubtotal >= 599 ? (
@@ -1045,10 +1045,10 @@ export function CheckoutPage() {
             </div>
           </div>
 
-          <div className="summary-total border-t pt-4 mt-4">
-            <span>Total</span>
+          <div className="summary-total" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', marginTop: '18px', paddingTop: '16px' }}>
+            <span style={{ fontSize: '1.05rem', fontWeight: 600 }}>Total</span>
             <div style={{ textAlign: 'right' }}>
-              <strong>₹{(totalAmount || 0).toLocaleString('en-IN')}</strong>
+              <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: '1.25rem', fontWeight: 700 }}>₹{(totalAmount || 0).toLocaleString('en-IN')}</strong>
               {!isLocationAvailable && (deliveryType !== 'IN' || discountedSubtotal < 599) && (
                 <small style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#777' }}>
                   + shipping fee

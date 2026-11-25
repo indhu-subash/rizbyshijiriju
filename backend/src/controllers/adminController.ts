@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { uploadImage, deleteImage } from '../services/uploadService';
 import { INITIAL_PRODUCTS } from '../config/initialProducts';
 import { restoreOrderInventory } from '../services/inventoryService';
+import { syncBestsellers } from '../services/bestsellerService';
 
 // 1. Dashboard Analytics
 export async function getDashboardStats(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -136,6 +137,11 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
     }
 
     res.status(200).json({ message: 'Order status updated successfully.', order: updated });
+
+    // Sync bestseller status across products in the background
+    syncBestsellers().catch((syncErr) => {
+      console.error('[Admin Order Status] Failed to background-sync bestsellers:', syncErr?.message || syncErr);
+    });
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({ error: 'Failed to update order.' });

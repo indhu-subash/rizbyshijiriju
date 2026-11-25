@@ -1,9 +1,13 @@
 import { Request, Response } from 'express';
 import prisma from '../config/db';
+import { syncBestsellers } from '../services/bestsellerService';
 
 export async function getProducts(req: Request, res: Response): Promise<void> {
   try {
     const { category, collection, query, priceRange, sort, color, colors } = req.query;
+
+    // Run bestseller sync in background if needed
+    syncBestsellers().catch(() => {});
 
     const whereClause: any = { isActive: true, stock: { gt: 0 } };
 
@@ -40,6 +44,17 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
         whereClause.OR = [
           { createdAt: { gte: thirtyDaysAgo } },
           { newArrival: true },
+        ];
+      } else if (
+        lowerCol.includes('best seller') ||
+        lowerCol.includes('bestseller') ||
+        lowerCol === 'best-sellers' ||
+        lowerCol === 'best sellers'
+      ) {
+        whereClause.OR = [
+          { bestseller: true },
+          { collection: { equals: 'Best Sellers', mode: 'insensitive' } },
+          { tags: { has: 'bestseller' } },
         ];
       } else {
         const slugified = lowerCol.replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
@@ -244,8 +259,13 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       };
     });
 
-    if (isBestsellerSort) {
-      mappedProducts = mappedProducts.filter((p) => p.unitsSold > 0);
+    const isBestsellerCollection = collection && (
+      String(collection).toLowerCase().includes('best') ||
+      String(collection).toLowerCase().includes('bestseller')
+    );
+
+    if (isBestsellerSort || isBestsellerCollection) {
+      mappedProducts = mappedProducts.filter((p) => p.bestseller || p.unitsSold > 0);
       mappedProducts.sort((a, b) => {
         if (b.unitsSold !== a.unitsSold) {
           return b.unitsSold - a.unitsSold;
@@ -365,7 +385,25 @@ export async function getProductBySlug(req: Request, res: Response): Promise<voi
       return;
     }
 
-    res.status(200).json({ product });
+    const orderItemCount = await prisma.orderItem.count({
+      where: {
+        productId: product.id,
+        order: {
+          orderStatus: { notIn: ['Cancelled', 'cancelled', 'FAILED', 'failed'] },
+          paymentStatus: { in: ['paid', 'Paid', 'PAID', 'SUCCESS', 'success', 'COMPLETED', 'completed'] },
+        },
+      },
+    }).catch(() => 0);
+
+    const isBestseller = product.bestseller || orderItemCount > 0;
+
+    res.status(200).json({
+      product: {
+        ...product,
+        bestseller: isBestseller,
+        unitsSold: orderItemCount,
+      },
+    });
   } catch (error) {
     console.error('Fetch product by slug error:', error);
     res.status(500).json({ error: 'Failed to fetch product.' });
@@ -382,7 +420,25 @@ export async function getProductById(req: Request, res: Response): Promise<void>
       return;
     }
 
-    res.status(200).json({ product });
+    const orderItemCount = await prisma.orderItem.count({
+      where: {
+        productId: product.id,
+        order: {
+          orderStatus: { notIn: ['Cancelled', 'cancelled', 'FAILED', 'failed'] },
+          paymentStatus: { in: ['paid', 'Paid', 'PAID', 'SUCCESS', 'success', 'COMPLETED', 'completed'] },
+        },
+      },
+    }).catch(() => 0);
+
+    const isBestseller = product.bestseller || orderItemCount > 0;
+
+    res.status(200).json({
+      product: {
+        ...product,
+        bestseller: isBestseller,
+        unitsSold: orderItemCount,
+      },
+    });
   } catch (error) {
     console.error('Fetch product by ID error:', error);
     res.status(500).json({ error: 'Failed to fetch product.' });

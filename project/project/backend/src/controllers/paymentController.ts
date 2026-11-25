@@ -9,6 +9,7 @@ import { notifyOrderConfirmed } from '../services/adminNotifications';
 import { verifyRazorpayWebhookSignature } from '../services/razorpayWebhook';
 import { findProductBySlugOrId } from './productController';
 import { deductOrderStock, restoreOrderInventory, resolveProductVariant } from '../services/inventoryService';
+import { syncBestsellers } from '../services/bestsellerService';
 
 
 const PAYMENT_MODE = (process.env.PAYMENT_MODE || 'razorpay').toLowerCase();
@@ -435,6 +436,8 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
         sendOrderConfirmationWhatsApp(updatedOrder).catch((e) => console.error('WhatsApp error:', e));
         // Admin WhatsApp + email (DB-backed, async, never blocks or fails the order). Skipped in mock mode.
         if (PAYMENT_MODE !== 'mock') await notifyOrderConfirmed(updatedOrder);
+        // Automatically sync bestsellers based on confirmed orders every time
+        syncBestsellers().catch((e) => console.error('Bestseller sync error:', e));
       }
 
       return updatedOrder;
@@ -566,6 +569,7 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
               sendOrderConfirmationEmail(updated).catch((e) => console.error('Email error:', e));
               sendOrderConfirmationWhatsApp(updated).catch((e) => console.error('WhatsApp error:', e));
               await notifyOrderConfirmed(updated);
+              syncBestsellers().catch((e) => console.error('Bestseller sync error:', e));
             }
           } else {
             // Idempotent webhook receipt for already confirmed order
@@ -576,6 +580,7 @@ export async function handleRazorpayWebhook(req: any, res: Response): Promise<vo
               });
             }
             await notifyOrderConfirmed(order);
+            syncBestsellers().catch((e) => console.error('Bestseller sync error:', e));
           }
         }
       }

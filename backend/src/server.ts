@@ -8,6 +8,7 @@ import prisma from './config/db';
 import { INITIAL_PRODUCTS } from './config/initialProducts';
 import { captureWebhookRawBody } from './utils/webhookRawBody';
 import { logNotificationConfigStatus, startNotificationWorker } from './services/adminNotifications';
+import { syncBestsellers } from './services/bestsellerService';
 
 // Load environment variables
 dotenv.config();
@@ -246,6 +247,15 @@ if (process.env.NODE_ENV !== 'test') {
       startNotificationWorker();
     } catch (notifyErr) {
       console.error('Admin notification worker failed to start:', notifyErr);
+    }
+
+    // Automatically synchronize bestseller product rankings based on actual order sales on startup
+    try {
+      syncBestsellers().catch((syncErr) => {
+        console.error('Startup bestseller sync error:', syncErr?.message || syncErr);
+      });
+    } catch (syncErr) {
+      console.error('Startup bestseller sync caught:', syncErr);
     }
   });
 }
