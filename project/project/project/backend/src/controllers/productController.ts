@@ -51,11 +51,17 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
         lowerCol === 'best-sellers' ||
         lowerCol === 'best sellers'
       ) {
-        whereClause.OR = [
+        const bestsellerConditions = [
           { bestseller: true },
           { collection: { equals: 'Best Sellers', mode: 'insensitive' } },
           { tags: { has: 'bestseller' } },
         ];
+        if (whereClause.OR) {
+          whereClause.AND = [{ OR: whereClause.OR }, { OR: bestsellerConditions }];
+          delete whereClause.OR;
+        } else {
+          whereClause.OR = bestsellerConditions;
+        }
       } else {
         const slugified = lowerCol.replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
         const unhyphenated = colStr.replace(/-/g, ' ').trim();
@@ -248,8 +254,8 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     let mappedProducts = products.map((p) => {
       const unitsSold = salesMap.get(p.id) || 0;
       const isNew = p.createdAt ? (new Date(p.createdAt).getTime() >= thirtyDaysAgo.getTime()) : !!p.newArrival;
-      // BESTSELLER badge ONLY for products with actual sales > 0
-      const isBestseller = unitsSold > 0;
+      // Product is a bestseller if it has actual confirmed sales or is explicitly flagged as bestseller
+      const isBestseller = unitsSold > 0 || !!p.bestseller;
 
       return {
         ...p,
