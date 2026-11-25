@@ -448,7 +448,7 @@ export function CheckoutPage() {
         setCheckoutError('Please enter your First name.');
         firstErrorId = 'checkout-firstName';
       } else if (newErrors.email) {
-        setCheckoutError('Please enter a valid Email address to receive your order confirmation.');
+        setCheckoutError('Please enter a valid Email address.');
         firstErrorId = 'checkout-email';
       } else if (newErrors.addressLine) {
         setCheckoutError('Please enter your delivery street Address.');
@@ -790,7 +790,7 @@ export function CheckoutPage() {
                   type="email"
                   autoComplete="email"
                   className={`shopify-input ${fieldErrors.email ? 'shopify-input-error' : ''}`}
-                  placeholder="Email address (for order confirmation & tracking)"
+                  placeholder="Email"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
