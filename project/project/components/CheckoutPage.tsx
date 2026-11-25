@@ -611,15 +611,6 @@ export function CheckoutPage() {
         return;
       }
 
-      // 4. Handle Cash on Delivery (COD) Checkout
-      if (res.paymentMode === 'cod') {
-        clearCart();
-        setPlacedOrderId(dbOrder.orderId);
-        setPlaced(true);
-        setIsSubmitting(false);
-        router.push(`/thankyou?orderId=${encodeURIComponent(dbOrder.orderId)}`);
-        return;
-      }
     } catch (err: any) {
       setCheckoutError(err.message || 'An error occurred during checkout.');
     } finally {

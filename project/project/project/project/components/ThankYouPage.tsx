@@ -90,26 +90,16 @@ export function ThankYouPage() {
 
   const isPending = useMemo(() => {
     if (!order || isCancelled) return false;
-    const payMethod = (order.paymentMethod || '').toLowerCase();
     const payStatus = (order.paymentStatus || '').toLowerCase();
     const ordStatus = (order.orderStatus || '').toLowerCase();
 
-    // COD is confirmed upon placement
-    if (payMethod === 'cod') return false;
-
-    // Online payments require paid status or Confirmed status
     return payStatus !== 'paid' && ordStatus !== 'confirmed';
   }, [order, isCancelled]);
 
   const isConfirmed = useMemo(() => {
     if (!order || isCancelled || isPending) return false;
-    const payMethod = (order.paymentMethod || '').toLowerCase();
     const payStatus = (order.paymentStatus || '').toLowerCase();
     const ordStatus = (order.orderStatus || '').toLowerCase();
-
-    if (payMethod === 'cod') {
-      return ordStatus !== 'cancelled';
-    }
 
     return payStatus === 'paid' || ordStatus === 'confirmed';
   }, [order, isCancelled, isPending]);
@@ -364,7 +354,7 @@ export function ThankYouPage() {
                 Payment Status
               </span>
               <p style={{ margin: '2px 0 0', fontWeight: 600, fontSize: '0.95rem', color: order.paymentStatus === 'paid' ? '#2e7d32' : '#334c3d' }}>
-                {order.paymentMethod === 'cod' ? 'Cash on Delivery (Confirmed)' : order.paymentStatus === 'paid' ? 'Paid Securely' : 'Confirmed'}
+                {order.paymentStatus === 'paid' ? 'Paid Securely' : 'Confirmed'}
               </p>
             </div>
           </div>

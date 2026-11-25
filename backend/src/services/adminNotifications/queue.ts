@@ -69,7 +69,7 @@ export async function notifyWholesaleEnquirySubmitted(enquiry: { id: string }): 
 export function checkEligible(o: { orderStatus: string; paymentStatus: string; paymentMethod: string }): string | null {
   if (['Cancelled', 'Refunded', 'Pending'].includes(o.orderStatus)) return `order status is ${o.orderStatus}`;
   if (['failed', 'cancelled', 'refunded'].includes((o.paymentStatus || '').toLowerCase())) return `payment status is ${o.paymentStatus}`;
-  if ((o.paymentMethod || '').toLowerCase() !== 'cod' && (o.paymentStatus || '').toLowerCase() !== 'paid') return 'online payment not verified as paid';
+  if ((o.paymentStatus || '').toLowerCase() !== 'paid') return 'online payment not verified as paid';
   return null;
 }
 

@@ -16,7 +16,6 @@ export function orderDateIST(d: Date | string): string {
 
 export function paymentMethodLabel(m: string): string {
   const k = (m || '').toLowerCase();
-  if (k === 'cod') return 'Cash on Delivery (COD)';
   if (k === 'upi') return 'UPI (Razorpay)';
   if (k === 'card') return 'Card (Razorpay)';
   return m || '-';
@@ -25,7 +24,6 @@ export function paymentMethodLabel(m: string): string {
 export function paymentStatusLabel(o: Pick<NotifyOrder, 'paymentStatus' | 'paymentMethod'>): string {
   const s = (o.paymentStatus || '').toLowerCase();
   if (s === 'paid') return 'Paid';
-  if (s === 'pending' && (o.paymentMethod || '').toLowerCase() === 'cod') return 'Pending (collect on delivery)';
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '-';
 }
 

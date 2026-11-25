@@ -159,7 +159,7 @@ model Order {
   total               Float
   couponCode          String?
   paymentStatus       String      @default("pending") // "pending" | "paid" | "failed"
-  paymentMethod       String      @default("UPI") // "UPI" | "card" | "cod"
+  paymentMethod       String      @default("UPI") // "UPI" | "card"
   paymentId           String?     // Razorpay Payment ID
   razorpayOrderId     String?     // Razorpay Order ID
   orderStatus         String      @default("Pending") // "Pending" | "Confirmed" | "Processing" | "Packed" | "Shipped" | "Out for Delivery" | "Delivered" | "Cancelled"

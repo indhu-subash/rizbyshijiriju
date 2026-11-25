@@ -148,13 +148,7 @@ async function main() {
   }
   ok('pending / cancelled / failed-payment / unpaid-online / refunded -> NO notification');
 
-  // 8. COD order (Confirmed, payment pending) -> notifies, labelled correctly
-  reset(); o = mkOrder({ paymentMethod: 'cod', paymentStatus: 'pending', orderStatus: 'Confirmed' }); await q.notifyOrderConfirmed(o); await sleep(40);
-  assert.equal(waCalls().length, 1); assert.equal(mailCalls().length, 1);
-  assert.ok(mailCalls()[0].body.html.includes('Cash on Delivery (COD)') && mailCalls()[0].body.html.includes('Pending (collect on delivery)'));
-  ok('COD confirmed order -> notifies with COD labels');
-
-  // 9. not configured -> clean failure, no network, order untouched; retry works after configuring
+  // 8. not configured -> clean failure, no network, order untouched; retry works after configuring
   reset(); const saved = { ...process.env }; delete process.env.RESEND_API_KEY; delete process.env.WHATSAPP_ACCESS_TOKEN;
   o = mkOrder(); await q.notifyOrderConfirmed(o); await sleep(40);
   assert.equal(calls.length, 0); assert.ok(rowsFor(o).every((n) => n.status === 'failed' && /not configured/.test(n.lastError)));

@@ -60,7 +60,7 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
       return;
     }
 
-    const validPaymentMethods = ['UPI', 'card', 'cod'];
+    const validPaymentMethods = ['UPI', 'card'];
     if (!validPaymentMethods.includes(paymentMethod)) {
       res.status(400).json({ error: 'Invalid payment method.' });
       return;
@@ -226,8 +226,8 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
           total,
           couponCode: couponCode || null,
           paymentMethod,
-          paymentStatus: paymentMethod === 'cod' ? 'pending' : 'pending',
-          orderStatus: paymentMethod === 'cod' ? 'Confirmed' : 'Pending',
+          paymentStatus: 'pending',
+          orderStatus: 'Pending',
           shippingName: shippingAddress.name,
           shippingPhone: shippingAddress.phone,
           shippingEmail: shippingAddress.email,
@@ -256,64 +256,49 @@ export async function createCheckoutOrder(req: AuthenticatedRequest, res: Respon
     });
 
     // 5. Razorpay Integration
-    if (paymentMethod !== 'cod') {
-      if (PAYMENT_MODE === 'razorpay') {
-        if (!razorpay || !RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-          res.status(500).json({ error: 'Razorpay payment gateway configuration missing on backend (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET required).' });
-          return;
-        }
-
-        try {
-          const razorpayOrder = await razorpay.orders.create({
-            amount: Math.round(total * 100), // Razorpay accepts paise
-            currency: 'INR',
-            receipt: result.orderId,
-          });
-
-          await prisma.order.update({
-            where: { id: result.id },
-            data: { razorpayOrderId: razorpayOrder.id },
-          });
-
-          res.status(201).json({
-            message: 'Checkout initialized.',
-            paymentMode: 'razorpay',
-            razorpayKeyId: RAZORPAY_KEY_ID,
-            razorpayOrderId: razorpayOrder.id,
-            order: result,
-          });
-          return;
-        } catch (err) {
-          console.error('Razorpay order creation error:', err);
-          throw new Error('Razorpay integration error. Order could not be initialized.');
-        }
+    if (PAYMENT_MODE === 'razorpay') {
+      if (!razorpay || !RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+        res.status(500).json({ error: 'Razorpay payment gateway configuration missing on backend (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET required).' });
+        return;
       }
 
-      // Explicit Mock Mode for local development only if process.env.PAYMENT_MODE === 'mock'
-      if (PAYMENT_MODE === 'mock') {
+      try {
+        const razorpayOrder = await razorpay.orders.create({
+          amount: Math.round(total * 100), // Razorpay accepts paise
+          currency: 'INR',
+          receipt: result.orderId,
+        });
+
+        await prisma.order.update({
+          where: { id: result.id },
+          data: { razorpayOrderId: razorpayOrder.id },
+        });
+
         res.status(201).json({
-          message: 'Checkout initialized in mock payment mode.',
-          paymentMode: 'mock',
+          message: 'Checkout initialized.',
+          paymentMode: 'razorpay',
+          razorpayKeyId: RAZORPAY_KEY_ID,
+          razorpayOrderId: razorpayOrder.id,
           order: result,
         });
         return;
+      } catch (err) {
+        console.error('Razorpay order creation error:', err);
+        throw new Error('Razorpay integration error. Order could not be initialized.');
       }
     }
 
-    // 6. Cash on Delivery (COD) fallback
-    // COD orders are created directly in the existing 'Confirmed' state: record the admin notifications
-    // (a single fast DB insert; the actual WhatsApp/email sending runs asynchronously and cannot fail the order).
-    if (paymentMethod === 'cod') {
-      sendOrderConfirmationEmail(result).catch((e) => console.error('Email error:', e));
-      sendOrderConfirmationWhatsApp(result).catch((e) => console.error('WhatsApp error:', e));
-      await notifyOrderConfirmed(result);
+    // Explicit Mock Mode for local development only if process.env.PAYMENT_MODE === 'mock'
+    if (PAYMENT_MODE === 'mock') {
+      res.status(201).json({
+        message: 'Checkout initialized in mock payment mode.',
+        paymentMode: 'mock',
+        order: result,
+      });
+      return;
     }
 
-    res.status(201).json({
-      message: 'Order placed successfully.',
-      paymentMode: 'cod',
-      order: result,
-    });
+    res.status(500).json({ error: 'Payment mode is not configured.' });
 
   } catch (error: any) {
     console.error('Checkout error:', error);
@@ -447,7 +432,7 @@ export async function verifyPayment(req: AuthenticatedRequest, res: Response): P
     };
 
     // 1. Verify Mock Payment
-    if (order.paymentMethod !== 'cod' && PAYMENT_MODE === 'mock') {
+    if (PAYMENT_MODE === 'mock') {
       await confirmAndNotifyOrder(`MOCK_PAY_${Date.now()}`);
       res.status(200).json({
         message: 'Mock payment verified successfully.',
