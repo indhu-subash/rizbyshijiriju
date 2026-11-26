@@ -111,8 +111,9 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
     }
 
     let updated;
-    const isBecomingConfirmed = orderStatus === 'Confirmed' && order.orderStatus !== 'Confirmed';
-    const wasCancelledOrRefunded = order.orderStatus === 'Cancelled' || order.orderStatus === 'Refunded';
+    const hasRestoredItems = order.items && order.items.some((it: any) => it.inventoryRestored);
+    const wasCancelledOrRefunded = order.orderStatus === 'Cancelled' || order.orderStatus === 'Refunded' || order.paymentStatus === 'cancelled' || hasRestoredItems;
+    const isBecomingConfirmed = orderStatus === 'Confirmed' && (order.orderStatus !== 'Confirmed' || order.paymentStatus === 'cancelled' || hasRestoredItems);
     const shouldRestore = (orderStatus === 'Cancelled' || orderStatus === 'Refunded') &&
       order.orderStatus !== 'Cancelled' && order.orderStatus !== 'Refunded';
 
@@ -149,8 +150,8 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
           },
         });
 
-        // If the order was previously cancelled or refunded, re-claim (deduct) inventory and restore coupon usage
-        if (wasCancelledOrRefunded) {
+        // If the order was previously cancelled or refunded, or its items were restored, re-claim (deduct) inventory and restore coupon usage
+        if (wasCancelledOrRefunded || hasRestoredItems) {
           await reclaimOrderInventory(tx, id, { reason: `Admin confirmed previously cancelled order` });
           if (order.couponCode) {
             await tx.coupon.updateMany({
