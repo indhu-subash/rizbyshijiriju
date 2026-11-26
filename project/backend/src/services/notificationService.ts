@@ -64,9 +64,12 @@ export async function sendOrderConfirmationEmail(order: any): Promise<void> {
         (item: any) => `
         <tr>
           <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">
-            <strong>${item.name}</strong>
-            ${item.color ? `<span style="color: #666; font-size: 12px; margin-left: 6px;">(Color: ${item.color})</span>` : ''}
-            ${item.size ? `<span style="color: #666; font-size: 12px; margin-left: 6px;">(Size: ${item.size})</span>` : ''}
+            <div style="font-weight: 600; color: #334c3d;">${item.name}</div>
+            ${item.productCode ? `<div style="font-size: 11px; font-family: monospace; color: #555; margin-top: 2px;">Code: ${item.productCode}</div>` : ''}
+            <div style="margin-top: 3px;">
+              ${item.color ? `<span style="display: inline-block; background: #fef3c7; color: #78350f; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; margin-right: 4px; border: 1px solid #fde68a;">Colour: ${item.color}</span>` : ''}
+              ${item.size ? `<span style="display: inline-block; background: #dbeafe; color: #1e40af; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; border: 1px solid #bfdbfe;">Size: ${item.size}</span>` : ''}
+            </div>
           </td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
           <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: right;">₹${(item.price * item.quantity).toLocaleString('en-IN')}</td>
@@ -225,7 +228,18 @@ export async function sendOrderConfirmationWhatsApp(order: any): Promise<void> {
 
     console.log(`[WhatsApp Notification Log] Customer Receiver: ${phone || 'NONE'} | Message: ${message.replace(/\n/g, ' ')}`);
 
-    const adminMessage = `🔔 *NEW ORDER CONFIRMED!* 🔔\n\n*Order ID:* #${order.orderId}\n*Customer:* ${order.shippingName} (${order.shippingPhone})\n*Email:* ${order.shippingEmail || 'N/A'}\n*Amount:* ₹${(order.total || 0).toLocaleString('en-IN')}\n*Payment Method:* ${order.paymentMethod || 'Online'}\n*Address:* ${order.shippingAddressLine}, ${order.shippingCity}, ${order.shippingState} - ${order.shippingPincode}\n\nPlease check admin dashboard for details.`;
+    const itemsSummary = (order.items || [])
+      .map((it: any) => {
+        const specs = [];
+        if (it.productCode) specs.push(`Code: ${it.productCode}`);
+        if (it.color) specs.push(`Colour: ${it.color}`);
+        if (it.size) specs.push(`Size: ${it.size}`);
+        const specStr = specs.length > 0 ? ` (${specs.join(', ')})` : '';
+        return `• ${it.name} x${it.quantity}${specStr}`;
+      })
+      .join('\n');
+
+    const adminMessage = `🔔 *NEW ORDER CONFIRMED!* 🔔\n\n*Order ID:* #${order.orderId}\n*Customer:* ${order.shippingName} (${order.shippingPhone})\n*Email:* ${order.shippingEmail || 'N/A'}\n*Amount:* ₹${(order.total || 0).toLocaleString('en-IN')}\n*Payment Method:* ${order.paymentMethod || 'Online'}\n*Address:* ${order.shippingAddressLine}, ${order.shippingCity}, ${order.shippingState} - ${order.shippingPincode}\n\n*Items Ordered:*\n${itemsSummary || '—'}\n\nPlease check admin dashboard for details.`;
 
     console.log(`[Admin WhatsApp Notification Log] Admin Receiver: ${adminPhone} | Order: #${order.orderId}`);
 

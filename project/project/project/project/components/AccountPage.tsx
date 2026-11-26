@@ -31,6 +31,8 @@ type Order = {
     id: string;
     name: string;
     productCode?: string | null;
+    color?: string | null;
+    size?: string | null;
     price: number;
     quantity: number;
     image: string;
@@ -277,11 +279,23 @@ export function AccountPage() {
                             )}
                             <div>
                               <p className="serif font-medium">{item.name}</p>
-                              {item.productCode && (
-                                <p style={{ fontSize: '11px', fontFamily: 'monospace', color: '#555', margin: '2px 0' }}>
-                                  SKU: {item.productCode}
-                                </p>
-                              )}
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '2px 0', alignItems: 'center' }}>
+                                {item.productCode && (
+                                  <span style={{ fontSize: '11px', fontFamily: 'monospace', color: '#555' }}>
+                                    SKU: {item.productCode}
+                                  </span>
+                                )}
+                                {item.color && (
+                                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#78350f', background: '#fef3c7', padding: '1px 6px', borderRadius: '4px', border: '1px solid #fde68a' }}>
+                                    Colour: {item.color}
+                                  </span>
+                                )}
+                                {item.size && (
+                                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#1e40af', background: '#dbeafe', padding: '1px 6px', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+                                    Size: {item.size}
+                                  </span>
+                                )}
+                              </div>
                               <p className="muted text-sm">Qty: {item.quantity}</p>
                             </div>
                           </div>

@@ -9,9 +9,26 @@ type OrderItem = {
   id: string;
   name: string;
   productCode?: string | null;
+  color?: string | null;
+  size?: string | null;
   price: number;
   quantity: number;
   image: string;
+};
+
+const getColorDot = (colorName?: string | null) => {
+  if (!colorName) return '#b45309';
+  const c = colorName.toLowerCase();
+  if (c.includes('red') || c.includes('ruby') || c.includes('maroon') || c.includes('crimson')) return '#dc2626';
+  if (c.includes('green') || c.includes('emerald') || c.includes('mint') || c.includes('olive')) return '#16a34a';
+  if (c.includes('blue') || c.includes('sapphire') || c.includes('navy') || c.includes('aqua')) return '#2563eb';
+  if (c.includes('gold') || c.includes('yellow') || c.includes('amber')) return '#d97706';
+  if (c.includes('silver') || c.includes('white') || c.includes('platinum')) return '#94a3b8';
+  if (c.includes('black') || c.includes('onyx') || c.includes('charcoal')) return '#1e293b';
+  if (c.includes('pink') || c.includes('rose') || c.includes('magenta')) return '#ec4899';
+  if (c.includes('purple') || c.includes('violet') || c.includes('amethyst')) return '#9333ea';
+  if (c.includes('brown') || c.includes('bronze') || c.includes('copper')) return '#78350f';
+  return '#b45309';
 };
 
 type Order = {
@@ -342,6 +359,62 @@ export default function AdminOrders() {
                       <p style={{ margin: '2px 0', fontSize: '12px', color: '#555', fontFamily: 'monospace' }}>
                         Product Code: {item.productCode || '—'}
                       </p>
+                      <div style={{ margin: '4px 0', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', color: '#444', fontWeight: 500 }}>
+                          Colour:
+                        </span>
+                        {item.color ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: '#78350f',
+                              backgroundColor: '#fef3c7',
+                              border: '1px solid #fde68a',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: getColorDot(item.color),
+                                display: 'inline-block',
+                              }}
+                            />
+                            {item.color}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+                            Standard / None
+                          </span>
+                        )}
+
+                        {item.size && (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: '#1e40af',
+                              backgroundColor: '#dbeafe',
+                              border: '1px solid #bfdbfe',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              marginLeft: '4px',
+                            }}
+                          >
+                            Size: {item.size}
+                          </span>
+                        )}
+                      </div>
                       <p style={{ margin: '2px 0', fontSize: '12px', color: '#666' }}>
                         Quantity: {item.quantity} | Unit Price: ₹{item.price}
                       </p>
