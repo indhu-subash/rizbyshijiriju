@@ -3,8 +3,10 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { uploadImage, deleteImage } from '../services/uploadService';
 import { INITIAL_PRODUCTS } from '../config/initialProducts';
-import { restoreOrderInventory } from '../services/inventoryService';
+import { restoreOrderInventory, reclaimOrderInventory } from '../services/inventoryService';
 import { syncBestsellers } from '../services/bestsellerService';
+import { sendOrderConfirmationEmail, sendOrderConfirmationWhatsApp } from '../services/notificationService';
+import { notifyOrderConfirmed } from '../services/adminNotifications';
 
 // 1. Dashboard Analytics
 export async function getDashboardStats(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -99,19 +101,24 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
     const { id } = req.params;
     const { orderStatus, trackingNumber, paymentStatus } = req.body;
 
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
     if (!order) {
       res.status(404).json({ error: 'Order not found.' });
       return;
     }
 
     let updated;
+    const isBecomingConfirmed = orderStatus === 'Confirmed' && order.orderStatus !== 'Confirmed';
+    const wasCancelledOrRefunded = order.orderStatus === 'Cancelled' || order.orderStatus === 'Refunded';
     const shouldRestore = (orderStatus === 'Cancelled' || orderStatus === 'Refunded') &&
       order.orderStatus !== 'Cancelled' && order.orderStatus !== 'Refunded';
 
     const targetPaymentStatus = paymentStatus !== undefined
       ? paymentStatus
-      : (orderStatus === 'Confirmed' && order.paymentStatus !== 'paid' ? 'paid' : order.paymentStatus);
+      : (orderStatus === 'Confirmed' ? 'paid' : order.paymentStatus);
 
     if (shouldRestore) {
       await prisma.$transaction(async (tx: any) => {
@@ -124,7 +131,53 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
           },
         });
         await restoreOrderInventory(tx, id, { reason: `Admin set status to ${orderStatus}` });
+        if (order.couponCode) {
+          await tx.coupon.updateMany({
+            where: { code: order.couponCode },
+            data: { usedCount: { decrement: 1 } },
+          });
+        }
       });
+    } else if (isBecomingConfirmed) {
+      await prisma.$transaction(async (tx: any) => {
+        updated = await tx.order.update({
+          where: { id },
+          data: {
+            orderStatus: 'Confirmed',
+            paymentStatus: targetPaymentStatus,
+            trackingNumber: trackingNumber !== undefined ? trackingNumber : order.trackingNumber,
+          },
+        });
+
+        // If the order was previously cancelled or refunded, re-claim (deduct) inventory and restore coupon usage
+        if (wasCancelledOrRefunded) {
+          await reclaimOrderInventory(tx, id, { reason: `Admin confirmed previously cancelled order` });
+          if (order.couponCode) {
+            await tx.coupon.updateMany({
+              where: { code: order.couponCode },
+              data: { usedCount: { increment: 1 } },
+            });
+          }
+        }
+      });
+
+      // Dispatch full notifications and triggers exactly like when a real order is placed
+      const fullOrder = await prisma.order.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+
+      if (fullOrder) {
+        sendOrderConfirmationEmail(fullOrder).catch((e) =>
+          console.error('[Admin Order Confirmed] Email error:', e)
+        );
+        sendOrderConfirmationWhatsApp(fullOrder).catch((e) =>
+          console.error('[Admin Order Confirmed] WhatsApp error:', e)
+        );
+        notifyOrderConfirmed(fullOrder).catch((e) =>
+          console.error('[Admin Order Confirmed] Admin notify error:', e)
+        );
+      }
     } else {
       updated = await prisma.order.update({
         where: { id },

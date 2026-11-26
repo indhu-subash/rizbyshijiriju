@@ -480,3 +480,191 @@ export async function restoreOrderInventory(
     details: outcomes,
   };
 }
+
+/**
+ * Concurrency-safe, atomic, and idempotent stock re-deduction for orders transitioning back to Confirmed.
+ * Must be executed within a Prisma transaction (tx).
+ */
+export async function reclaimOrderInventory(
+  tx: any,
+  orderId: string,
+  options?: { reason?: string }
+): Promise<RestorationOutcome> {
+  const order = await tx.order.findUnique({
+    where: { id: orderId },
+    include: { items: true },
+  });
+
+  if (!order) {
+    throw new Error(`Order #${orderId} not found for inventory reclaim.`);
+  }
+
+  // Only reclaim items that were previously restored (inventoryRestored === true)
+  const itemsToReclaim = order.items.filter((item: any) => item.inventoryRestored);
+
+  if (itemsToReclaim.length === 0) {
+    return {
+      success: true,
+      restoredCount: 0,
+      alreadyRestored: false,
+      details: order.items.map((it: any) => ({
+        itemId: it.id,
+        productName: it.name,
+        status: 'ALREADY_DEDUCTED',
+        restoredQuantity: 0,
+      })),
+    };
+  }
+
+  const outcomes: Array<{
+    itemId: string;
+    productName: string;
+    status: string;
+    restoredQuantity: number;
+  }> = [];
+
+  for (const item of itemsToReclaim) {
+    if (!item.productId) {
+      await tx.orderItem.update({
+        where: { id: item.id },
+        data: {
+          inventoryRestored: false,
+          restorationStatus: 'DELETED_PRODUCT_RECLAIMED',
+        },
+      });
+      outcomes.push({
+        itemId: item.id,
+        productName: item.name,
+        status: 'DELETED_PRODUCT_RECLAIMED',
+        restoredQuantity: 0,
+      });
+      continue;
+    }
+
+    const product = await tx.product.findUnique({
+      where: { id: item.productId },
+      include: { variants: true },
+    });
+
+    if (!product) {
+      await tx.orderItem.update({
+        where: { id: item.id },
+        data: {
+          inventoryRestored: false,
+          restorationStatus: 'DELETED_PRODUCT_RECLAIMED',
+        },
+      });
+      outcomes.push({
+        itemId: item.id,
+        productName: item.name,
+        status: 'DELETED_PRODUCT_RECLAIMED',
+        restoredQuantity: 0,
+      });
+      continue;
+    }
+
+    if (item.variantId) {
+      await tx.productVariant.updateMany({
+        where: { id: item.variantId },
+        data: {
+          stock: { decrement: item.quantity },
+        },
+      });
+
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          stock: { decrement: item.quantity },
+        },
+      });
+
+      if (item.size) {
+        await tx.productSize.updateMany({
+          where: {
+            productId: product.id,
+            size: item.size,
+          },
+          data: {
+            stock: { decrement: item.quantity },
+          },
+        });
+      }
+    } else if (product.hasVariants) {
+      const resolvedVariant = await resolveProductVariant(
+        tx,
+        product.id,
+        item.color,
+        item.size
+      );
+
+      if (resolvedVariant) {
+        await tx.productVariant.updateMany({
+          where: { id: resolvedVariant.id },
+          data: {
+            stock: { decrement: item.quantity },
+          },
+        });
+      }
+
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          stock: { decrement: item.quantity },
+        },
+      });
+
+      if (item.size) {
+        await tx.productSize.updateMany({
+          where: {
+            productId: product.id,
+            size: item.size,
+          },
+          data: {
+            stock: { decrement: item.quantity },
+          },
+        });
+      }
+    } else {
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          stock: { decrement: item.quantity },
+        },
+      });
+
+      if (item.size) {
+        await tx.productSize.updateMany({
+          where: {
+            productId: product.id,
+            size: item.size,
+          },
+          data: {
+            stock: { decrement: item.quantity },
+          },
+        });
+      }
+    }
+
+    await tx.orderItem.update({
+      where: { id: item.id },
+      data: {
+        inventoryRestored: false,
+        restorationStatus: 'RECLAIMED',
+      },
+    });
+
+    outcomes.push({
+      itemId: item.id,
+      productName: item.name,
+      status: 'RECLAIMED',
+      restoredQuantity: item.quantity,
+    });
+  }
+
+  return {
+    success: true,
+    restoredCount: outcomes.length,
+    alreadyRestored: false,
+    details: outcomes,
+  };
+}
