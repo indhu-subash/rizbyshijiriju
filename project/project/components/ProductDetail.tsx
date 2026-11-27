@@ -824,6 +824,12 @@ export function ProductDetail({ product }: { product: Product }) {
                               <span>Category</span>
                               <strong>{product.category}</strong>
                             </div>
+                            {((product as any).type || (product.productType && product.productType !== 'regular')) && (
+                              <div className="pdp-spec-row">
+                                <span>Type</span>
+                                <strong style={{ textTransform: 'capitalize' }}>{(product as any).type || product.productType}</strong>
+                              </div>
+                            )}
                             {hasColors && (
                               <div className="pdp-spec-row">
                                 <span>Available Colours</span>

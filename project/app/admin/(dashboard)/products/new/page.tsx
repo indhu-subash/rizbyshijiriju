@@ -38,7 +38,22 @@ export default function NewProductPage() {
     return 'regular';
   };
 
-  const productType = getProductTypeFromCategory(category);
+  const [productType, setProductType] = useState<'bangle' | 'ring' | 'nosepin' | 'regular'>('bangle');
+  const [jewelleryType, setJewelleryType] = useState('');
+  const [isCustomMetal, setIsCustomMetal] = useState(false);
+
+  const handleProductTypeChange = (newType: 'bangle' | 'ring' | 'nosepin' | 'regular') => {
+    setProductType(newType);
+    if (newType === 'bangle') {
+      setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']);
+    } else if (newType === 'ring') {
+      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18', 'Free Size']);
+    } else if (newType === 'nosepin') {
+      setSelectedSizes([]);
+    } else {
+      setSelectedSizes([]);
+    }
+  };
 const [selectedSizes, setSelectedSizes] = useState<string[]>([
   '2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size'
 ]);
@@ -116,15 +131,7 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
     if (matched) setCategoryId(matched.id);
 
     const newType = getProductTypeFromCategory(newCat);
-    if (newType === 'bangle') {
-      setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']);
-    } else if (newType === 'ring') {
-      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18', 'Free Size']);
-    } else if (newType === 'nosepin') {
-      setSelectedSizes([]);
-    } else {
-      setSelectedSizes([]);
-    }
+    handleProductTypeChange(newType);
   };
 
   const addCustomSize = () => {
@@ -354,9 +361,18 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
       gender,
       ageGroup,
       metal,
+      material: metal,
       finish,
       careInstructions,
       images,
+      tags: [
+        category.toLowerCase(),
+        collection.toLowerCase(),
+        metal.toLowerCase(),
+        gender.toLowerCase(),
+        productType,
+        ...(jewelleryType ? [jewelleryType.trim()] : []),
+      ],
     };
 
     try {
@@ -908,6 +924,45 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
 
             <div style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
               <label>
+                Product Type / Sizing Option
+                <select
+                  value={productType}
+                  onChange={(e) => handleProductTypeChange(e.target.value as any)}
+                >
+                  <option value="regular">Regular</option>
+                  <option value="bangle">Bangle (Sizes: 2.2 - 2.10)</option>
+                  <option value="ring">Ring (Sizes: 6 - 18)</option>
+                  <option value="nosepin">Nose Pin</option>
+                </select>
+              </label>
+
+              <label>
+                Type / Style
+                <input
+                  type="text"
+                  placeholder="e.g. Studs, Hoops, Choker, Kada, Adjustable"
+                  value={jewelleryType}
+                  onChange={(e) => setJewelleryType(e.target.value)}
+                  list="type-suggestions-new"
+                />
+                <datalist id="type-suggestions-new">
+                  <option value="Studs" />
+                  <option value="Hoops" />
+                  <option value="Drops & Danglers" />
+                  <option value="Jhumkas" />
+                  <option value="Choker" />
+                  <option value="Pendant" />
+                  <option value="Chain" />
+                  <option value="Kada" />
+                  <option value="Openable Bangle" />
+                  <option value="Adjustable Ring" />
+                  <option value="Nose Pin" />
+                </datalist>
+              </label>
+            </div>
+
+            <div style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
+              <label>
                 Age Group
                 <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
                   <option value="Adults">Adults</option>
@@ -916,22 +971,43 @@ const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
                   <option value="All Ages">All Ages</option>
                 </select>
               </label>
-            <label>
-              Base Metal / Material
-              <select
-                value={metal}
-                onChange={(e) => setMetal(e.target.value)}
-              >
-                <option value="">Select material</option>
-                <option value="Brass">Brass</option>
-                <option value="Stainless Steel">Stainless Steel</option>
-                <option value="Silver">Silver</option>
-                <option value="Alloy">Alloy</option>
-                <option value="Other">Other</option>
-              </select>
-            </label>
-
+              <label>
+                Base Metal / Material
+                <select
+                  value={isCustomMetal ? '__custom__' : metal}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__custom__') {
+                      setIsCustomMetal(true);
+                      setMetal('');
+                    } else {
+                      setIsCustomMetal(false);
+                      setMetal(val);
+                    }
+                  }}
+                >
+                  <option value="Brass">Brass</option>
+                  <option value="Stainless Steel">Stainless Steel</option>
+                  <option value="Silver">Silver</option>
+                  <option value="Alloy">Alloy</option>
+                  <option value="Plastic">Plastic</option>
+                  <option value="__custom__">Type custom material...</option>
+                </select>
+              </label>
             </div>
+
+            {isCustomMetal && (
+              <label>
+                Custom Material Name
+                <input
+                  type="text"
+                  placeholder="Type material name (e.g. Acrylic, Copper, Resin)"
+                  value={metal}
+                  onChange={(e) => setMetal(e.target.value)}
+                  autoFocus
+                />
+              </label>
+            )}
 
             <label>
               Plating / Finish Details

@@ -39,7 +39,22 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     return 'regular';
   };
 
-  const productType = getProductTypeFromCategory(category);
+  const [productType, setProductType] = useState<'bangle' | 'ring' | 'nosepin' | 'regular'>('regular');
+  const [jewelleryType, setJewelleryType] = useState('');
+  const [isCustomMetal, setIsCustomMetal] = useState(false);
+
+  const handleProductTypeChange = (newType: 'bangle' | 'ring' | 'nosepin' | 'regular') => {
+    setProductType(newType);
+    if (newType === 'bangle') {
+      setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10', 'Free Size']);
+    } else if (newType === 'ring') {
+      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18', 'Free Size']);
+    } else if (newType === 'nosepin') {
+      setSelectedSizes([]);
+    } else {
+      setSelectedSizes([]);
+    }
+  };
 
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [sizeStocks, setSizeStocks] = useState<{ [size: string]: number }>({
@@ -131,6 +146,20 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         setCollection(p.collection || 'Anti-Tarnish');
 
         const derivedType = getProductTypeFromCategory(cat);
+        const actualType = (p.productType as any) || derivedType;
+        setProductType(actualType);
+
+        if (p.tags && Array.isArray(p.tags)) {
+          const knownTypes = ['studs', 'hoops', 'drops', 'danglers', 'jhumkas', 'choker', 'pendant', 'chain', 'kada', 'openable', 'adjustable', 'nose pin'];
+          const matchedTag = p.tags.find((t: string) => knownTypes.some((kt) => t.toLowerCase().includes(kt)));
+          if (matchedTag) setJewelleryType(matchedTag);
+        }
+
+        const loadedMetal = p.metal || p.material || 'Brass';
+        setMetal(loadedMetal);
+        if (!['Brass', 'Stainless Steel', 'Silver', 'Alloy', 'Plastic'].includes(loadedMetal)) {
+          setIsCustomMetal(true);
+        }
 
         if (Array.isArray(p.sizes) && p.sizes.length > 0) {
           const loadedSizes: { [sz: string]: number } = {};
@@ -173,15 +202,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     if (matched) setCategoryId(matched.id);
 
     const newType = getProductTypeFromCategory(newCat);
-    if (newType === 'bangle') {
-      setSelectedSizes(['2.2', '2.4', '2.6', '2.8', '2.10']);
-    } else if (newType === 'ring') {
-      setSelectedSizes(['6', '7', '8', '9', '16', '17', '18', 'Free Size']);
-    } else if (newType === 'nosepin') {
-      setSelectedSizes([]);
-    } else {
-      setSelectedSizes([]);
-    }
+    handleProductTypeChange(newType);
   };
 
   const addCustomSize = () => {
@@ -413,9 +434,18 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       gender,
       ageGroup,
       metal,
+      material: metal,
       finish,
       careInstructions,
       images,
+      tags: [
+        category.toLowerCase(),
+        collection.toLowerCase(),
+        metal.toLowerCase(),
+        gender.toLowerCase(),
+        productType,
+        ...(jewelleryType ? [jewelleryType.trim()] : []),
+      ],
     };
 
     try {
@@ -958,6 +988,45 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
             <div style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
               <label>
+                Product Type / Sizing Option
+                <select
+                  value={productType}
+                  onChange={(e) => handleProductTypeChange(e.target.value as any)}
+                >
+                  <option value="regular">Regular</option>
+                  <option value="bangle">Bangle (Sizes: 2.2 - 2.10)</option>
+                  <option value="ring">Ring (Sizes: 6 - 18)</option>
+                  <option value="nosepin">Nose Pin</option>
+                </select>
+              </label>
+
+              <label>
+                Type / Style
+                <input
+                  type="text"
+                  placeholder="e.g. Studs, Hoops, Choker, Kada, Adjustable"
+                  value={jewelleryType}
+                  onChange={(e) => setJewelleryType(e.target.value)}
+                  list="type-suggestions-edit"
+                />
+                <datalist id="type-suggestions-edit">
+                  <option value="Studs" />
+                  <option value="Hoops" />
+                  <option value="Drops & Danglers" />
+                  <option value="Jhumkas" />
+                  <option value="Choker" />
+                  <option value="Pendant" />
+                  <option value="Chain" />
+                  <option value="Kada" />
+                  <option value="Openable Bangle" />
+                  <option value="Adjustable Ring" />
+                  <option value="Nose Pin" />
+                </datalist>
+              </label>
+            </div>
+
+            <div style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
+              <label>
                 Age Group
                 <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
                   <option value="Adults">Adults</option>
@@ -969,13 +1038,41 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
               <label>
                 Base Metal / Material
-                <input
-                  type="text"
-                  value={metal}
-                  onChange={(e) => setMetal(e.target.value)}
-                />
+                <select
+                  value={isCustomMetal ? '__custom__' : metal}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__custom__') {
+                      setIsCustomMetal(true);
+                      setMetal('');
+                    } else {
+                      setIsCustomMetal(false);
+                      setMetal(val);
+                    }
+                  }}
+                >
+                  <option value="Brass">Brass</option>
+                  <option value="Stainless Steel">Stainless Steel</option>
+                  <option value="Silver">Silver</option>
+                  <option value="Alloy">Alloy</option>
+                  <option value="Plastic">Plastic</option>
+                  <option value="__custom__">Type custom material...</option>
+                </select>
               </label>
             </div>
+
+            {isCustomMetal && (
+              <label>
+                Custom Material Name
+                <input
+                  type="text"
+                  placeholder="Type material name (e.g. Acrylic, Copper, Resin)"
+                  value={metal}
+                  onChange={(e) => setMetal(e.target.value)}
+                  autoFocus
+                />
+              </label>
+            )}
 
             <label>
               Plating / Finish Details
